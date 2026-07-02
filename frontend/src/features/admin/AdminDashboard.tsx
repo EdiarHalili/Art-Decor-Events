@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { getAdminDashboard, type AdminDashboardSnapshot, type AuthResponse } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
+import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
 import { UserManagementPage } from "./UserManagementPage";
 
@@ -14,13 +15,14 @@ type AdminDashboardProps = {
   onLogout: () => void;
 };
 
-type AdminView = "dashboard" | "employees" | "users";
+type AdminView = "dashboard" | "windows" | "employees" | "users";
 
 export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   const navItems = [
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    { id: "windows" as const, label: "Daily windows", icon: CalendarClock },
     { id: "employees" as const, label: "Employees", icon: UsersRound },
     { id: "users" as const, label: "Users & roles", icon: ShieldCheck },
   ];
@@ -55,7 +57,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
             </div>
             <div className="flex gap-2">
               <ThemeToggle />
-              <Button variant="secondary">
+              <Button variant="secondary" onClick={() => setActiveView("windows")}>
                 <CalendarDays size={18} />
                 New window
               </Button>
@@ -81,6 +83,11 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           </nav>
 
           {activeView === "dashboard" && <DashboardOverview accessToken={session.accessToken} />}
+          {activeView === "windows" && (
+            <section className="mt-6">
+              <DailyCheckInWindowPage accessToken={session.accessToken} />
+            </section>
+          )}
           {activeView === "employees" && (
             <section className="mt-6">
               <EmployeeManagementPage accessToken={session.accessToken} />

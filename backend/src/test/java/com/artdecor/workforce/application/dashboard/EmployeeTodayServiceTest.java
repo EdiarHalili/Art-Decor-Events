@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import com.artdecor.workforce.domain.UserRole;
@@ -19,8 +20,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 class EmployeeTodayServiceTest {
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
+    private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T06:55:00Z"), ZoneOffset.UTC);
-    private final EmployeeTodayService service = new EmployeeTodayService(employees, assignments, clock);
+    private final EmployeeTodayService service = new EmployeeTodayService(employees, assignments, attendanceRecords, clock);
 
     @Test
     void returnsAuthenticatedEmployeeDashboard() {

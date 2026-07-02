@@ -43,3 +43,7 @@ Health:
 ```powershell
 Invoke-WebRequest http://localhost:8080/actuator/health
 ```
+
+Full Windows testing checklist:
+
+- [docs/windows-local-testing.md](docs/windows-local-testing.md)

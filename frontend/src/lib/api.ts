@@ -77,6 +77,25 @@ export type AttendanceResponse = {
   approvalReason: string | null;
 };
 
+export type DailyCheckInWindow = {
+  id: string;
+  workDate: string;
+  checkInOpensAt: string;
+  checkInClosesAt: string;
+  status: "DRAFT" | "PUBLISHED" | "CHECK_IN_OPEN" | "CHECK_IN_CLOSED" | "CANCELLED" | "COMPLETED";
+  employeeIds: string[];
+  allowedEmployeeCount: number;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+type DailyCheckInWindowPayload = {
+  workDate: string;
+  checkInOpensAt: string;
+  checkInClosesAt: string;
+  employeeIds: string[];
+};
+
 export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
     method: "POST",
@@ -178,6 +197,49 @@ export async function checkOut(
   return authorizedRequest<AttendanceResponse>("/employee/attendance/check-out", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function listCheckInWindows(accessToken: string): Promise<DailyCheckInWindow[]> {
+  return authorizedRequest<DailyCheckInWindow[]>("/admin/check-in-windows", accessToken);
+}
+
+export async function createCheckInWindow(
+  accessToken: string,
+  payload: DailyCheckInWindowPayload,
+): Promise<DailyCheckInWindow> {
+  return authorizedRequest<DailyCheckInWindow>("/admin/check-in-windows", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateCheckInWindow(
+  accessToken: string,
+  windowId: string,
+  payload: DailyCheckInWindowPayload,
+): Promise<DailyCheckInWindow> {
+  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}`, accessToken, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function openCheckInWindow(accessToken: string, windowId: string): Promise<DailyCheckInWindow> {
+  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}/open`, accessToken, {
+    method: "POST",
+  });
+}
+
+export async function closeCheckInWindow(accessToken: string, windowId: string): Promise<DailyCheckInWindow> {
+  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}/close`, accessToken, {
+    method: "POST",
+  });
+}
+
+export async function cancelCheckInWindow(accessToken: string, windowId: string): Promise<DailyCheckInWindow> {
+  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}/cancel`, accessToken, {
+    method: "POST",
   });
 }
 

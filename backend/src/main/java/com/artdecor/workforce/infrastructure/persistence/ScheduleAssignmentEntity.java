@@ -36,12 +36,23 @@ public class ScheduleAssignmentEntity {
         return schedule;
     }
 
+    public void setSchedule(WorkScheduleEntity schedule) {
+        this.schedule = schedule;
+    }
+
     public EmployeeEntity getEmployee() {
         return employee;
+    }
+
+    public void setEmployee(EmployeeEntity employee) {
+        this.employee = employee;
     }
 
     public String getAssignmentNotes() {
         return assignmentNotes;
     }
-}
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+}

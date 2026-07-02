@@ -51,13 +51,18 @@ public class AttendanceService {
         if (schedule.getStatus() == WorkScheduleStatus.CANCELLED) {
             throw new AttendanceException("SCHEDULE_CANCELLED", "This schedule has been cancelled.");
         }
+        if (schedule.getStatus() == WorkScheduleStatus.CHECK_IN_CLOSED) {
+            throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
+        }
 
         Instant now = Instant.now(clock);
-        if (now.isBefore(schedule.getCheckInOpensAt())) {
-            throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
-        }
-        if (now.isAfter(schedule.getCheckInClosesAt())) {
-            throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this schedule.");
+        if (schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
+            if (now.isBefore(schedule.getCheckInOpensAt())) {
+                throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
+            }
+            if (now.isAfter(schedule.getCheckInClosesAt())) {
+                throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
+            }
         }
 
         var existing = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
@@ -129,4 +134,3 @@ public class AttendanceService {
         );
     }
 }
-

@@ -2,6 +2,7 @@ package com.artdecor.workforce.api;
 
 import com.artdecor.workforce.application.auth.AuthException;
 import com.artdecor.workforce.application.attendance.AttendanceException;
+import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowException;
 import com.artdecor.workforce.application.management.ManagementException;
 import java.util.stream.Collectors;
 import java.util.Map;
@@ -44,6 +45,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleAttendance(AttendanceException exception) {
         return ResponseEntity.badRequest()
                 .body(new ApiError(exception.code(), exception.getMessage(), Map.of()));
+    }
+
+    @ExceptionHandler(DailyCheckInWindowException.class)
+    public ResponseEntity<ApiError> handleDailyWindow(DailyCheckInWindowException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError("DAILY_CHECK_IN_WINDOW_ERROR", exception.getMessage(), Map.of()));
     }
 
     public record ApiError(String code, String message, Map<String, Object> details) {
