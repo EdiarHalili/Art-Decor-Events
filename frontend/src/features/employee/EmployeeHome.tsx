@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, CalendarClock, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { checkIn, checkOut, getEmployeeToday, type AuthResponse, type EmployeeToday } from "../../lib/api";
@@ -112,9 +113,12 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
       <div className="mx-auto flex max-w-md flex-col gap-5">
         <header className="flex items-center justify-between">
           <BrandMark compact />
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-            {online ? <Wifi size={15} /> : <WifiOff size={15} />}
-            {online ? "Online" : "Offline"}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+              {online ? <Wifi size={15} /> : <WifiOff size={15} />}
+              {online ? "Online" : "Offline"}
+            </div>
+            <ThemeToggle />
           </div>
         </header>
 

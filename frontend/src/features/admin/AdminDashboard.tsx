@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { getAdminDashboard, type AdminDashboardSnapshot, type AuthResponse } from "../../lib/api";
@@ -53,6 +54,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
               <p className="mt-1 text-sm text-muted-foreground">Signed in as {session.fullName}</p>
             </div>
             <div className="flex gap-2">
+              <ThemeToggle />
               <Button variant="secondary">
                 <CalendarDays size={18} />
                 New schedule
@@ -62,6 +64,21 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
               </Button>
             </div>
           </header>
+
+          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {navItems.map((item) => (
+              <Button
+                key={item.id}
+                type="button"
+                variant={activeView === item.id ? "primary" : "secondary"}
+                onClick={() => setActiveView(item.id)}
+                className="shrink-0"
+              >
+                <item.icon size={17} />
+                {item.label}
+              </Button>
+            ))}
+          </nav>
 
           {activeView === "dashboard" && <DashboardOverview accessToken={session.accessToken} />}
           {activeView === "employees" && (

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { BriefcaseBusiness, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -51,6 +52,9 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
       </section>
 
       <section className="brand-surface flex min-h-screen items-center justify-center px-5 py-8">
+        <div className="absolute right-5 top-5">
+          <ThemeToggle />
+        </div>
         <Card className="w-full max-w-md p-6 shadow-corporate">
           <BrandMark />
 
@@ -136,4 +140,3 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
     </main>
   );
 }
-
