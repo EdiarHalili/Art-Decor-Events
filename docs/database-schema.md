@@ -6,9 +6,8 @@
 - `employees`: employee profile, public employee ID, department, team, notes, wage metadata.
 - `departments`: operational grouping.
 - `teams`: seasonal work teams.
-- `locations`: warehouses, venues, event locations, future geofencing metadata.
-- `work_schedules`: scheduled workdays or events.
-- `schedule_assignments`: employees assigned to schedules.
+- `work_schedules`: daily check-in windows. The table name is generic from Phase 1, but the product workflow is intentionally simple.
+- `schedule_assignments`: employees allowed to check in for a daily window.
 - `attendance_records`: check-in/check-out facts, status, GPS, device, hours, overtime.
 - `announcements`: employee-facing messages.
 - `audit_logs`: immutable administrative and security activity trail.
@@ -26,9 +25,20 @@ Payroll is not implemented in Phase 1, but the schema stores:
 
 ## Attendance Rules
 
-- One attendance record per employee per schedule.
+- One attendance record per employee per daily check-in window.
 - Check-in and check-out are independently timestamped.
 - Duplicate check-in/check-out attempts are rejected or treated as idempotent depending on the endpoint.
-- Late status is based on schedule rules.
+- Late status is based on daily check-in window rules.
 - Pending approval is used for late/offline/manual exceptions.
 
+## Simplified Phase 2 Model
+
+The admin should not manage full events. The only operational object needed now is a Daily Check-in Window:
+
+- date
+- check-in opens at
+- check-in closes at
+- status: draft/open/closed/cancelled
+- selected employees allowed to check in
+
+Locations, event titles, venues, and complex event assignment screens are intentionally deferred.

@@ -31,8 +31,7 @@ public class AdminDashboardService {
                 employees.countByStatus(UserStatus.INACTIVE),
                 users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE),
                 users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE),
-                List.of("Create first schedule", "Add employee profiles", "Post announcement")
+                List.of("Create check-in window", "Add employee profiles", "Post announcement")
         );
     }
 }
-

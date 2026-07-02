@@ -57,7 +57,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
               <ThemeToggle />
               <Button variant="secondary">
                 <CalendarDays size={18} />
-                New schedule
+                New window
               </Button>
               <Button variant="ghost" onClick={onLogout}>
                 <LogOut size={18} />
@@ -120,7 +120,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
             <div className="grid lg:grid-cols-[1fr_360px]">
               <div className="p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Phase 1 foundation</p>
-                <h2 className="mt-3 text-2xl font-semibold">Ready for employee setup and schedule creation</h2>
+                <h2 className="mt-3 text-2xl font-semibold">Ready for employee setup and daily check-in windows</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                   {snapshot
                     ? `${snapshot.activeEmployees} active employees, ${snapshot.inactiveEmployees} inactive employees, ${snapshot.administrators} administrators, and ${snapshot.supervisors} supervisors are registered.`
@@ -148,13 +148,13 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
             <Card className="p-5">
               <h2 className="font-semibold">Live attendance</h2>
               <div className="mt-5 rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                Attendance events will appear here when schedules are published.
+                Attendance activity will appear here when daily check-in windows are opened.
               </div>
             </Card>
             <Card className="p-5">
               <h2 className="font-semibold">Quick actions</h2>
               <div className="mt-5 grid gap-3">
-                {(snapshot?.quickActions ?? ["Add employee", "Create workday", "Post announcement"]).map((action) => (
+                {(snapshot?.quickActions ?? ["Add employee", "Create check-in window", "Post announcement"]).map((action) => (
                   <Button key={action} variant="secondary">
                     {action}
                   </Button>

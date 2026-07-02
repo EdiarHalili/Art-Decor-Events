@@ -23,12 +23,13 @@ Base path: `/api/v1`
 - `POST /admin/employees`
 - `PATCH /admin/employees/{id}`
 - `POST /admin/employees/{id}/deactivate`
-- `GET /admin/schedules`
-- `POST /admin/schedules`
-- `PATCH /admin/schedules/{id}`
-- `POST /admin/schedules/{id}/open-check-in`
-- `POST /admin/schedules/{id}/close-check-in`
-- `POST /admin/schedules/{id}/cancel`
+- `GET /admin/check-in-windows`
+- `POST /admin/check-in-windows`
+- `PATCH /admin/check-in-windows/{id}`
+- `POST /admin/check-in-windows/{id}/open`
+- `POST /admin/check-in-windows/{id}/close`
+- `POST /admin/check-in-windows/{id}/cancel`
+- `PUT /admin/check-in-windows/{id}/employees`
 
 ## Reports
 
@@ -43,8 +44,7 @@ Base path: `/api/v1`
 ```json
 {
   "code": "ATTENDANCE_WINDOW_CLOSED",
-  "message": "Check-in is closed for this schedule.",
+  "message": "Check-in is closed for this daily window.",
   "details": {}
 }
 ```
-

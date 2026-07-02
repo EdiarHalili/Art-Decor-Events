@@ -68,7 +68,7 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
 
   async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
     if (!today?.scheduleId || !session.employeeId) {
-      setMessage("No active schedule is available for attendance.");
+      setMessage("No active daily check-in window is available for attendance.");
       return;
     }
 

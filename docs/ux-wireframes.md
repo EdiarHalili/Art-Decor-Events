@@ -19,10 +19,9 @@ Visual language:
 | Logo             Online status |
 | Good morning, Employee         |
 |                                |
-| Today's assignment             |
-| Breta Palace - Main Hall       |
+| Today's check-in               |
+| Open: 06:50-07:10              |
 | Check-in window: 06:50-07:10   |
-| Supervisor: Name               |
 |                                |
 | [ Check In ]                   |
 | [ Check Out ]                  |
@@ -39,8 +38,20 @@ Visual language:
 | Sidebar | Today header, date, quick actions           |
 |         | KPI cards: Present, Late, Absent, Working   |
 |         | Live attendance timeline                    |
-|         | Upcoming schedules                          |
+|         | Daily check-in windows                      |
 |         | Employees currently working                 |
++-------------------------------------------------------+
+```
+
+## Admin Daily Window
+
+```text
++-------------------------------------------------------+
+| Daily Check-in Window                                 |
+| Date: Tomorrow                                        |
+| Opens: 06:50       Closes: 07:10                      |
+| Employees allowed: [search/select employees]          |
+| [Save window] [Open now] [Close now] [Cancel]         |
 +-------------------------------------------------------+
 ```
 
@@ -52,4 +63,3 @@ Use a split login composition:
 - Right: focused login panel with logo, role tabs, and clear form fields.
 
 The UI must never rely on image text for important information.
-

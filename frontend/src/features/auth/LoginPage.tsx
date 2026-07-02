@@ -46,7 +46,7 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">Workforce operations</p>
           <h1 className="mt-4 font-display text-5xl leading-tight">Art Decor Events</h1>
           <p className="mt-4 max-w-md text-base text-white/82">
-            Attendance, scheduling, and daily coordination for premium event decoration teams.
+            Attendance and daily coordination for premium decoration teams.
           </p>
         </div>
       </section>

@@ -39,6 +39,16 @@ All responses include `X-Request-Id`. Clients may send their own `X-Request-Id`;
 - `PATCH /admin/employees/{employeeId}`
 - `POST /admin/employees/{employeeId}/deactivate`
 
+Planned for Phase 2:
+
+- `GET /admin/check-in-windows`
+- `POST /admin/check-in-windows`
+- `PATCH /admin/check-in-windows/{windowId}`
+- `POST /admin/check-in-windows/{windowId}/open`
+- `POST /admin/check-in-windows/{windowId}/close`
+- `POST /admin/check-in-windows/{windowId}/cancel`
+- `PUT /admin/check-in-windows/{windowId}/employees`
+
 ## Employee
 
 - `GET /employee/today`
@@ -59,3 +69,4 @@ All responses include `X-Request-Id`. Clients may send their own `X-Request-Id`;
 }
 ```
 
+Note: Phase 1 still names this identifier `scheduleId` internally. Phase 2 will expose it to admins as a Daily Check-in Window, not an event.
