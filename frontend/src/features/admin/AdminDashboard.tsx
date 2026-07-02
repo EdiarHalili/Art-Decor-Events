@@ -30,7 +30,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
   ];
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-border bg-card p-5 lg:block">
           <BrandMark />
@@ -50,14 +50,14 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           </nav>
         </aside>
 
-        <section className="px-4 py-5 sm:px-6 lg:px-8">
-          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-20 -mx-4 flex flex-col gap-4 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
             <div>
               <p className="text-sm font-medium text-primary">Operations dashboard</p>
               <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Today at Art Decor Events</h1>
               <p className="mt-1 text-sm text-muted-foreground">Signed in as {session.fullName}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <ThemeToggle />
               <Button variant="secondary" onClick={() => setActiveView("windows")}>
                 <CalendarDays size={18} />

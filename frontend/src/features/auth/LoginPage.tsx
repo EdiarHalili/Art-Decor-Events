@@ -5,6 +5,7 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
+import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { loginAdmin, loginEmployee, type AuthResponse } from "../../lib/api";
 import venueUrl from "../../assets/brand/breta-palace-wide.jpg";
 
@@ -51,11 +52,11 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
         </div>
       </section>
 
-      <section className="brand-surface flex min-h-screen items-center justify-center px-5 py-8">
+      <section className="brand-surface flex min-h-screen items-center justify-center px-5 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2rem+env(safe-area-inset-top))]">
         <div className="absolute right-5 top-5">
           <ThemeToggle />
         </div>
-        <Card className="w-full max-w-md p-6 shadow-corporate">
+        <Card className="w-full max-w-md p-5 shadow-corporate sm:p-6">
           <BrandMark />
 
           <div className="mt-8 grid grid-cols-2 rounded-lg bg-muted p-1">
@@ -135,6 +136,9 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
               {loading ? "Signing in..." : mode === "employee" ? "Open my shift" : "Open dashboard"}
             </Button>
           </form>
+          <div className="mt-4">
+            <PwaInstallPrompt />
+          </div>
         </Card>
       </section>
     </main>

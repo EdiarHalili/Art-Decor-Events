@@ -201,7 +201,8 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
 
         {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
-        <div className="mt-5 overflow-hidden rounded-lg border border-border">
+        <div className="mt-5 overflow-x-auto rounded-lg border border-border">
+          <div className="min-w-[760px]">
           <div className="grid grid-cols-[1.2fr_0.8fr_0.7fr_0.7fr_auto] gap-3 bg-muted px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">
             <span>Name</span>
             <span>ID</span>
@@ -236,6 +237,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
                 </Button>
               </div>
             ))}
+          </div>
           </div>
         </div>
       </Card>

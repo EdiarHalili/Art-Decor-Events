@@ -1,3 +1,5 @@
+import { checkIn, checkOut } from "./api";
+
 export type OfflineAttendanceAction = {
   id: string;
   type: "CHECK_IN" | "CHECK_OUT";
@@ -13,7 +15,10 @@ const STORAGE_KEY = "artdecor.offlineAttendanceQueue";
 
 export function queueAttendanceAction(action: OfflineAttendanceAction) {
   const queued = getQueuedAttendanceActions();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...queued, action]));
+  if (queued.some((queuedAction) => queuedAction.id === action.id)) {
+    return;
+  }
+  setQueuedAttendanceActions([...queued, action]);
 }
 
 export function getQueuedAttendanceActions(): OfflineAttendanceAction[] {
@@ -33,3 +38,49 @@ export function clearQueuedAttendanceActions() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+export async function syncQueuedAttendanceActions(accessToken: string): Promise<{
+  synced: number;
+  remaining: number;
+}> {
+  if (!navigator.onLine) {
+    return { synced: 0, remaining: getQueuedAttendanceActions().length };
+  }
+
+  const queued = getQueuedAttendanceActions();
+  const remaining: OfflineAttendanceAction[] = [];
+  let synced = 0;
+
+  for (const action of queued) {
+    try {
+      const payload = {
+        scheduleId: action.scheduleId,
+        latitude: action.latitude,
+        longitude: action.longitude,
+        device: {
+          ...action.device,
+          offlineCapturedAt: action.capturedAt,
+          offlineActionId: action.id,
+        },
+      };
+      if (action.type === "CHECK_IN") {
+        await checkIn(accessToken, payload);
+      } else {
+        await checkOut(accessToken, payload);
+      }
+      synced += 1;
+    } catch {
+      remaining.push(action);
+    }
+  }
+
+  setQueuedAttendanceActions(remaining);
+  return { synced, remaining: remaining.length };
+}
+
+function setQueuedAttendanceActions(actions: OfflineAttendanceAction[]) {
+  if (actions.length === 0) {
+    clearQueuedAttendanceActions();
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
+}
