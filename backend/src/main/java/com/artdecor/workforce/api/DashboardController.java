@@ -2,9 +2,11 @@ package com.artdecor.workforce.api;
 
 import com.artdecor.workforce.application.dashboard.AdminDashboardResponse;
 import com.artdecor.workforce.application.dashboard.AdminDashboardService;
-import java.time.LocalDate;
-import java.util.List;
+import com.artdecor.workforce.application.dashboard.EmployeeTodayResponse;
+import com.artdecor.workforce.application.dashboard.EmployeeTodayService;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class DashboardController {
     private final AdminDashboardService adminDashboardService;
+    private final EmployeeTodayService employeeTodayService;
 
-    public DashboardController(AdminDashboardService adminDashboardService) {
+    public DashboardController(AdminDashboardService adminDashboardService, EmployeeTodayService employeeTodayService) {
         this.adminDashboardService = adminDashboardService;
+        this.employeeTodayService = employeeTodayService;
     }
 
     @GetMapping("/admin/dashboard")
@@ -25,18 +29,8 @@ public class DashboardController {
     }
 
     @GetMapping("/employee/today")
-    public EmployeeTodayResponse employeeToday() {
-        return new EmployeeTodayResponse(
-                "No assignment published for today.",
-                "Check-in is not open.",
-                List.of("Welcome to Art Decor Events Workforce.")
-        );
-    }
-
-    public record EmployeeTodayResponse(
-            String assignment,
-            String status,
-            List<String> announcements
-    ) {
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public EmployeeTodayResponse employeeToday(@AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        return employeeTodayService.today(principal);
     }
 }

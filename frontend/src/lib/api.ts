@@ -54,6 +54,15 @@ export type AdminDashboardSnapshot = {
   quickActions: string[];
 };
 
+export type EmployeeToday = {
+  employeeName: string;
+  assignment: string;
+  status: string;
+  checkInOpen: boolean;
+  checkOutAvailable: boolean;
+  announcements: string[];
+};
+
 export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
     method: "POST",
@@ -132,6 +141,10 @@ export async function deactivateAdminUser(accessToken: string, userId: string): 
 
 export async function getAdminDashboard(accessToken: string): Promise<AdminDashboardSnapshot> {
   return authorizedRequest<AdminDashboardSnapshot>("/admin/dashboard", accessToken);
+}
+
+export async function getEmployeeToday(accessToken: string): Promise<EmployeeToday> {
+  return authorizedRequest<EmployeeToday>("/employee/today", accessToken);
 }
 
 function authorizedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
