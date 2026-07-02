@@ -1,9 +1,12 @@
-import { CalendarDays, Clock3, LogOut, Settings, UserCheck, UserX, UsersRound } from "lucide-react";
+import { useState } from "react";
+import { CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import type { AuthResponse } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
+import { EmployeeManagementPage } from "./EmployeeManagementPage";
+import { UserManagementPage } from "./UserManagementPage";
 
 type AdminDashboardProps = {
   session: AuthResponse;
@@ -17,20 +20,33 @@ const kpis = [
   { label: "Absent", value: "0", icon: UserX },
 ];
 
+type AdminView = "dashboard" | "employees" | "users";
+
 export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
+  const [activeView, setActiveView] = useState<AdminView>("dashboard");
+
+  const navItems = [
+    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    { id: "employees" as const, label: "Employees", icon: UsersRound },
+    { id: "users" as const, label: "Users & roles", icon: ShieldCheck },
+  ];
+
   return (
     <main className="min-h-screen bg-background">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-border bg-card p-5 lg:block">
           <BrandMark />
           <nav className="mt-8 space-y-2 text-sm">
-            {["Dashboard", "Employees", "Schedules", "Attendance", "Reports", "Settings"].map((item) => (
+            {navItems.map((item) => (
               <button
-                key={item}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                key={item.id}
+                onClick={() => setActiveView(item.id)}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-medium transition ${
+                  activeView === item.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
               >
-                <Settings size={17} />
-                {item}
+                <item.icon size={17} />
+                {item.label}
               </button>
             ))}
           </nav>
@@ -54,7 +70,27 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
             </div>
           </header>
 
-          <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-corporate">
+          {activeView === "dashboard" && <DashboardOverview />}
+          {activeView === "employees" && (
+            <section className="mt-6">
+              <EmployeeManagementPage accessToken={session.accessToken} />
+            </section>
+          )}
+          {activeView === "users" && (
+            <section className="mt-6">
+              <UserManagementPage accessToken={session.accessToken} />
+            </section>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function DashboardOverview() {
+  return (
+    <>
+      <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-corporate">
             <div className="grid lg:grid-cols-[1fr_360px]">
               <div className="p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Phase 1 foundation</p>
@@ -96,9 +132,6 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
               </div>
             </Card>
           </section>
-        </section>
-      </div>
-    </main>
+    </>
   );
 }
-

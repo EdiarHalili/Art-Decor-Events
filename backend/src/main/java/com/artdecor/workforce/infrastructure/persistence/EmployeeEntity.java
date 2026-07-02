@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -57,6 +58,8 @@ public class EmployeeEntity {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    private Instant updatedAt;
+
     public UUID getId() {
         return id;
     }
@@ -88,5 +91,69 @@ public class EmployeeEntity {
     public UserStatus getStatus() {
         return status;
     }
-}
 
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getProfilePhotoUrl() {
+        return profilePhotoUrl;
+    }
+
+    public void setProfilePhotoUrl(String profilePhotoUrl) {
+        this.profilePhotoUrl = profilePhotoUrl;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public WageType getWageType() {
+        return wageType;
+    }
+
+    public void setWageType(WageType wageType) {
+        this.wageType = wageType;
+    }
+
+    public BigDecimal getBaseWage() {
+        return baseWage;
+    }
+
+    public void setBaseWage(BigDecimal baseWage) {
+        this.baseWage = baseWage;
+    }
+
+    public BigDecimal getOvertimeMultiplier() {
+        return overtimeMultiplier;
+    }
+
+    public void setOvertimeMultiplier(BigDecimal overtimeMultiplier) {
+        this.overtimeMultiplier = overtimeMultiplier;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
+    }
+}
