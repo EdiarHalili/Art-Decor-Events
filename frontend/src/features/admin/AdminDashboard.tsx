@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import type { AuthResponse } from "../../lib/api";
+import { getAdminDashboard, type AdminDashboardSnapshot, type AuthResponse } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
 import { UserManagementPage } from "./UserManagementPage";
@@ -12,13 +12,6 @@ type AdminDashboardProps = {
   session: AuthResponse;
   onLogout: () => void;
 };
-
-const kpis = [
-  { label: "Present", value: "0", icon: UserCheck },
-  { label: "Working now", value: "0", icon: UsersRound },
-  { label: "Late", value: "0", icon: Clock3 },
-  { label: "Absent", value: "0", icon: UserX },
-];
 
 type AdminView = "dashboard" | "employees" | "users";
 
@@ -70,7 +63,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
             </div>
           </header>
 
-          {activeView === "dashboard" && <DashboardOverview />}
+          {activeView === "dashboard" && <DashboardOverview accessToken={session.accessToken} />}
           {activeView === "employees" && (
             <section className="mt-6">
               <EmployeeManagementPage accessToken={session.accessToken} />
@@ -87,7 +80,23 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
   );
 }
 
-function DashboardOverview() {
+function DashboardOverview({ accessToken }: { accessToken: string }) {
+  const [snapshot, setSnapshot] = useState<AdminDashboardSnapshot | null>(null);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    getAdminDashboard(accessToken)
+      .then(setSnapshot)
+      .catch(() => setMessage("Dashboard data could not be loaded."));
+  }, [accessToken]);
+
+  const kpis = [
+    { label: "Present", value: snapshot?.present ?? 0, icon: UserCheck },
+    { label: "Working now", value: snapshot?.currentlyWorking ?? 0, icon: UsersRound },
+    { label: "Late", value: snapshot?.late ?? 0, icon: Clock3 },
+    { label: "Absent", value: snapshot?.absent ?? 0, icon: UserX },
+  ];
+
   return (
     <>
       <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-corporate">
@@ -96,9 +105,11 @@ function DashboardOverview() {
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Phase 1 foundation</p>
                 <h2 className="mt-3 text-2xl font-semibold">Ready for employee setup and schedule creation</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  The system foundation is prepared for attendance windows, employee assignments, reports, exports,
-                  offline sync, GPS capture, and future payroll calculations.
+                  {snapshot
+                    ? `${snapshot.activeEmployees} active employees, ${snapshot.inactiveEmployees} inactive employees, ${snapshot.administrators} administrators, and ${snapshot.supervisors} supervisors are registered.`
+                    : "The system foundation is prepared for attendance windows, employee assignments, reports, exports, offline sync, GPS capture, and future payroll calculations."}
                 </p>
+                {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
               </div>
               <img src={detailUrl} alt="" className="h-64 w-full object-cover lg:h-full" />
             </div>
@@ -126,9 +137,11 @@ function DashboardOverview() {
             <Card className="p-5">
               <h2 className="font-semibold">Quick actions</h2>
               <div className="mt-5 grid gap-3">
-                <Button variant="secondary">Add employee</Button>
-                <Button variant="secondary">Create workday</Button>
-                <Button variant="secondary">Post announcement</Button>
+                {(snapshot?.quickActions ?? ["Add employee", "Create workday", "Post announcement"]).map((action) => (
+                  <Button key={action} variant="secondary">
+                    {action}
+                  </Button>
+                ))}
               </div>
             </Card>
           </section>

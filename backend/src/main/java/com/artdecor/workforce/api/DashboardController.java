@@ -1,7 +1,10 @@
 package com.artdecor.workforce.api;
 
+import com.artdecor.workforce.application.dashboard.AdminDashboardResponse;
+import com.artdecor.workforce.application.dashboard.AdminDashboardService;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,16 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 public class DashboardController {
+    private final AdminDashboardService adminDashboardService;
+
+    public DashboardController(AdminDashboardService adminDashboardService) {
+        this.adminDashboardService = adminDashboardService;
+    }
+
     @GetMapping("/admin/dashboard")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
     public AdminDashboardResponse adminDashboard() {
-        return new AdminDashboardResponse(
-                LocalDate.now(),
-                0,
-                0,
-                0,
-                0,
-                List.of("Create first schedule", "Add employee profiles", "Review attendance policy")
-        );
+        return adminDashboardService.snapshot();
     }
 
     @GetMapping("/employee/today")
@@ -30,16 +33,6 @@ public class DashboardController {
         );
     }
 
-    public record AdminDashboardResponse(
-            LocalDate date,
-            int present,
-            int late,
-            int absent,
-            int currentlyWorking,
-            List<String> quickActions
-    ) {
-    }
-
     public record EmployeeTodayResponse(
             String assignment,
             String status,
@@ -47,4 +40,3 @@ public class DashboardController {
     ) {
     }
 }
-
