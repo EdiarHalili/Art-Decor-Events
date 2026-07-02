@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/artdecor_workforce
+    username: artdecor
+    password: artdecor_dev_password
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  bootstrap:
+    enabled: true
+

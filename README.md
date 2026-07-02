@@ -38,3 +38,8 @@ Database:
 docker compose up -d postgres
 ```
 
+Health:
+
+```powershell
+Invoke-WebRequest http://localhost:8080/actuator/health
+```
