@@ -1,5 +1,6 @@
 package com.artdecor.workforce.api;
 
+import com.artdecor.workforce.application.auth.AuthException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,8 +10,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException exception) {
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ApiError> handleAuth(AuthException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiError("INVALID_CREDENTIALS", exception.getMessage(), Map.of()));
     }
@@ -24,4 +25,3 @@ public class ApiExceptionHandler {
     public record ApiError(String code, String message, Map<String, Object> details) {
     }
 }
-

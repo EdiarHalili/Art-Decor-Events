@@ -79,4 +79,3 @@ public class UserAccountEntity {
         return status;
     }
 }
-

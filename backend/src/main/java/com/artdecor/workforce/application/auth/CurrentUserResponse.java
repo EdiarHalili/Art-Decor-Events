@@ -1,11 +1,10 @@
 package com.artdecor.workforce.application.auth;
 
-public record AuthResponse(
-        String accessToken,
-        String tokenType,
-        long expiresInSeconds,
+public record CurrentUserResponse(
+        String userId,
         String role,
         String fullName,
         String employeeId
 ) {
 }
+

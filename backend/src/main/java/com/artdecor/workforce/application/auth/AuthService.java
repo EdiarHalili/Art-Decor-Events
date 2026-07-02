@@ -2,6 +2,7 @@ package com.artdecor.workforce.application.auth;
 
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import com.artdecor.workforce.infrastructure.security.JwtTokenService;
@@ -29,18 +30,20 @@ public class AuthService {
 
     public AuthResponse loginAdmin(String email, String password) {
         var user = users.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials."));
+                .orElseThrow(() -> new AuthException("Invalid credentials."));
 
         if (user.getStatus() != UserStatus.ACTIVE || user.getRole() == UserRole.EMPLOYEE) {
-            throw new IllegalArgumentException("Invalid credentials.");
+            throw new AuthException("Invalid credentials.");
         }
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials.");
+            throw new AuthException("Invalid credentials.");
         }
 
         return new AuthResponse(
                 tokens.issueToken(user.getId(), user.getRole(), null),
+                "Bearer",
+                tokens.accessTokenSeconds(),
                 user.getRole().name(),
                 user.getFullName(),
                 null
@@ -49,18 +52,43 @@ public class AuthService {
 
     public AuthResponse loginEmployee(String employeeCode, String pin) {
         var employee = employees.findByEmployeeCodeIgnoreCase(employeeCode)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials."));
+                .orElseThrow(() -> new AuthException("Invalid credentials."));
 
         if (employee.getStatus() != UserStatus.ACTIVE || !passwordEncoder.matches(pin, employee.getPinHash())) {
-            throw new IllegalArgumentException("Invalid credentials.");
+            throw new AuthException("Invalid credentials.");
         }
 
         return new AuthResponse(
                 tokens.issueToken(employee.getId(), UserRole.EMPLOYEE, employee.getId()),
+                "Bearer",
+                tokens.accessTokenSeconds(),
                 UserRole.EMPLOYEE.name(),
                 employee.getFullName(),
                 employee.getId().toString()
         );
     }
-}
 
+    public CurrentUserResponse currentUser(AuthenticatedPrincipal principal) {
+        if (principal.role() == UserRole.EMPLOYEE) {
+            var employee = employees.findById(principal.userId())
+                    .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
+
+            return new CurrentUserResponse(
+                    principal.userId().toString(),
+                    principal.role().name(),
+                    employee.getFullName(),
+                    employee.getId().toString()
+            );
+        }
+
+        var user = users.findById(principal.userId())
+                .orElseThrow(() -> new AuthException("Authenticated user no longer exists."));
+
+        return new CurrentUserResponse(
+                principal.userId().toString(),
+                principal.role().name(),
+                user.getFullName(),
+                null
+        );
+    }
+}
