@@ -4,6 +4,7 @@ import java.util.List;
 
 public record EmployeeTodayResponse(
         String employeeName,
+        String scheduleId,
         String assignment,
         String status,
         boolean checkInOpen,
@@ -11,4 +12,3 @@ public record EmployeeTodayResponse(
         List<String> announcements
 ) {
 }
-

@@ -56,11 +56,25 @@ export type AdminDashboardSnapshot = {
 
 export type EmployeeToday = {
   employeeName: string;
+  scheduleId: string | null;
   assignment: string;
   status: string;
   checkInOpen: boolean;
   checkOutAvailable: boolean;
   announcements: string[];
+};
+
+export type AttendanceResponse = {
+  id: string;
+  scheduleId: string;
+  employeeId: string;
+  status: "PRESENT" | "LATE" | "CHECKED_OUT" | "PENDING_APPROVAL";
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
+  workedMinutes: number;
+  overtimeMinutes: number;
+  requiresApproval: boolean;
+  approvalReason: string | null;
 };
 
 export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
@@ -145,6 +159,26 @@ export async function getAdminDashboard(accessToken: string): Promise<AdminDashb
 
 export async function getEmployeeToday(accessToken: string): Promise<EmployeeToday> {
   return authorizedRequest<EmployeeToday>("/employee/today", accessToken);
+}
+
+export async function checkIn(
+  accessToken: string,
+  payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
+): Promise<AttendanceResponse> {
+  return authorizedRequest<AttendanceResponse>("/employee/attendance/check-in", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function checkOut(
+  accessToken: string,
+  payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
+): Promise<AttendanceResponse> {
+  return authorizedRequest<AttendanceResponse>("/employee/attendance/check-out", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 function authorizedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {

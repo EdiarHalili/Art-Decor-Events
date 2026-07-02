@@ -1,6 +1,7 @@
 package com.artdecor.workforce.api;
 
 import com.artdecor.workforce.application.auth.AuthException;
+import com.artdecor.workforce.application.attendance.AttendanceException;
 import com.artdecor.workforce.application.management.ManagementException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleManagement(ManagementException exception) {
         return ResponseEntity.badRequest()
                 .body(new ApiError("MANAGEMENT_ERROR", exception.getMessage(), Map.of()));
+    }
+
+    @ExceptionHandler(AttendanceException.class)
+    public ResponseEntity<ApiError> handleAttendance(AttendanceException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError(exception.code(), exception.getMessage(), Map.of()));
     }
 
     public record ApiError(String code, String message, Map<String, Object> details) {

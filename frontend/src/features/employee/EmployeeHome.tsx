@@ -3,7 +3,8 @@ import { Bell, CalendarClock, LogOut, MapPin, Wifi, WifiOff } from "lucide-react
 import { BrandMark } from "../../components/BrandMark";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { getEmployeeToday, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import { checkIn, checkOut, getEmployeeToday, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import { queueAttendanceAction } from "../../lib/offlineQueue";
 
 type EmployeeHomeProps = {
   session: AuthResponse;
@@ -14,6 +15,7 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
   const [today, setToday] = useState<EmployeeToday | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [message, setMessage] = useState("");
+  const [actionLoading, setActionLoading] = useState<"CHECK_IN" | "CHECK_OUT" | null>(null);
 
   useEffect(() => {
     function syncOnlineState() {
@@ -36,6 +38,74 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
   }, [session.accessToken]);
 
   const employeeName = today?.employeeName ?? session.fullName;
+
+  async function captureLocation(): Promise<{ latitude?: number; longitude?: number }> {
+    if (!("geolocation" in navigator)) {
+      return {};
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) =>
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }),
+        () => resolve({}),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
+      );
+    });
+  }
+
+  function deviceMetadata() {
+    return {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language,
+    };
+  }
+
+  async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
+    if (!today?.scheduleId || !session.employeeId) {
+      setMessage("No active schedule is available for attendance.");
+      return;
+    }
+
+    setActionLoading(type);
+    setMessage("");
+    const location = await captureLocation();
+    const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
+
+    if (!navigator.onLine) {
+      queueAttendanceAction({
+        id: crypto.randomUUID(),
+        type,
+        employeeId: session.employeeId,
+        scheduleId: today.scheduleId,
+        capturedAt: new Date().toISOString(),
+        ...location,
+        device: deviceMetadata(),
+      });
+      setMessage("Attendance saved offline and will sync when internet returns.");
+      setActionLoading(null);
+      return;
+    }
+
+    try {
+      const response = type === "CHECK_IN" ? await checkIn(session.accessToken, payload) : await checkOut(session.accessToken, payload);
+      setToday({
+        ...today,
+        status: response.status === "CHECKED_OUT" ? "Checked out." : response.status === "LATE" ? "Checked in late." : "Checked in.",
+        checkInOpen: false,
+        checkOutAvailable: response.status !== "CHECKED_OUT",
+      });
+      setMessage(type === "CHECK_IN" ? "Check-in recorded." : "Check-out recorded.");
+    } catch {
+      setMessage(type === "CHECK_IN" ? "Check-in could not be recorded." : "Check-out could not be recorded.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   return (
     <main className="brand-surface min-h-screen px-4 py-5">
@@ -77,11 +147,20 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
           <div className="mt-5 grid gap-3">
-            <Button className="h-14 text-base" disabled={!today?.checkInOpen}>
-              Check In
+            <Button
+              className="h-14 text-base"
+              disabled={!today?.checkInOpen || actionLoading !== null}
+              onClick={() => void submitAttendance("CHECK_IN")}
+            >
+              {actionLoading === "CHECK_IN" ? "Recording..." : "Check In"}
             </Button>
-            <Button className="h-14 text-base" variant="secondary" disabled={!today?.checkOutAvailable}>
-              Check Out
+            <Button
+              className="h-14 text-base"
+              variant="secondary"
+              disabled={!today?.checkOutAvailable || actionLoading !== null}
+              onClick={() => void submitAttendance("CHECK_OUT")}
+            >
+              {actionLoading === "CHECK_OUT" ? "Recording..." : "Check Out"}
             </Button>
           </div>
         </Card>
