@@ -53,6 +53,12 @@ public class ApiExceptionHandler {
                 .body(new ApiError("DAILY_CHECK_IN_WINDOW_ERROR", exception.getMessage(), Map.of()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError("INVALID_REQUEST", exception.getMessage(), Map.of()));
+    }
+
     public record ApiError(String code, String message, Map<String, Object> details) {
     }
 }

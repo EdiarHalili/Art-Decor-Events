@@ -89,6 +89,63 @@ export type DailyCheckInWindow = {
   updatedAt: string | null;
 };
 
+export type AttendanceReportRow = {
+  workDate: string;
+  scheduleId: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  status: "SCHEDULED" | "PRESENT" | "LATE" | "ABSENT" | "CHECKED_OUT" | "PENDING_APPROVAL";
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
+  workedMinutes: number;
+  overtimeMinutes: number;
+  late: boolean;
+  absent: boolean;
+};
+
+export type AttendanceReportSummary = {
+  assigned: number;
+  present: number;
+  late: number;
+  absent: number;
+  checkedOut: number;
+  workedMinutes: number;
+  overtimeMinutes: number;
+};
+
+export type AttendanceReportBucket = {
+  label: string;
+  assigned: number;
+  present: number;
+  late: number;
+  absent: number;
+  workedMinutes: number;
+  overtimeMinutes: number;
+};
+
+export type EmployeeAttendanceSummary = {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  assigned: number;
+  present: number;
+  late: number;
+  absent: number;
+  workedMinutes: number;
+  overtimeMinutes: number;
+};
+
+export type AttendanceReport = {
+  from: string;
+  to: string;
+  period: "daily" | "weekly" | "monthly";
+  summary: AttendanceReportSummary;
+  buckets: AttendanceReportBucket[];
+  employees: EmployeeAttendanceSummary[];
+  rows: AttendanceReportRow[];
+};
+
 type DailyCheckInWindowPayload = {
   workDate: string;
   checkInOpensAt: string;
@@ -243,8 +300,49 @@ export async function cancelCheckInWindow(accessToken: string, windowId: string)
   });
 }
 
+export async function getAttendanceReport(
+  accessToken: string,
+  params: { from: string; to: string; period: "daily" | "weekly" | "monthly" },
+): Promise<AttendanceReport> {
+  return authorizedRequest<AttendanceReport>(
+    `/admin/reports/attendance?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&period=${params.period}`,
+    accessToken,
+  );
+}
+
+export async function getEmployeeHistory(
+  accessToken: string,
+  employeeId: string,
+  params: { from: string; to: string },
+): Promise<AttendanceReportRow[]> {
+  return authorizedRequest<AttendanceReportRow[]>(
+    `/admin/reports/employees/${employeeId}/history?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}`,
+    accessToken,
+  );
+}
+
+export async function exportAttendanceReport(
+  accessToken: string,
+  params: { from: string; to: string; format: "csv" | "xlsx" | "pdf" },
+): Promise<Blob> {
+  return authorizedBlobRequest(
+    `/admin/reports/attendance/export?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&format=${params.format}`,
+    accessToken,
+  );
+}
+
 function authorizedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
   return request<T>(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...init.headers,
+    },
+  });
+}
+
+function authorizedBlobRequest(path: string, accessToken: string, init: RequestInit = {}): Promise<Blob> {
+  return requestBlob(path, {
     ...init,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -267,4 +365,19 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
 
   return response.json() as Promise<T>;
+}
+
+async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      ...init.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("The request could not be completed.");
+  }
+
+  return response.blob();
 }

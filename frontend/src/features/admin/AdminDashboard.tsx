@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
@@ -8,6 +8,7 @@ import { getAdminDashboard, type AdminDashboardSnapshot, type AuthResponse } fro
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
+import { ReportsPage } from "./ReportsPage";
 import { UserManagementPage } from "./UserManagementPage";
 
 type AdminDashboardProps = {
@@ -15,7 +16,7 @@ type AdminDashboardProps = {
   onLogout: () => void;
 };
 
-type AdminView = "dashboard" | "windows" | "employees" | "users";
+type AdminView = "dashboard" | "windows" | "reports" | "employees" | "users";
 
 export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
@@ -23,6 +24,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
   const navItems = [
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
     { id: "windows" as const, label: "Daily windows", icon: CalendarClock },
+    { id: "reports" as const, label: "Reports", icon: BarChart3 },
     { id: "employees" as const, label: "Employees", icon: UsersRound },
     { id: "users" as const, label: "Users & roles", icon: ShieldCheck },
   ];
@@ -86,6 +88,11 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           {activeView === "windows" && (
             <section className="mt-6">
               <DailyCheckInWindowPage accessToken={session.accessToken} />
+            </section>
+          )}
+          {activeView === "reports" && (
+            <section className="mt-6">
+              <ReportsPage accessToken={session.accessToken} />
             </section>
           )}
           {activeView === "employees" && (

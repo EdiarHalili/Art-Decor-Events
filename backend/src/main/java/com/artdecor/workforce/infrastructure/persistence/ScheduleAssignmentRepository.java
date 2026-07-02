@@ -31,6 +31,21 @@ public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssi
             @Param("excludedStatus") WorkScheduleStatus excludedStatus
     );
 
+    @Query("""
+            select assignment
+            from ScheduleAssignmentEntity assignment
+            join fetch assignment.employee employee
+            join fetch assignment.schedule schedule
+            where schedule.workDate between :from and :to
+              and schedule.status <> :excludedStatus
+            order by schedule.workDate asc, employee.fullName asc
+            """)
+    List<ScheduleAssignmentEntity> findReportAssignments(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("excludedStatus") WorkScheduleStatus excludedStatus
+    );
+
     List<ScheduleAssignmentEntity> findAllByScheduleId(UUID scheduleId);
 
     void deleteByScheduleId(UUID scheduleId);
