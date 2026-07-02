@@ -27,6 +27,7 @@ management:
       show-details: when_authorized
 
 app:
+  business-zone: ${APP_BUSINESS_ZONE:Europe/Berlin}
   bootstrap:
     enabled: ${APP_BOOTSTRAP_ENABLED:false}
     admin-name: ${APP_BOOTSTRAP_ADMIN_NAME:Art Decor Administrator}

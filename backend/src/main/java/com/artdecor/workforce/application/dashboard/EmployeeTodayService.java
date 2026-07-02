@@ -37,10 +37,13 @@ public class EmployeeTodayService {
         var employee = employees.findById(principal.employeeId())
                 .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
 
-        return assignments.findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(
+        return assignments.findCurrentAssignmentsForEmployee(
                         employee.getId(),
-                        LocalDate.now(clock)
+                        LocalDate.now(clock),
+                        WorkScheduleStatus.CANCELLED
                 )
+                .stream()
+                .findFirst()
                 .map(assignment -> {
                     var schedule = assignment.getSchedule();
                     Instant now = Instant.now(clock);
