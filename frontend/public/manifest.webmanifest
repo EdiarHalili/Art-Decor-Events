@@ -1,0 +1,12 @@
+{
+  "name": "Art Decor Events Workforce",
+  "short_name": "Art Decor",
+  "description": "Employee attendance and workforce management for Art Decor Events.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080706",
+  "theme_color": "#080706",
+  "orientation": "portrait-primary",
+  "icons": []
+}
+

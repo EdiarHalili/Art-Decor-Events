@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: art-decor-postgres
+    environment:
+      POSTGRES_DB: artdecor_workforce
+      POSTGRES_USER: artdecor
+      POSTGRES_PASSWORD: artdecor_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artdecor -d artdecor_workforce"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+

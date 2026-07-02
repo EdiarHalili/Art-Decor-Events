@@ -1,0 +1,139 @@
+import { FormEvent, useState } from "react";
+import { BriefcaseBusiness, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { BrandMark } from "../../components/BrandMark";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Input } from "../../components/ui/Input";
+import { loginAdmin, loginEmployee, type AuthResponse } from "../../lib/api";
+import venueUrl from "../../assets/brand/breta-palace-wide.jpg";
+
+type LoginPageProps = {
+  onAuthenticated: (session: AuthResponse) => void;
+};
+
+export function LoginPage({ onAuthenticated }: LoginPageProps) {
+  const [mode, setMode] = useState<"employee" | "admin">("employee");
+  const [employeeCode, setEmployeeCode] = useState("");
+  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const session =
+        mode === "employee" ? await loginEmployee(employeeCode, pin) : await loginAdmin(email, password);
+      onAuthenticated(session);
+    } catch {
+      setError("Login failed. Please check your details and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="grid min-h-screen bg-background lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="relative hidden overflow-hidden lg:block">
+        <img src={venueUrl} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute bottom-10 left-10 max-w-xl text-white">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">Workforce operations</p>
+          <h1 className="mt-4 font-display text-5xl leading-tight">Art Decor Events</h1>
+          <p className="mt-4 max-w-md text-base text-white/82">
+            Attendance, scheduling, and daily coordination for premium event decoration teams.
+          </p>
+        </div>
+      </section>
+
+      <section className="brand-surface flex min-h-screen items-center justify-center px-5 py-8">
+        <Card className="w-full max-w-md p-6 shadow-corporate">
+          <BrandMark />
+
+          <div className="mt-8 grid grid-cols-2 rounded-lg bg-muted p-1">
+            <Button
+              type="button"
+              variant={mode === "employee" ? "primary" : "ghost"}
+              onClick={() => setMode("employee")}
+              className="h-10"
+            >
+              <UserRound size={18} />
+              Employee
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "admin" ? "primary" : "ghost"}
+              onClick={() => setMode("admin")}
+              className="h-10"
+            >
+              <BriefcaseBusiness size={18} />
+              Admin
+            </Button>
+          </div>
+
+          <form className="mt-6 space-y-4" onSubmit={submit}>
+            {mode === "employee" ? (
+              <>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">Employee ID</span>
+                  <Input value={employeeCode} onChange={(event) => setEmployeeCode(event.target.value)} required />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">4-digit PIN</span>
+                  <Input
+                    value={pin}
+                    onChange={(event) => setPin(event.target.value)}
+                    inputMode="numeric"
+                    maxLength={4}
+                    type="password"
+                    required
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">Email</span>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-muted-foreground" size={18} />
+                    <Input
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="pl-10"
+                      type="email"
+                      required
+                    />
+                  </div>
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">Password</span>
+                  <div className="relative">
+                    <LockKeyhole className="absolute left-3 top-3 text-muted-foreground" size={18} />
+                    <Input
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="pl-10"
+                      type="password"
+                      required
+                    />
+                  </div>
+                </label>
+              </>
+            )}
+
+            {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+
+            <Button className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : mode === "employee" ? "Open my shift" : "Open dashboard"}
+            </Button>
+          </form>
+        </Card>
+      </section>
+    </main>
+  );
+}
+
