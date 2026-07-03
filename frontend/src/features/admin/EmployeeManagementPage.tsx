@@ -27,9 +27,6 @@ type EmployeeForm = {
   departmentName: string;
   teamName: string;
   notes: string;
-  wageType: Employee["wageType"];
-  baseWage: string;
-  overtimeMultiplier: string;
 };
 
 const initialForm: EmployeeForm = {
@@ -42,9 +39,6 @@ const initialForm: EmployeeForm = {
   departmentName: "",
   teamName: "",
   notes: "",
-  wageType: "HOURLY",
-  baseWage: "0",
-  overtimeMultiplier: "1.5",
 };
 
 export function EmployeeManagementPage({ accessToken }: EmployeeManagementPageProps) {
@@ -126,9 +120,9 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       departmentName: form.departmentName,
       teamName: form.teamName,
       notes: form.notes,
-      wageType: form.wageType,
-      baseWage: Number(form.baseWage),
-      overtimeMultiplier: Number(form.overtimeMultiplier),
+      wageType: "HOURLY" as Employee["wageType"],
+      baseWage: 0,
+      overtimeMultiplier: 1.5,
     };
 
     try {
@@ -144,9 +138,9 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
             departmentName: form.departmentName,
             teamName: form.teamName,
             notes: form.notes,
-            wageType: form.wageType,
-            baseWage: Number(form.baseWage),
-            overtimeMultiplier: Number(form.overtimeMultiplier),
+            wageType: "HOURLY",
+            baseWage: 0,
+            overtimeMultiplier: 1.5,
           });
 
       setEmployees((current) => upsertEmployee(current, employee));
@@ -185,9 +179,6 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       departmentName: employee.departmentName ?? "",
       teamName: employee.teamName ?? "",
       notes: employee.notes ?? "",
-      wageType: employee.wageType,
-      baseWage: String(employee.baseWage),
-      overtimeMultiplier: String(employee.overtimeMultiplier),
     });
   }
 
@@ -205,7 +196,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
           </div>
           <div>
             <h2 className="font-semibold">{editingId ? "Edit employee" : "Create employee"}</h2>
-            <p className="text-sm text-muted-foreground">Keep employee access, role, team, and wage details in one profile.</p>
+            <p className="text-sm text-muted-foreground">Keep employee access, role, team, and notes in one profile.</p>
           </div>
         </div>
 
@@ -232,15 +223,6 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
             <Input placeholder="Position" value={form.positionTitle} onChange={(event) => setForm({ ...form, positionTitle: event.target.value })} />
             <Input placeholder="Department" value={form.departmentName} onChange={(event) => setForm({ ...form, departmentName: event.target.value })} />
             <Input placeholder="Team" value={form.teamName} onChange={(event) => setForm({ ...form, teamName: event.target.value })} />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <select className="h-11 rounded-md border border-border bg-background px-3 text-sm" value={form.wageType} onChange={(event) => setForm({ ...form, wageType: event.target.value as Employee["wageType"] })}>
-              <option value="HOURLY">Hourly</option>
-              <option value="DAILY">Daily</option>
-              <option value="MONTHLY">Monthly</option>
-            </select>
-            <Input placeholder="Wage" type="number" min="0" step="0.01" value={form.baseWage} onChange={(event) => setForm({ ...form, baseWage: event.target.value })} />
-            <Input placeholder="OT" type="number" min="1" step="0.01" value={form.overtimeMultiplier} onChange={(event) => setForm({ ...form, overtimeMultiplier: event.target.value })} />
           </div>
           <textarea className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15" placeholder="Internal notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           <div className="flex flex-col gap-2 sm:flex-row">
