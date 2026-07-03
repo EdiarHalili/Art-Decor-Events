@@ -212,7 +212,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
                       <span>In: {formatTime(row.checkedInAt)}</span>
-                      <span>Out: {formatTime(row.checkedOutAt)}{row.autoCheckout ? " (Auto)" : ""}</span>
+                      <span>{row.autoCheckout ? "Auto Check Out" : "Out"}: {formatTime(row.checkedOutAt)}</span>
                       <span>Worked: {formatMinutes(row.workedMinutes)}</span>
                       <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
                     </div>

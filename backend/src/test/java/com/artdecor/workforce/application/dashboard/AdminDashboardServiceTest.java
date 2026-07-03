@@ -87,4 +87,41 @@ class AdminDashboardServiceTest {
         assertThat(response.liveAttendance()).hasSize(1);
         assertThat(response.liveAttendance().getFirst().employeeName()).isEqualTo("Demo Employee");
     }
+
+    @Test
+    void exposesAutoCheckoutRecordsWithoutCountingThemAsCurrentlyWorking() {
+        LocalDate today = LocalDate.now();
+        WorkScheduleEntity schedule = new WorkScheduleEntity();
+        ReflectionTestUtils.setField(schedule, "id", UUID.randomUUID());
+        schedule.setWorkDate(today);
+
+        EmployeeEntity employee = new EmployeeEntity();
+        ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
+        employee.setEmployeeCode("EMP002");
+        employee.setFullName("Auto Checkout Employee");
+
+        AttendanceRecordEntity record = new AttendanceRecordEntity();
+        record.setSchedule(schedule);
+        record.setEmployee(employee);
+        record.setStatus(AttendanceStatus.CHECKED_OUT);
+        record.setCheckedInAt(Instant.parse("2026-07-03T14:00:00Z"));
+        record.setCheckedOutAt(Instant.parse("2026-07-03T21:00:00Z"));
+        record.setWorkedMinutes(420);
+        record.setAutoCheckout(true);
+
+        when(employees.countByStatus(UserStatus.ACTIVE)).thenReturn(1L);
+        when(employees.countByStatus(UserStatus.INACTIVE)).thenReturn(0L);
+        when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(1L);
+        when(users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE)).thenReturn(0L);
+        when(attendanceRecords.findReportRecords(today, today)).thenReturn(List.of(record));
+        when(assignments.findReportAssignments(today, today, WorkScheduleStatus.CANCELLED)).thenReturn(List.of());
+
+        AdminDashboardResponse response = service.snapshot();
+
+        assertThat(response.present()).isEqualTo(1);
+        assertThat(response.currentlyWorking()).isZero();
+        assertThat(response.liveAttendance()).hasSize(1);
+        assertThat(response.liveAttendance().getFirst().autoCheckout()).isTrue();
+        assertThat(response.liveAttendance().getFirst().workedMinutes()).isEqualTo(420);
+    }
 }

@@ -271,7 +271,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status, row.autoCheckout)}`}>
-                      {row.autoCheckout ? "auto check out" : label(row.status)}
+                      {row.autoCheckout ? "Auto Check Out" : label(row.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{time(row.checkedInAt)}</td>
