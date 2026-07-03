@@ -123,8 +123,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         checkOutAvailable: response.status !== "CHECKED_OUT",
       });
       setMessage(type === "CHECK_IN" ? "Check-in recorded." : "Check-out recorded.");
-    } catch {
-      setMessage(type === "CHECK_IN" ? "Check-in could not be recorded." : "Check-out could not be recorded.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : type === "CHECK_IN" ? "Check-in could not be recorded." : "Check-out could not be recorded.");
     } finally {
       setActionLoading(null);
     }
@@ -196,11 +196,14 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
               Status
             </div>
             <p className="mt-2 text-muted-foreground">{today?.status ?? "Checking current status..."}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              GPS capture is {settings?.gpsEnabled === false ? "off for this company." : "optional and will be requested only when attendance is recorded."}
+            </p>
           </div>
 
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3">
             <Button
               className="h-14 text-base sm:h-16"
               disabled={!today?.checkInOpen || actionLoading !== null}
