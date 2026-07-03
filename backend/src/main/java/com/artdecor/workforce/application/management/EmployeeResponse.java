@@ -9,6 +9,9 @@ public record EmployeeResponse(
         String fullName,
         String phone,
         String profilePhotoUrl,
+        String positionTitle,
+        String departmentName,
+        String teamName,
         String notes,
         String status,
         String wageType,
@@ -18,4 +21,3 @@ public record EmployeeResponse(
         Instant updatedAt
 ) {
 }
-

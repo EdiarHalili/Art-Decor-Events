@@ -9,10 +9,12 @@ public record CreateEmployeeCommand(
         String pin,
         String phone,
         String profilePhotoUrl,
+        String positionTitle,
+        String departmentName,
+        String teamName,
         String notes,
         WageType wageType,
         BigDecimal baseWage,
         BigDecimal overtimeMultiplier
 ) {
 }
-

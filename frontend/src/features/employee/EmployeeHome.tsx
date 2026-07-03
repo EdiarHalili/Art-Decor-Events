@@ -5,15 +5,16 @@ import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { checkIn, checkOut, getEmployeeToday, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import { checkIn, checkOut, getEmployeeToday, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
 import { getQueuedAttendanceActions, queueAttendanceAction, syncQueuedAttendanceActions } from "../../lib/offlineQueue";
 
 type EmployeeHomeProps = {
   session: AuthResponse;
+  settings: AppSettings | null;
   onLogout: () => void;
 };
 
-export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
+export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps) {
   const [today, setToday] = useState<EmployeeToday | null>(() => getCachedToday(session.employeeId));
   const [online, setOnline] = useState(navigator.onLine);
   const [message, setMessage] = useState("");
@@ -88,7 +89,7 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
 
     setActionLoading(type);
     setMessage("");
-    const location = await captureLocation();
+    const location = settings?.gpsEnabled === false ? {} : await captureLocation();
     const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
 
     if (!navigator.onLine) {
@@ -153,7 +154,7 @@ export function EmployeeHome({ session, onLogout }: EmployeeHomeProps) {
     <main className="brand-surface min-h-screen px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
       <div className="mx-auto flex max-w-md flex-col gap-5">
         <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-background/80 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
-          <BrandMark compact />
+          <BrandMark compact logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {online ? <Wifi size={15} /> : <WifiOff size={15} />}

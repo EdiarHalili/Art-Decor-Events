@@ -1,8 +1,11 @@
 package com.artdecor.workforce.api;
 
+import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowCommand;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowResponse;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowService;
+import com.artdecor.workforce.application.notifications.NotificationService;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,9 +31,17 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
 public class AdminDailyCheckInWindowController {
     private final DailyCheckInWindowService service;
+    private final AuditService audit;
+    private final NotificationService notifications;
 
-    public AdminDailyCheckInWindowController(DailyCheckInWindowService service) {
+    public AdminDailyCheckInWindowController(
+            DailyCheckInWindowService service,
+            AuditService audit,
+            NotificationService notifications
+    ) {
         this.service = service;
+        this.audit = audit;
+        this.notifications = notifications;
     }
 
     @GetMapping
@@ -38,39 +50,67 @@ public class AdminDailyCheckInWindowController {
     }
 
     @PostMapping
-    public ResponseEntity<DailyCheckInWindowResponse> createWindow(@Valid @RequestBody DailyCheckInWindowRequest request) {
-        return ResponseEntity.ok(service.createWindow(request.toCommand()));
+    public ResponseEntity<DailyCheckInWindowResponse> createWindow(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @Valid @RequestBody DailyCheckInWindowRequest request
+    ) {
+        DailyCheckInWindowResponse response = service.createWindow(request.toCommand());
+        audit.log(principal, "DAILY_WINDOW_CREATED", "WORK_SCHEDULE", UUID.fromString(response.id()));
+        notifications.publishSystem("Daily check-in window published", "A daily check-in window has been scheduled.");
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{windowId}")
     public ResponseEntity<DailyCheckInWindowResponse> updateWindow(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID windowId,
             @Valid @RequestBody DailyCheckInWindowRequest request
     ) {
-        return ResponseEntity.ok(service.updateWindow(windowId, request.toCommand()));
+        DailyCheckInWindowResponse response = service.updateWindow(windowId, request.toCommand());
+        audit.log(principal, "DAILY_WINDOW_UPDATED", "WORK_SCHEDULE", windowId);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{windowId}/open")
-    public ResponseEntity<DailyCheckInWindowResponse> openWindow(@PathVariable UUID windowId) {
-        return ResponseEntity.ok(service.openWindow(windowId));
+    public ResponseEntity<DailyCheckInWindowResponse> openWindow(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID windowId
+    ) {
+        DailyCheckInWindowResponse response = service.openWindow(windowId);
+        audit.log(principal, "DAILY_WINDOW_OPENED", "WORK_SCHEDULE", windowId);
+        notifications.publishSystem("Check-in is open", "Today’s check-in window is now open.");
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{windowId}/close")
-    public ResponseEntity<DailyCheckInWindowResponse> closeWindow(@PathVariable UUID windowId) {
-        return ResponseEntity.ok(service.closeWindow(windowId));
+    public ResponseEntity<DailyCheckInWindowResponse> closeWindow(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID windowId
+    ) {
+        DailyCheckInWindowResponse response = service.closeWindow(windowId);
+        audit.log(principal, "DAILY_WINDOW_CLOSED", "WORK_SCHEDULE", windowId);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{windowId}/cancel")
-    public ResponseEntity<DailyCheckInWindowResponse> cancelWindow(@PathVariable UUID windowId) {
-        return ResponseEntity.ok(service.cancelWindow(windowId));
+    public ResponseEntity<DailyCheckInWindowResponse> cancelWindow(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID windowId
+    ) {
+        DailyCheckInWindowResponse response = service.cancelWindow(windowId);
+        audit.log(principal, "DAILY_WINDOW_CANCELLED", "WORK_SCHEDULE", windowId);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{windowId}/employees")
     public ResponseEntity<DailyCheckInWindowResponse> replaceEmployees(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID windowId,
             @Valid @RequestBody ReplaceEmployeesRequest request
     ) {
-        return ResponseEntity.ok(service.replaceEmployees(windowId, request.employeeIds()));
+        DailyCheckInWindowResponse response = service.replaceEmployees(windowId, request.employeeIds());
+        audit.log(principal, "DAILY_WINDOW_EMPLOYEES_UPDATED", "WORK_SCHEDULE", windowId);
+        return ResponseEntity.ok(response);
     }
 
     public record DailyCheckInWindowRequest(
@@ -87,4 +127,3 @@ public class AdminDailyCheckInWindowController {
     public record ReplaceEmployeesRequest(@NotEmpty Set<UUID> employeeIds) {
     }
 }
-

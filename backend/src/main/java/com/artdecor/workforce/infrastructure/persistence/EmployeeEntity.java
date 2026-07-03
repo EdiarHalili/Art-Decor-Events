@@ -39,6 +39,9 @@ public class EmployeeEntity {
 
     private String phone;
     private String profilePhotoUrl;
+    private String positionTitle;
+    private String departmentName;
+    private String teamName;
     private String notes;
 
     @Enumerated(EnumType.STRING)
@@ -110,6 +113,30 @@ public class EmployeeEntity {
 
     public void setProfilePhotoUrl(String profilePhotoUrl) {
         this.profilePhotoUrl = profilePhotoUrl;
+    }
+
+    public String getPositionTitle() {
+        return positionTitle;
+    }
+
+    public void setPositionTitle(String positionTitle) {
+        this.positionTitle = positionTitle;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
+    }
+
+    public String getTeamName() {
+        return teamName;
+    }
+
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
     }
 
     public String getNotes() {

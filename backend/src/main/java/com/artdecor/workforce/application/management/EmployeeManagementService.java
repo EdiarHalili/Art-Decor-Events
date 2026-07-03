@@ -38,7 +38,8 @@ public class EmployeeManagementService {
         employee.setEmployeeCode(command.employeeCode().trim());
         employee.setFullName(command.fullName().trim());
         employee.setPinHash(passwordEncoder.encode(command.pin()));
-        applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.notes(),
+        applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.positionTitle(),
+                command.departmentName(), command.teamName(), command.notes(),
                 command.wageType(), command.baseWage(), command.overtimeMultiplier());
 
         return toResponse(employees.save(employee));
@@ -50,7 +51,8 @@ public class EmployeeManagementService {
                 .orElseThrow(() -> new ManagementException("Employee not found."));
 
         employee.setFullName(command.fullName().trim());
-        applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.notes(),
+        applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.positionTitle(),
+                command.departmentName(), command.teamName(), command.notes(),
                 command.wageType(), command.baseWage(), command.overtimeMultiplier());
 
         if (command.pin() != null && !command.pin().isBlank()) {
@@ -72,6 +74,9 @@ public class EmployeeManagementService {
             EmployeeEntity employee,
             String phone,
             String profilePhotoUrl,
+            String positionTitle,
+            String departmentName,
+            String teamName,
             String notes,
             WageType wageType,
             BigDecimal baseWage,
@@ -79,6 +84,9 @@ public class EmployeeManagementService {
     ) {
         employee.setPhone(blankToNull(phone));
         employee.setProfilePhotoUrl(blankToNull(profilePhotoUrl));
+        employee.setPositionTitle(blankToNull(positionTitle));
+        employee.setDepartmentName(blankToNull(departmentName));
+        employee.setTeamName(blankToNull(teamName));
         employee.setNotes(blankToNull(notes));
         employee.setWageType(wageType == null ? WageType.HOURLY : wageType);
         employee.setBaseWage(baseWage == null ? BigDecimal.ZERO : baseWage);
@@ -96,6 +104,9 @@ public class EmployeeManagementService {
                 employee.getFullName(),
                 employee.getPhone(),
                 employee.getProfilePhotoUrl(),
+                employee.getPositionTitle(),
+                employee.getDepartmentName(),
+                employee.getTeamName(),
                 employee.getNotes(),
                 employee.getStatus().name(),
                 employee.getWageType().name(),
@@ -106,4 +117,3 @@ public class EmployeeManagementService {
         );
     }
 }
-

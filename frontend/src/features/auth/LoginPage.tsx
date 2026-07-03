@@ -6,14 +6,15 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
-import { loginAdmin, loginEmployee, type AuthResponse } from "../../lib/api";
+import { loginAdmin, loginEmployee, type AppSettings, type AuthResponse } from "../../lib/api";
 import venueUrl from "../../assets/brand/breta-palace-wide.jpg";
 
 type LoginPageProps = {
+  settings: AppSettings | null;
   onAuthenticated: (session: AuthResponse) => void;
 };
 
-export function LoginPage({ onAuthenticated }: LoginPageProps) {
+export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<"employee" | "admin">("employee");
   const [employeeCode, setEmployeeCode] = useState("");
   const [pin, setPin] = useState("");
@@ -57,7 +58,7 @@ export function LoginPage({ onAuthenticated }: LoginPageProps) {
           <ThemeToggle />
         </div>
         <Card className="w-full max-w-md p-5 shadow-corporate sm:p-6">
-          <BrandMark />
+          <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
 
           <div className="mt-8 grid grid-cols-2 rounded-lg bg-muted p-1">
             <Button

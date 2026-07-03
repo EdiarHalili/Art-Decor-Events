@@ -22,6 +22,9 @@ export type Employee = {
   fullName: string;
   phone: string | null;
   profilePhotoUrl: string | null;
+  positionTitle: string | null;
+  departmentName: string | null;
+  teamName: string | null;
   notes: string | null;
   status: "ACTIVE" | "INACTIVE";
   wageType: "HOURLY" | "DAILY" | "MONTHLY";
@@ -146,6 +149,53 @@ export type AttendanceReport = {
   rows: AttendanceReportRow[];
 };
 
+export type AppSettings = {
+  companyName: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  accentColor: string;
+  timezone: string;
+  defaultCheckInOpenTime: string;
+  defaultCheckInCloseTime: string;
+  allowedLateMinutes: number;
+  gpsEnabled: boolean;
+  notificationsEnabled: boolean;
+  sessionTimeoutMinutes: number;
+  updatedAt: string | null;
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  visibleFrom: string;
+  visibleUntil: string | null;
+  createdAt: string;
+};
+
+export type AuditLog = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  createdAt: string;
+};
+
+export type PayrollPreparation = {
+  month: string;
+  status: string;
+  employees: {
+    employeeId: string;
+    employeeCode: string;
+    employeeName: string;
+    wageType: Employee["wageType"];
+    baseWage: number;
+    overtimeMultiplier: number;
+    workedMinutes: number;
+    overtimeMinutes: number;
+  }[];
+};
+
 type DailyCheckInWindowPayload = {
   workDate: string;
   checkInOpensAt: string;
@@ -186,6 +236,10 @@ export async function createEmployee(
     fullName: string;
     pin: string;
     phone?: string;
+    profilePhotoUrl?: string;
+    positionTitle?: string;
+    departmentName?: string;
+    teamName?: string;
     notes?: string;
     wageType: Employee["wageType"];
     baseWage: number;
@@ -194,6 +248,29 @@ export async function createEmployee(
 ): Promise<Employee> {
   return authorizedRequest<Employee>("/admin/employees", accessToken, {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateEmployee(
+  accessToken: string,
+  employeeId: string,
+  payload: {
+    fullName: string;
+    pin?: string;
+    phone?: string;
+    profilePhotoUrl?: string;
+    positionTitle?: string;
+    departmentName?: string;
+    teamName?: string;
+    notes?: string;
+    wageType: Employee["wageType"];
+    baseWage: number;
+    overtimeMultiplier: number;
+  },
+): Promise<Employee> {
+  return authorizedRequest<Employee>(`/admin/employees/${employeeId}`, accessToken, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 }
@@ -331,6 +408,52 @@ export async function exportAttendanceReport(
   );
 }
 
+export async function getSettings(): Promise<AppSettings> {
+  return request<AppSettings>("/settings");
+}
+
+export async function updateSettings(accessToken: string, payload: AppSettings): Promise<AppSettings> {
+  return authorizedRequest<AppSettings>("/admin/settings", accessToken, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAnnouncements(accessToken: string): Promise<Announcement[]> {
+  return authorizedRequest<Announcement[]>("/admin/announcements", accessToken);
+}
+
+export async function publishAnnouncement(
+  accessToken: string,
+  payload: { title: string; body: string; visibleFrom?: string; visibleUntil?: string },
+): Promise<Announcement> {
+  return authorizedRequest<Announcement>("/admin/announcements", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAuditLogs(accessToken: string): Promise<AuditLog[]> {
+  return authorizedRequest<AuditLog[]>("/admin/settings/audit-logs", accessToken);
+}
+
+export async function getPayrollPreparation(accessToken: string, month: string): Promise<PayrollPreparation> {
+  return authorizedRequest<PayrollPreparation>(
+    `/admin/payroll/preparation?month=${encodeURIComponent(month)}`,
+    accessToken,
+  );
+}
+
+export async function subscribePush(
+  accessToken: string,
+  payload: { endpoint: string; p256dhKey: string; authKey: string },
+): Promise<void> {
+  return authorizedRequest<void>("/notifications/subscribe", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 function authorizedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
   return request<T>(path, {
     ...init,
@@ -361,10 +484,15 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    throw new Error("The request could not be completed.");
+    throw new Error(await errorMessage(response));
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
@@ -376,8 +504,18 @@ async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> 
   });
 
   if (!response.ok) {
-    throw new Error("The request could not be completed.");
+    throw new Error(await errorMessage(response));
   }
 
   return response.blob();
+}
+
+async function errorMessage(response: Response) {
+  try {
+    const data = (await response.json()) as { message?: string; details?: Record<string, string> };
+    const fieldMessages = data.details ? Object.values(data.details).filter(Boolean) : [];
+    return [data.message, ...fieldMessages].filter(Boolean).join(" ") || "The request could not be completed.";
+  } catch {
+    return "The request could not be completed.";
+  }
 }

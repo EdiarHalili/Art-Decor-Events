@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { getAdminDashboard, type AdminDashboardSnapshot, type AuthResponse } from "../../lib/api";
+import { getAdminDashboard, type AdminDashboardSnapshot, type AppSettings, type AuthResponse } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
 import { ReportsPage } from "./ReportsPage";
+import { SettingsPage } from "./SettingsPage";
 import { UserManagementPage } from "./UserManagementPage";
 
 type AdminDashboardProps = {
   session: AuthResponse;
+  settings: AppSettings | null;
+  onSettingsUpdated: (settings: AppSettings) => void;
   onLogout: () => void;
 };
 
-type AdminView = "dashboard" | "windows" | "reports" | "employees" | "users";
+type AdminView = "dashboard" | "windows" | "reports" | "employees" | "users" | "settings";
 
-export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
+export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout }: AdminDashboardProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   const navItems = [
@@ -27,13 +30,14 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
     { id: "reports" as const, label: "Reports", icon: BarChart3 },
     { id: "employees" as const, label: "Employees", icon: UsersRound },
     { id: "users" as const, label: "Users & roles", icon: ShieldCheck },
+    { id: "settings" as const, label: "Settings", icon: Settings },
   ];
 
   return (
     <main className="min-h-screen bg-background pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-border bg-card p-5 lg:block">
-          <BrandMark />
+          <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
           <nav className="mt-8 space-y-2 text-sm">
             {navItems.map((item) => (
               <button
@@ -54,7 +58,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           <header className="sticky top-0 z-20 -mx-4 flex flex-col gap-4 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
             <div>
               <p className="text-sm font-medium text-primary">Operations dashboard</p>
-              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Today at Art Decor Events</h1>
+              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Today at {settings?.companyName ?? "Art Decor Events"}</h1>
               <p className="mt-1 text-sm text-muted-foreground">Signed in as {session.fullName}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -87,7 +91,7 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           {activeView === "dashboard" && <DashboardOverview accessToken={session.accessToken} />}
           {activeView === "windows" && (
             <section className="mt-6">
-              <DailyCheckInWindowPage accessToken={session.accessToken} />
+              <DailyCheckInWindowPage accessToken={session.accessToken} settings={settings} />
             </section>
           )}
           {activeView === "reports" && (
@@ -103,6 +107,11 @@ export function AdminDashboard({ session, onLogout }: AdminDashboardProps) {
           {activeView === "users" && (
             <section className="mt-6">
               <UserManagementPage accessToken={session.accessToken} />
+            </section>
+          )}
+          {activeView === "settings" && (
+            <section className="mt-6">
+              <SettingsPage accessToken={session.accessToken} settings={settings} onSettingsUpdated={onSettingsUpdated} />
             </section>
           )}
         </section>

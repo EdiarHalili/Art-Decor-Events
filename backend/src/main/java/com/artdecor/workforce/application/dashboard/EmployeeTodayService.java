@@ -1,6 +1,7 @@
 package com.artdecor.workforce.application.dashboard;
 
 import com.artdecor.workforce.application.auth.AuthException;
+import com.artdecor.workforce.application.notifications.NotificationService;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -18,17 +19,20 @@ public class EmployeeTodayService {
     private final EmployeeRepository employees;
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
+    private final NotificationService notifications;
     private final Clock clock;
 
     public EmployeeTodayService(
             EmployeeRepository employees,
             ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
+            NotificationService notifications,
             Clock clock
     ) {
         this.employees = employees;
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
+        this.notifications = notifications;
         this.clock = clock;
     }
 
@@ -60,7 +64,7 @@ public class EmployeeTodayService {
                             status,
                             checkInOpen,
                             checkOutAvailable,
-                            List.of("Welcome to Art Decor Events Workforce.")
+                            announcements()
                     );
                 })
                 .orElseGet(() -> new EmployeeTodayResponse(
@@ -70,8 +74,15 @@ public class EmployeeTodayService {
                         "Check-in is not open.",
                         false,
                         false,
-                        List.of("Welcome to Art Decor Events Workforce.")
+                        announcements()
                 ));
+    }
+
+    private List<String> announcements() {
+        List<String> visible = notifications.visibleAnnouncements().stream()
+                .map(announcement -> announcement.title() + ": " + announcement.body())
+                .toList();
+        return visible.isEmpty() ? List.of("Welcome to Art Decor Events Workforce.") : visible;
     }
 
     private boolean isCheckInOpen(WorkScheduleStatus status, Instant opensAt, Instant closesAt, Instant now) {

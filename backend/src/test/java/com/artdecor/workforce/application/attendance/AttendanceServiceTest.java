@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.artdecor.workforce.application.audit.AuditService;
+import com.artdecor.workforce.application.settings.AppSettingsResponse;
+import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
@@ -20,6 +23,7 @@ import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +37,8 @@ class AttendanceServiceTest {
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
+    private final AppSettingsService settings = org.mockito.Mockito.mock(AppSettingsService.class);
+    private final AuditService audit = org.mockito.Mockito.mock(AuditService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T06:55:00Z"), ZoneOffset.UTC);
     private AttendanceService service;
     private UUID employeeId;
@@ -43,7 +49,7 @@ class AttendanceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AttendanceService(schedules, assignments, attendanceRecords, employees, clock);
+        service = new AttendanceService(schedules, assignments, attendanceRecords, employees, settings, audit, clock);
         employeeId = UUID.randomUUID();
         scheduleId = UUID.randomUUID();
         employee = employee(employeeId);
@@ -54,6 +60,20 @@ class AttendanceServiceTest {
         when(schedules.findById(scheduleId)).thenReturn(Optional.of(schedule));
         when(assignments.findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(employeeId, schedule.getWorkDate()))
                 .thenReturn(Optional.of(assignment(employee, schedule)));
+        when(settings.current()).thenReturn(new AppSettingsResponse(
+                "Art Decor Events",
+                null,
+                "#c9a052",
+                "#4f7f63",
+                "Europe/Berlin",
+                LocalTime.of(6, 50),
+                LocalTime.of(7, 10),
+                0,
+                true,
+                true,
+                60,
+                Instant.parse("2026-07-03T00:00:00Z")
+        ));
         when(attendanceRecords.save(any(AttendanceRecordEntity.class))).thenAnswer(invocation -> {
             AttendanceRecordEntity record = invocation.getArgument(0);
             ReflectionTestUtils.setField(record, "id", UUID.randomUUID());
@@ -132,4 +152,3 @@ class AttendanceServiceTest {
         return assignment;
     }
 }
-

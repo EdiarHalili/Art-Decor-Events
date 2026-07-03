@@ -28,15 +28,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final CorsProperties corsProperties;
     private final ObjectMapper objectMapper;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            RateLimitingFilter rateLimitingFilter,
             CorsProperties corsProperties,
             ObjectMapper objectMapper
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
         this.corsProperties = corsProperties;
         this.objectMapper = objectMapper;
     }
@@ -46,6 +49,11 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'"))
+                        .frameOptions(frame -> frame.deny())
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
@@ -55,11 +63,13 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/settings").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMINISTRATOR", "SUPERVISOR")
                         .requestMatchers("/api/v1/employee/**").hasRole("EMPLOYEE")
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -76,7 +86,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(corsProperties.allowedOrigins() == null || corsProperties.allowedOrigins().isEmpty()
                 ? List.of("http://localhost:5173")
                 : corsProperties.allowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
 

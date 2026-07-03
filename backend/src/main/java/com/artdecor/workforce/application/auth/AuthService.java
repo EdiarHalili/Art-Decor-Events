@@ -1,5 +1,6 @@
 package com.artdecor.workforce.application.auth;
 
+import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
@@ -15,17 +16,20 @@ public class AuthService {
     private final EmployeeRepository employees;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService tokens;
+    private final AuditService audit;
 
     public AuthService(
             UserAccountRepository users,
             EmployeeRepository employees,
             PasswordEncoder passwordEncoder,
-            JwtTokenService tokens
+            JwtTokenService tokens,
+            AuditService audit
     ) {
         this.users = users;
         this.employees = employees;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
+        this.audit = audit;
     }
 
     public AuthResponse loginAdmin(String email, String password) {
@@ -40,6 +44,7 @@ public class AuthService {
             throw new AuthException("Invalid credentials.");
         }
 
+        audit.system("ADMIN_LOGIN", "USER", user.getId());
         return new AuthResponse(
                 tokens.issueToken(user.getId(), user.getRole(), null),
                 "Bearer",
@@ -58,6 +63,7 @@ public class AuthService {
             throw new AuthException("Invalid credentials.");
         }
 
+        audit.system("EMPLOYEE_LOGIN", "EMPLOYEE", employee.getId());
         return new AuthResponse(
                 tokens.issueToken(employee.getId(), UserRole.EMPLOYEE, employee.getId()),
                 "Bearer",

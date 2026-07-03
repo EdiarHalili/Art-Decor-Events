@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
@@ -24,6 +25,7 @@ class AuthServiceTest {
     private final UserAccountRepository users = org.mockito.Mockito.mock(UserAccountRepository.class);
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
+    private final AuditService audit = org.mockito.Mockito.mock(AuditService.class);
     private final JwtTokenService tokenService = new JwtTokenService(new JwtProperties(
             "test-secret-key-that-is-long-enough-for-hmac-signing",
             "art-decor-test",
@@ -34,7 +36,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(users, employees, passwordEncoder, tokenService);
+        authService = new AuthService(users, employees, passwordEncoder, tokenService, audit);
     }
 
     @Test

@@ -13,10 +13,12 @@ import {
   updateCheckInWindow,
   type DailyCheckInWindow,
   type Employee,
+  type AppSettings,
 } from "../../lib/api";
 
 type DailyCheckInWindowPageProps = {
   accessToken: string;
+  settings: AppSettings | null;
 };
 
 type WindowForm = {
@@ -42,7 +44,7 @@ const statusLabels: Record<DailyCheckInWindow["status"], string> = {
   COMPLETED: "Completed",
 };
 
-export function DailyCheckInWindowPage({ accessToken }: DailyCheckInWindowPageProps) {
+export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWindowPageProps) {
   const [windows, setWindows] = useState<DailyCheckInWindow[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [form, setForm] = useState<WindowForm>(emptyForm);
@@ -72,6 +74,17 @@ export function DailyCheckInWindowPage({ accessToken }: DailyCheckInWindowPagePr
   useEffect(() => {
     void loadData();
   }, []);
+
+  useEffect(() => {
+    if (!settings || editingWindowId) {
+      return;
+    }
+    setForm((current) => ({
+      ...current,
+      checkInOpensAt: settings.defaultCheckInOpenTime.slice(0, 5),
+      checkInClosesAt: settings.defaultCheckInCloseTime.slice(0, 5),
+    }));
+  }, [settings, editingWindowId]);
 
   const activeEmployees = useMemo(() => employees.filter((employee) => employee.status === "ACTIVE"), [employees]);
 
