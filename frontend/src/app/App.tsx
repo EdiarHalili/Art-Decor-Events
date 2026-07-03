@@ -23,6 +23,16 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    function handleSessionExpired() {
+      localStorage.removeItem("artdecor.session");
+      setSession(null);
+    }
+
+    window.addEventListener("artdecor:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("artdecor:session-expired", handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
     if (!session) {
       setValidatingSession(false);
       return;

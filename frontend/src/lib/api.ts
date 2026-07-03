@@ -501,33 +501,34 @@ export async function subscribePush(
 function authorizedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
   return request<T>(path, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...init.headers,
-    },
+    headers: authenticatedHeaders(accessToken, init.headers, true),
   });
 }
 
 function authorizedBlobRequest(path: string, accessToken: string, init: RequestInit = {}): Promise<Blob> {
   return requestBlob(path, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...init.headers,
-    },
+    headers: authenticatedHeaders(accessToken, init.headers, false),
   });
+}
+
+function authenticatedHeaders(accessToken: string, headers?: HeadersInit, includeJsonContentType = false) {
+  const next = new Headers(headers);
+  if (includeJsonContentType && !next.has("Content-Type")) {
+    next.set("Content-Type", "application/json");
+  }
+  next.set("Authorization", `Bearer ${accessToken}`);
+  return next;
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
+    headers: jsonHeaders(init.headers),
   });
 
   if (!response.ok) {
+    notifySessionExpired(response);
     throw new Error(await errorMessage(response));
   }
 
@@ -542,16 +543,29 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      ...init.headers,
-    },
+    headers: new Headers(init.headers),
   });
 
   if (!response.ok) {
+    notifySessionExpired(response);
     throw new Error(await errorMessage(response));
   }
 
   return response.blob();
+}
+
+function jsonHeaders(headers?: HeadersInit) {
+  const next = new Headers(headers);
+  if (!next.has("Content-Type")) {
+    next.set("Content-Type", "application/json");
+  }
+  return next;
+}
+
+function notifySessionExpired(response: Response) {
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("artdecor:session-expired"));
+  }
 }
 
 async function errorMessage(response: Response) {
