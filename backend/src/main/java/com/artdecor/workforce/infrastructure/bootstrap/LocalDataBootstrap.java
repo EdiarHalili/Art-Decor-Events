@@ -1,6 +1,7 @@
 package com.artdecor.workforce.infrastructure.bootstrap;
 
 import com.artdecor.workforce.domain.UserRole;
+import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
@@ -37,8 +38,12 @@ public class LocalDataBootstrap implements ApplicationRunner {
             return;
         }
 
-        users.findByEmailIgnoreCase(properties.adminEmail()).orElseGet(this::createAdmin);
-        employees.findByEmployeeCodeIgnoreCase(properties.employeeCode()).orElseGet(this::createEmployee);
+        users.findByEmailIgnoreCase(properties.adminEmail())
+                .map(this::repairAdmin)
+                .orElseGet(this::createAdmin);
+        employees.findByEmployeeCodeIgnoreCase(properties.employeeCode())
+                .map(this::repairEmployee)
+                .orElseGet(this::createEmployee);
     }
 
     private UserAccountEntity createAdmin() {
@@ -47,7 +52,29 @@ public class LocalDataBootstrap implements ApplicationRunner {
         admin.setEmail(properties.adminEmail());
         admin.setPasswordHash(passwordEncoder.encode(properties.adminPassword()));
         admin.setRole(UserRole.ADMINISTRATOR);
+        admin.setStatus(UserStatus.ACTIVE);
         return users.save(admin);
+    }
+
+    private UserAccountEntity repairAdmin(UserAccountEntity admin) {
+        boolean changed = false;
+        if (!passwordEncoder.matches(properties.adminPassword(), admin.getPasswordHash())) {
+            admin.setPasswordHash(passwordEncoder.encode(properties.adminPassword()));
+            changed = true;
+        }
+        if (admin.getRole() != UserRole.ADMINISTRATOR) {
+            admin.setRole(UserRole.ADMINISTRATOR);
+            changed = true;
+        }
+        if (admin.getStatus() != UserStatus.ACTIVE) {
+            admin.setStatus(UserStatus.ACTIVE);
+            changed = true;
+        }
+        if (!properties.adminName().equals(admin.getFullName())) {
+            admin.setFullName(properties.adminName());
+            changed = true;
+        }
+        return changed ? users.save(admin) : admin;
     }
 
     private EmployeeEntity createEmployee() {
@@ -55,6 +82,24 @@ public class LocalDataBootstrap implements ApplicationRunner {
         employee.setFullName(properties.employeeName());
         employee.setEmployeeCode(properties.employeeCode());
         employee.setPinHash(passwordEncoder.encode(properties.employeePin()));
+        employee.setStatus(UserStatus.ACTIVE);
         return employees.save(employee);
+    }
+
+    private EmployeeEntity repairEmployee(EmployeeEntity employee) {
+        boolean changed = false;
+        if (!passwordEncoder.matches(properties.employeePin(), employee.getPinHash())) {
+            employee.setPinHash(passwordEncoder.encode(properties.employeePin()));
+            changed = true;
+        }
+        if (employee.getStatus() != UserStatus.ACTIVE) {
+            employee.setStatus(UserStatus.ACTIVE);
+            changed = true;
+        }
+        if (!properties.employeeName().equals(employee.getFullName())) {
+            employee.setFullName(properties.employeeName());
+            changed = true;
+        }
+        return changed ? employees.save(employee) : employee;
     }
 }

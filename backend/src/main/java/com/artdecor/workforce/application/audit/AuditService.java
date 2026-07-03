@@ -4,6 +4,7 @@ import com.artdecor.workforce.infrastructure.persistence.AuditLogEntity;
 import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +28,7 @@ public class AuditService {
         log.setAction(action);
         log.setEntityType(entityType);
         log.setEntityId(entityId);
-        log.setMetadata("{}");
+        log.setMetadata(Map.of());
         logs.save(log);
     }
 

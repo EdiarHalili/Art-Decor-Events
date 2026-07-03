@@ -32,8 +32,8 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
       const session =
         mode === "employee" ? await loginEmployee(employeeCode, pin) : await loginAdmin(email, password);
       onAuthenticated(session);
-    } catch {
-      setError("Login failed. Please check your details and try again.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Login failed. Please check your details and try again.");
     } finally {
       setLoading(false);
     }
