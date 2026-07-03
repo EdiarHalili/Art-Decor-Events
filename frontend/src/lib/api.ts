@@ -119,6 +119,12 @@ export type AttendanceReportRow = {
   status: "SCHEDULED" | "PRESENT" | "LATE" | "ABSENT" | "CHECKED_OUT" | "PENDING_APPROVAL";
   checkedInAt: string | null;
   checkedOutAt: string | null;
+  checkInLatitude: number | null;
+  checkInLongitude: number | null;
+  checkOutLatitude: number | null;
+  checkOutLongitude: number | null;
+  checkInDistanceMeters: number | null;
+  checkOutDistanceMeters: number | null;
   workedMinutes: number;
   overtimeMinutes: number;
   autoCheckout: boolean;
@@ -178,6 +184,8 @@ export type AppSettings = {
   defaultCheckInCloseTime: string;
   allowedLateMinutes: number;
   gpsEnabled: boolean;
+  workplaceLatitude: number | null;
+  workplaceLongitude: number | null;
   notificationsEnabled: boolean;
   sessionTimeoutMinutes: number;
   updatedAt: string | null;

@@ -2,6 +2,7 @@ package com.artdecor.workforce.application.reports;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -27,13 +28,16 @@ public class AttendanceReportService {
 
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
+    private final AppSettingsRepository settings;
 
     public AttendanceReportService(
             ScheduleAssignmentRepository assignments,
-            AttendanceRecordRepository attendanceRecords
+            AttendanceRecordRepository attendanceRecords,
+            AppSettingsRepository settings
     ) {
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
+        this.settings = settings;
     }
 
     @Transactional(readOnly = true)
@@ -56,12 +60,13 @@ public class AttendanceReportService {
     @Transactional(readOnly = true)
     public List<AttendanceReportRow> employeeHistory(UUID employeeId, LocalDate from, LocalDate to) {
         validateRange(from, to);
+        WorkplaceCoordinates workplace = workplaceCoordinates();
         List<AttendanceReportRow> assignmentRows = rows(from, to).stream()
                 .filter(row -> row.employeeId().equals(employeeId.toString()))
                 .toList();
         List<AttendanceReportRow> actualAttendanceRows = attendanceRecords.findReportRecords(from, to).stream()
                 .filter(record -> record.getEmployee().getId().equals(employeeId))
-                .map(this::attendanceRow)
+                .map(record -> attendanceRow(record, workplace))
                 .toList();
 
         return java.util.stream.Stream.concat(assignmentRows.stream(), actualAttendanceRows.stream())
@@ -100,6 +105,7 @@ public class AttendanceReportService {
     }
 
     private List<AttendanceReportRow> rows(LocalDate from, LocalDate to) {
+        WorkplaceCoordinates workplace = workplaceCoordinates();
         Map<String, AttendanceRecordEntity> records = new LinkedHashMap<>();
         for (AttendanceRecordEntity record : attendanceRecords.findReportRecords(from, to)) {
             records.put(key(record.getSchedule().getId(), record.getEmployee().getId()), record);
@@ -108,7 +114,7 @@ public class AttendanceReportService {
         List<AttendanceReportRow> rows = new ArrayList<>();
         for (ScheduleAssignmentEntity assignment : assignments.findReportAssignments(from, to, WorkScheduleStatus.CANCELLED)) {
             AttendanceRecordEntity record = records.get(key(assignment.getSchedule().getId(), assignment.getEmployee().getId()));
-            rows.add(record == null ? absentRow(assignment) : attendanceRow(record));
+            rows.add(record == null ? absentRow(assignment) : attendanceRow(record, workplace));
         }
 
         rows.sort(Comparator
@@ -127,6 +133,12 @@ public class AttendanceReportService {
                 AttendanceStatus.ABSENT.name(),
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 0,
                 0,
                 false,
@@ -135,7 +147,7 @@ public class AttendanceReportService {
         );
     }
 
-    private AttendanceReportRow attendanceRow(AttendanceRecordEntity record) {
+    private AttendanceReportRow attendanceRow(AttendanceRecordEntity record, WorkplaceCoordinates workplace) {
         return new AttendanceReportRow(
                 record.getSchedule().getWorkDate(),
                 record.getSchedule().getId().toString(),
@@ -145,12 +157,54 @@ public class AttendanceReportService {
                 record.getStatus().name(),
                 record.getCheckedInAt(),
                 record.getCheckedOutAt(),
+                record.getCheckInLatitude(),
+                record.getCheckInLongitude(),
+                record.getCheckOutLatitude(),
+                record.getCheckOutLongitude(),
+                distanceMeters(record.getCheckInLatitude(), record.getCheckInLongitude(), workplace),
+                distanceMeters(record.getCheckOutLatitude(), record.getCheckOutLongitude(), workplace),
                 record.getWorkedMinutes(),
                 record.getOvertimeMinutes(),
                 record.isAutoCheckout(),
                 record.getStatus() == AttendanceStatus.LATE,
                 false
         );
+    }
+
+    private WorkplaceCoordinates workplaceCoordinates() {
+        return settings.findAll().stream()
+                .findFirst()
+                .filter(setting -> setting.getWorkplaceLatitude() != null && setting.getWorkplaceLongitude() != null)
+                .map(setting -> new WorkplaceCoordinates(setting.getWorkplaceLatitude(), setting.getWorkplaceLongitude()))
+                .orElse(null);
+    }
+
+    private Integer distanceMeters(Double latitude, Double longitude, WorkplaceCoordinates workplace) {
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+        if (workplace == null) {
+            return null;
+        }
+        return (int) Math.round(distanceMeters(
+                workplace.latitude(),
+                workplace.longitude(),
+                latitude,
+                longitude
+        ));
+    }
+
+    private double distanceMeters(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude) {
+        double earthRadiusMeters = 6_371_000;
+        double fromLat = Math.toRadians(fromLatitude);
+        double toLat = Math.toRadians(toLatitude);
+        double deltaLat = Math.toRadians(toLatitude - fromLatitude);
+        double deltaLon = Math.toRadians(toLongitude - fromLongitude);
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+                + Math.cos(fromLat) * Math.cos(toLat)
+                * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusMeters * c;
     }
 
     private AttendanceReportRow preferredHistoryRow(AttendanceReportRow first, AttendanceReportRow second) {
@@ -239,14 +293,18 @@ public class AttendanceReportService {
     }
 
     private String csv(List<AttendanceReportRow> rows) {
-        StringBuilder builder = new StringBuilder("Date,Employee ID,Employee,Status,Check In,Check Out,Checkout Type,Worked Hours,Overtime Hours\n");
+        StringBuilder builder = new StringBuilder("Date,Employee ID,Employee,Status,Check In,Check In GPS,Check In Distance M,Check Out,Check Out GPS,Check Out Distance M,Checkout Type,Worked Hours,Overtime Hours\n");
         for (AttendanceReportRow row : rows) {
             builder.append(csvValue(row.workDate().toString())).append(',')
                     .append(csvValue(row.employeeCode())).append(',')
                     .append(csvValue(row.employeeName())).append(',')
                     .append(csvValue(row.status())).append(',')
                     .append(csvValue(row.checkedInAt() == null ? "" : row.checkedInAt().toString())).append(',')
+                    .append(csvValue(gps(row.checkInLatitude(), row.checkInLongitude()))).append(',')
+                    .append(csvValue(row.checkInDistanceMeters() == null ? "" : row.checkInDistanceMeters().toString())).append(',')
                     .append(csvValue(row.checkedOutAt() == null ? "" : row.checkedOutAt().toString())).append(',')
+                    .append(csvValue(gps(row.checkOutLatitude(), row.checkOutLongitude()))).append(',')
+                    .append(csvValue(row.checkOutDistanceMeters() == null ? "" : row.checkOutDistanceMeters().toString())).append(',')
                     .append(csvValue(row.autoCheckout() ? "Auto Check Out" : "Manual")).append(',')
                     .append(minutesToHours(row.workedMinutes())).append(',')
                     .append(minutesToHours(row.overtimeMinutes())).append('\n');
@@ -261,7 +319,7 @@ public class AttendanceReportService {
                  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
                 <Worksheet ss:Name="Attendance"><Table>
                 """);
-        builder.append(excelRow(List.of("Date", "Employee ID", "Employee", "Status", "Check In", "Check Out", "Checkout Type", "Worked Hours", "Overtime Hours")));
+        builder.append(excelRow(List.of("Date", "Employee ID", "Employee", "Status", "Check In", "Check In GPS", "Check In Distance M", "Check Out", "Check Out GPS", "Check Out Distance M", "Checkout Type", "Worked Hours", "Overtime Hours")));
         for (AttendanceReportRow row : rows) {
             builder.append(excelRow(List.of(
                     row.workDate().toString(),
@@ -269,7 +327,11 @@ public class AttendanceReportService {
                     row.employeeName(),
                     row.status(),
                     row.checkedInAt() == null ? "" : row.checkedInAt().toString(),
+                    gps(row.checkInLatitude(), row.checkInLongitude()),
+                    row.checkInDistanceMeters() == null ? "" : row.checkInDistanceMeters().toString(),
                     row.checkedOutAt() == null ? "" : row.checkedOutAt().toString(),
+                    gps(row.checkOutLatitude(), row.checkOutLongitude()),
+                    row.checkOutDistanceMeters() == null ? "" : row.checkOutDistanceMeters().toString(),
                     row.autoCheckout() ? "Auto Check Out" : "Manual",
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.overtimeMinutes()))
@@ -295,9 +357,11 @@ public class AttendanceReportService {
         lines.add("Assigned: " + summary.assigned() + "  Present: " + summary.present() + "  Late: " + summary.late() + "  Absent: " + summary.absent());
         lines.add("Worked hours: " + String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())));
         lines.add("");
-        lines.add("Date | Employee | Status | Checkout | Worked");
+        lines.add("Date | Employee | Status | Check In GPS | Check Out GPS | Checkout | Worked");
         for (AttendanceReportRow row : rows) {
             lines.add(row.workDate() + " | " + row.employeeName() + " | " + row.status() + " | "
+                    + gps(row.checkInLatitude(), row.checkInLongitude()) + " | "
+                    + gps(row.checkOutLatitude(), row.checkOutLongitude()) + " | "
                     + (row.autoCheckout() ? "Auto Check Out" : "Manual") + " | "
                     + String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())));
         }
@@ -306,6 +370,13 @@ public class AttendanceReportService {
 
     private double minutesToHours(int minutes) {
         return minutes / 60.0;
+    }
+
+    private String gps(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            return "";
+        }
+        return latitude + "," + longitude;
     }
 
     private String csvValue(String value) {
@@ -334,5 +405,8 @@ public class AttendanceReportService {
         if (from.plusYears(2).isBefore(to)) {
             throw new IllegalArgumentException("Report range cannot exceed two years.");
         }
+    }
+
+    private record WorkplaceCoordinates(double latitude, double longitude) {
     }
 }

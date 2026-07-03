@@ -116,16 +116,32 @@ public class AttendanceRecordEntity {
         this.checkInLatitude = checkInLatitude;
     }
 
+    public Double getCheckInLatitude() {
+        return checkInLatitude;
+    }
+
     public void setCheckInLongitude(Double checkInLongitude) {
         this.checkInLongitude = checkInLongitude;
+    }
+
+    public Double getCheckInLongitude() {
+        return checkInLongitude;
     }
 
     public void setCheckOutLatitude(Double checkOutLatitude) {
         this.checkOutLatitude = checkOutLatitude;
     }
 
+    public Double getCheckOutLatitude() {
+        return checkOutLatitude;
+    }
+
     public void setCheckOutLongitude(Double checkOutLongitude) {
         this.checkOutLongitude = checkOutLongitude;
+    }
+
+    public Double getCheckOutLongitude() {
+        return checkOutLongitude;
     }
 
     public void setCheckInDevice(Map<String, Object> checkInDevice) {

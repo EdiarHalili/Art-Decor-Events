@@ -32,6 +32,8 @@ const fallbackSettings: AppSettings = {
   defaultCheckInCloseTime: "07:10:00",
   allowedLateMinutes: 0,
   gpsEnabled: true,
+  workplaceLatitude: null,
+  workplaceLongitude: null,
   notificationsEnabled: true,
   sessionTimeoutMinutes: 60,
   updatedAt: null,
@@ -191,6 +193,30 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
             <span>Allowed late minutes</span>
             <Input type="number" min="0" max="240" value={form.allowedLateMinutes} onChange={(event) => setForm({ ...form, allowedLateMinutes: Number(event.target.value) })} />
           </label>
+          <label className="space-y-1 text-sm font-medium">
+            <span>Workplace latitude</span>
+            <Input
+              type="number"
+              min="-90"
+              max="90"
+              step="0.000001"
+              value={form.workplaceLatitude ?? ""}
+              onChange={(event) => setForm({ ...form, workplaceLatitude: optionalNumber(event.target.value) })}
+              placeholder="Optional"
+            />
+          </label>
+          <label className="space-y-1 text-sm font-medium">
+            <span>Workplace longitude</span>
+            <Input
+              type="number"
+              min="-180"
+              max="180"
+              step="0.000001"
+              value={form.workplaceLongitude ?? ""}
+              onChange={(event) => setForm({ ...form, workplaceLongitude: optionalNumber(event.target.value) })}
+              placeholder="Optional"
+            />
+          </label>
           <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
             <Toggle label="GPS capture" checked={form.gpsEnabled} onChange={(checked) => setForm({ ...form, gpsEnabled: checked })} />
             <Toggle label="Notifications" checked={form.notificationsEnabled} onChange={(checked) => setForm({ ...form, notificationsEnabled: checked })} />
@@ -290,6 +316,10 @@ function toTimeInput(value: string) {
 
 function normalizeTime(value: string) {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function optionalNumber(value: string) {
+  return value.trim() === "" ? null : Number(value);
 }
 
 function urlBase64ToUint8Array(value: string) {

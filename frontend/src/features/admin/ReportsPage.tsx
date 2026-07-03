@@ -240,14 +240,16 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
         </div>
 
         <div className="mt-5 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="bg-muted text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Employee</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Check In</th>
+                <th className="px-4 py-3">Check In GPS</th>
                 <th className="px-4 py-3">Check Out</th>
+                <th className="px-4 py-3">Check Out GPS</th>
                 <th className="px-4 py-3">Worked</th>
                 <th className="px-4 py-3">Overtime</th>
               </tr>
@@ -255,7 +257,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
             <tbody className="divide-y divide-border">
               {filteredRows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
                     No records match this report.
                   </td>
                 </tr>
@@ -274,8 +276,14 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{time(row.checkedInAt)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
+                    <GpsLink latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
                     {time(row.checkedOutAt)}
                     {row.autoCheckout && <span className="mt-1 block text-xs text-primary">Auto Check Out</span>}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    <GpsLink latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
                   </td>
                   <td className="px-4 py-3">{hours(row.workedMinutes)}</td>
                   <td className="px-4 py-3">{hours(row.overtimeMinutes)}</td>
@@ -295,6 +303,29 @@ function Metric({ label, value }: { label: string; value: number }) {
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-3 text-3xl font-semibold">{value}</p>
     </Card>
+  );
+}
+
+function GpsLink({
+  latitude,
+  longitude,
+  distanceMeters,
+}: {
+  latitude: number | null;
+  longitude: number | null;
+  distanceMeters: number | null;
+}) {
+  if (latitude == null || longitude == null) {
+    return <span>-</span>;
+  }
+  return (
+    <span>
+      <span className="block">{latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
+      {distanceMeters != null && <span className="block text-xs">{formatDistance(distanceMeters)} from workplace</span>}
+      <a className="font-medium text-primary" href={mapUrl(latitude, longitude)} target="_blank" rel="noreferrer">
+        View on Map
+      </a>
+    </span>
   );
 }
 
@@ -342,4 +373,12 @@ function statusClass(status: AttendanceReportRow["status"], autoCheckout = false
     return "bg-muted text-muted-foreground";
   }
   return "bg-accent/15 text-accent";
+}
+
+function mapUrl(latitude: number, longitude: number) {
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+}
+
+function formatDistance(meters: number) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters} m`;
 }

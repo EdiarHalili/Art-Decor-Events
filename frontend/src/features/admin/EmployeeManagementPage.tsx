@@ -355,6 +355,8 @@ function EmployeeProfile({
               <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
                 <span>Check In: {formatTime(row.checkedInAt)}</span>
                 <span>Check Out: {row.autoCheckout ? `Auto Check Out: ${formatTime(row.checkedOutAt)}` : formatTime(row.checkedOutAt)}</span>
+                <GpsCell label="Check In GPS" latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
+                <GpsCell label="Check Out GPS" latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
                 <span>Worked: {formatMinutes(row.workedMinutes)}</span>
                 <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
               </div>
@@ -395,6 +397,31 @@ function ProfileField({ label, value }: { label: string; value: string }) {
   );
 }
 
+function GpsCell({
+  label,
+  latitude,
+  longitude,
+  distanceMeters,
+}: {
+  label: string;
+  latitude: number | null;
+  longitude: number | null;
+  distanceMeters: number | null;
+}) {
+  if (latitude == null || longitude == null) {
+    return <span>{label}: Not captured</span>;
+  }
+  return (
+    <span>
+      {label}: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+      {distanceMeters != null ? ` (${formatDistance(distanceMeters)} from workplace)` : ""}
+      <a className="ml-2 font-medium text-primary" href={mapUrl(latitude, longitude)} target="_blank" rel="noreferrer">
+        View on Map
+      </a>
+    </span>
+  );
+}
+
 function upsertEmployee(employees: Employee[], updated: Employee) {
   return employees.some((employee) => employee.id === updated.id)
     ? employees.map((employee) => (employee.id === updated.id ? updated : employee))
@@ -424,4 +451,12 @@ function formatMinutes(minutes: number) {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function mapUrl(latitude: number, longitude: number) {
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+}
+
+function formatDistance(meters: number) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters} m`;
 }

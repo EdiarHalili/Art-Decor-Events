@@ -12,6 +12,8 @@ public record AppSettingsCommand(
         LocalTime defaultCheckInCloseTime,
         int allowedLateMinutes,
         boolean gpsEnabled,
+        Double workplaceLatitude,
+        Double workplaceLongitude,
         boolean notificationsEnabled,
         int sessionTimeoutMinutes
 ) {

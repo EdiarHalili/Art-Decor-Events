@@ -70,6 +70,8 @@ class AttendanceServiceTest {
                 LocalTime.of(7, 10),
                 0,
                 true,
+                null,
+                null,
                 true,
                 60,
                 Instant.parse("2026-07-03T00:00:00Z")

@@ -33,6 +33,8 @@ public class AppSettingsService {
         entity.setDefaultCheckInCloseTime(command.defaultCheckInCloseTime());
         entity.setAllowedLateMinutes(command.allowedLateMinutes());
         entity.setGpsEnabled(command.gpsEnabled());
+        entity.setWorkplaceLatitude(command.workplaceLatitude());
+        entity.setWorkplaceLongitude(command.workplaceLongitude());
         entity.setNotificationsEnabled(command.notificationsEnabled());
         entity.setSessionTimeoutMinutes(command.sessionTimeoutMinutes());
         return toResponse(entity);
@@ -59,6 +61,15 @@ public class AppSettingsService {
         if (command.sessionTimeoutMinutes() < 5 || command.sessionTimeoutMinutes() > 1440) {
             throw new IllegalArgumentException("Session timeout must be between 5 minutes and 24 hours.");
         }
+        if ((command.workplaceLatitude() == null) != (command.workplaceLongitude() == null)) {
+            throw new IllegalArgumentException("Workplace latitude and longitude must be configured together.");
+        }
+        if (command.workplaceLatitude() != null && (command.workplaceLatitude() < -90 || command.workplaceLatitude() > 90)) {
+            throw new IllegalArgumentException("Workplace latitude must be between -90 and 90.");
+        }
+        if (command.workplaceLongitude() != null && (command.workplaceLongitude() < -180 || command.workplaceLongitude() > 180)) {
+            throw new IllegalArgumentException("Workplace longitude must be between -180 and 180.");
+        }
     }
 
     private boolean isHexColor(String value) {
@@ -80,6 +91,8 @@ public class AppSettingsService {
                 entity.getDefaultCheckInCloseTime() == null ? LocalTime.of(7, 10) : entity.getDefaultCheckInCloseTime(),
                 entity.getAllowedLateMinutes(),
                 entity.isGpsEnabled(),
+                entity.getWorkplaceLatitude(),
+                entity.getWorkplaceLongitude(),
                 entity.isNotificationsEnabled(),
                 entity.getSessionTimeoutMinutes(),
                 entity.getUpdatedAt()

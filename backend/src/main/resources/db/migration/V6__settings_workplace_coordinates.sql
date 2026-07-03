@@ -1,0 +1,3 @@
+ALTER TABLE app_settings
+    ADD COLUMN IF NOT EXISTS workplace_latitude DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS workplace_longitude DOUBLE PRECISION;

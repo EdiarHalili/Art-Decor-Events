@@ -43,6 +43,9 @@ public class AppSettingsEntity {
     @Column(nullable = false)
     private boolean gpsEnabled = true;
 
+    private Double workplaceLatitude;
+    private Double workplaceLongitude;
+
     @Column(nullable = false)
     private boolean notificationsEnabled = true;
 
@@ -70,6 +73,10 @@ public class AppSettingsEntity {
     public void setAllowedLateMinutes(int allowedLateMinutes) { this.allowedLateMinutes = allowedLateMinutes; }
     public boolean isGpsEnabled() { return gpsEnabled; }
     public void setGpsEnabled(boolean gpsEnabled) { this.gpsEnabled = gpsEnabled; }
+    public Double getWorkplaceLatitude() { return workplaceLatitude; }
+    public void setWorkplaceLatitude(Double workplaceLatitude) { this.workplaceLatitude = workplaceLatitude; }
+    public Double getWorkplaceLongitude() { return workplaceLongitude; }
+    public void setWorkplaceLongitude(Double workplaceLongitude) { this.workplaceLongitude = workplaceLongitude; }
     public boolean isNotificationsEnabled() { return notificationsEnabled; }
     public void setNotificationsEnabled(boolean notificationsEnabled) { this.notificationsEnabled = notificationsEnabled; }
     public int getSessionTimeoutMinutes() { return sessionTimeoutMinutes; }

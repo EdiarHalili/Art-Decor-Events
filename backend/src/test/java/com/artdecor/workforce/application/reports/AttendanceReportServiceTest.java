@@ -7,6 +7,7 @@ import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
@@ -21,7 +22,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AttendanceReportServiceTest {
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
-    private final AttendanceReportService service = new AttendanceReportService(assignments, attendanceRecords);
+    private final AppSettingsRepository settings = org.mockito.Mockito.mock(AppSettingsRepository.class);
+    private final AttendanceReportService service = new AttendanceReportService(assignments, attendanceRecords, settings);
 
     @Test
     void buildsSummaryRowsAndExports() {
