@@ -58,7 +58,7 @@ class AttendanceServiceTest {
 
         when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
         when(schedules.findById(scheduleId)).thenReturn(Optional.of(schedule));
-        when(assignments.findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(employeeId, schedule.getWorkDate()))
+        when(assignments.findByScheduleIdAndEmployeeId(scheduleId, employeeId))
                 .thenReturn(Optional.of(assignment(employee, schedule)));
         when(settings.current()).thenReturn(new AppSettingsResponse(
                 "Art Decor Events",
@@ -87,6 +87,22 @@ class AttendanceServiceTest {
 
         assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
         assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T06:55:00Z"));
+    }
+
+    @Test
+    void recordsCheckInWhenEmployeeHasExactAssignmentForSubmittedWindow() {
+        UUID oldScheduleId = UUID.randomUUID();
+        WorkScheduleEntity oldSchedule = schedule(oldScheduleId);
+        oldSchedule.setStatus(WorkScheduleStatus.CANCELLED);
+        when(assignments.findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(employeeId, schedule.getWorkDate()))
+                .thenReturn(Optional.of(assignment(employee, oldSchedule)));
+        when(assignments.findByScheduleIdAndEmployeeId(scheduleId, employeeId))
+                .thenReturn(Optional.of(assignment(employee, schedule)));
+
+        AttendanceResponse response = service.checkIn(principal, command());
+
+        assertThat(response.scheduleId()).isEqualTo(scheduleId.toString());
+        assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
     }
 
     @Test

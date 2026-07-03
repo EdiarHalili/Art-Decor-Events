@@ -52,8 +52,7 @@ public class AttendanceService {
         WorkScheduleEntity schedule = schedules.findById(command.scheduleId())
                 .orElseThrow(() -> new AttendanceException("SCHEDULE_NOT_FOUND", "Schedule not found."));
 
-        assignments.findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(employee.getId(), schedule.getWorkDate())
-                .filter(assignment -> assignment.getSchedule().getId().equals(schedule.getId()))
+        assignments.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId())
                 .orElseThrow(() -> new AttendanceException("EMPLOYEE_NOT_ASSIGNED", "Employee is not assigned to this schedule."));
 
         if (schedule.getStatus() == WorkScheduleStatus.CANCELLED) {
