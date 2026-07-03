@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Camera, Clock3, Edit3, Search, UserMinus, UserPlus } from "lucide-react";
+import { Camera, Clock3, Edit3, FileSpreadsheet, FileText, Search, UserMinus, UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import {
   createEmployee,
   deactivateEmployee,
+  exportEmployeeAttendance,
   getEmployeeHistory,
   listEmployees,
   updateEmployee,
@@ -28,6 +29,8 @@ type EmployeeForm = {
   teamName: string;
   notes: string;
 };
+
+type ExportRangePreset = "this-week" | "this-month" | "last-month" | "custom";
 
 const initialForm: EmployeeForm = {
   employeeCode: "",
@@ -275,6 +278,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
         <Card className="p-5">
           {selected ? (
             <EmployeeProfile
+              accessToken={accessToken}
               employee={selected}
               history={history}
               historyLoading={historyLoading}
@@ -293,19 +297,63 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
 }
 
 function EmployeeProfile({
+  accessToken,
   employee,
   history,
   historyLoading,
   onEdit,
   onDeactivate,
 }: {
+  accessToken: string;
   employee: Employee;
   history: AttendanceReportRow[];
   historyLoading: boolean;
   onEdit: () => void;
   onDeactivate: () => void;
 }) {
+  const defaultRange = exportRange("this-month");
+  const [rangePreset, setRangePreset] = useState<ExportRangePreset>("this-month");
+  const [exportFrom, setExportFrom] = useState(defaultRange.from);
+  const [exportTo, setExportTo] = useState(defaultRange.to);
+  const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
+  const [exportMessage, setExportMessage] = useState("");
   const workedMinutes = history.reduce((total, row) => total + row.workedMinutes, 0);
+
+  function updateRange(preset: ExportRangePreset) {
+    setRangePreset(preset);
+    if (preset === "custom") {
+      return;
+    }
+    const next = exportRange(preset);
+    setExportFrom(next.from);
+    setExportTo(next.to);
+  }
+
+  async function downloadEmployeeExport(format: "pdf" | "csv") {
+    setExportMessage("");
+    if (!exportFrom || !exportTo || exportTo < exportFrom) {
+      setExportMessage("Choose a valid export date range.");
+      return;
+    }
+
+    setExporting(format);
+    try {
+      const blob = await exportEmployeeAttendance(accessToken, employee.id, { from: exportFrom, to: exportTo, format });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${employee.employeeCode}-attendance-${exportFrom}-to-${exportTo}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportMessage("Employee attendance export downloaded.");
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Employee attendance export could not be downloaded.");
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <div>
@@ -333,6 +381,49 @@ function EmployeeProfile({
       <div className="mt-4 rounded-md bg-muted p-4 text-sm">
         <p className="font-medium">Notes</p>
         <p className="mt-2 text-muted-foreground">{employee.notes || "No notes saved for this employee."}</p>
+      </div>
+
+      <div className="mt-5 rounded-lg border border-border p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="font-semibold">Export work progress</p>
+            <p className="mt-1 text-sm text-muted-foreground">Simple employee hours summary with attendance table.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[150px_150px_150px] xl:flex xl:items-end">
+            <label className="space-y-1 text-sm font-medium">
+              <span>Range</span>
+              <select
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                value={rangePreset}
+                onChange={(event) => updateRange(event.target.value as ExportRangePreset)}
+              >
+                <option value="this-week">This week</option>
+                <option value="this-month">This month</option>
+                <option value="last-month">Last month</option>
+                <option value="custom">Custom date range</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-sm font-medium">
+              <span>From</span>
+              <Input type="date" value={exportFrom} onChange={(event) => setExportFrom(event.target.value)} disabled={rangePreset !== "custom"} />
+            </label>
+            <label className="space-y-1 text-sm font-medium">
+              <span>To</span>
+              <Input type="date" value={exportTo} onChange={(event) => setExportTo(event.target.value)} disabled={rangePreset !== "custom"} />
+            </label>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadEmployeeExport("pdf")}>
+            <FileText size={17} />
+            {exporting === "pdf" ? "Exporting..." : "Export PDF"}
+          </Button>
+          <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadEmployeeExport("csv")}>
+            <FileSpreadsheet size={17} />
+            {exporting === "csv" ? "Exporting..." : "Export Excel/CSV"}
+          </Button>
+        </div>
+        {exportMessage && <p className="mt-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{exportMessage}</p>}
       </div>
 
       <div className="mt-5">
@@ -430,6 +521,30 @@ function upsertEmployee(employees: Employee[], updated: Employee) {
 
 function dateOnly(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function exportRange(preset: Exclude<ExportRangePreset, "custom">) {
+  const now = new Date();
+  if (preset === "this-week") {
+    const day = now.getDay() === 0 ? 7 : now.getDay();
+    const from = new Date(now);
+    from.setDate(now.getDate() - day + 1);
+    const to = new Date(from);
+    to.setDate(from.getDate() + 6);
+    return { from: dateOnly(from), to: dateOnly(to) };
+  }
+
+  if (preset === "last-month") {
+    return {
+      from: dateOnly(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      to: dateOnly(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+
+  return {
+    from: dateOnly(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: dateOnly(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
 }
 
 function formatDate(value: string) {

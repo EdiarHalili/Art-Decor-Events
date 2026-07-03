@@ -61,4 +61,21 @@ public class AdminReportController {
                 .header(HttpHeaders.CONTENT_TYPE, export.contentType())
                 .body(export.content());
     }
+
+    @GetMapping("/employees/{employeeId}/export")
+    public ResponseEntity<byte[]> exportEmployeeAttendance(
+            @PathVariable UUID employeeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "csv") String format
+    ) {
+        ExportFile export = reports.exportEmployee(employeeId, from, to, format);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(export.filename())
+                        .build()
+                        .toString())
+                .header(HttpHeaders.CONTENT_TYPE, export.contentType())
+                .body(export.content());
+    }
 }

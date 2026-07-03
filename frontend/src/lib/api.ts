@@ -441,6 +441,17 @@ export async function exportAttendanceReport(
   );
 }
 
+export async function exportEmployeeAttendance(
+  accessToken: string,
+  employeeId: string,
+  params: { from: string; to: string; format: "csv" | "xlsx" | "pdf" },
+): Promise<Blob> {
+  return authorizedBlobRequest(
+    `/admin/reports/employees/${employeeId}/export?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&format=${params.format}`,
+    accessToken,
+  );
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return request<AppSettings>("/settings");
 }

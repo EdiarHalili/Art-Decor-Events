@@ -9,12 +9,14 @@ import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
+import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -23,7 +25,8 @@ class AttendanceReportServiceTest {
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final AppSettingsRepository settings = org.mockito.Mockito.mock(AppSettingsRepository.class);
-    private final AttendanceReportService service = new AttendanceReportService(assignments, attendanceRecords, settings);
+    private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
+    private final AttendanceReportService service = new AttendanceReportService(assignments, attendanceRecords, settings, employees);
 
     @Test
     void buildsSummaryRowsAndExports() {
@@ -76,6 +79,25 @@ class AttendanceReportServiceTest {
         assertThat(history).hasSize(1);
         assertThat(history.getFirst().status()).isEqualTo(AttendanceStatus.CHECKED_OUT.name());
         assertThat(history.getFirst().checkedInAt()).isEqualTo(Instant.parse("2026-07-03T04:55:00Z"));
+    }
+
+    @Test
+    void exportsEmployeeAttendance() {
+        LocalDate date = LocalDate.of(2026, 7, 3);
+        EmployeeEntity employee = employee("EMP001", "Present Worker");
+        WorkScheduleEntity schedule = schedule(date);
+        AttendanceRecordEntity record = record(schedule, employee);
+
+        when(employees.findById(employee.getId())).thenReturn(Optional.of(employee));
+        when(assignments.findReportAssignments(date, date, WorkScheduleStatus.CANCELLED)).thenReturn(List.of());
+        when(attendanceRecords.findReportRecords(date, date)).thenReturn(List.of(record));
+
+        ExportFile csv = service.exportEmployee(employee.getId(), date, date, "csv");
+        assertThat(csv.filename()).contains("EMP001").endsWith(".csv");
+        assertThat(new String(csv.content())).contains("Total worked hours").contains("Present Worker");
+
+        ExportFile pdf = service.exportEmployee(employee.getId(), date, date, "pdf");
+        assertThat(pdf.content()).startsWith("%PDF".getBytes());
     }
 
     private WorkScheduleEntity schedule(LocalDate date) {

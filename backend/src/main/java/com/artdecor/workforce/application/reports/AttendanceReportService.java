@@ -5,9 +5,12 @@ import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
+import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
@@ -29,15 +32,18 @@ public class AttendanceReportService {
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
     private final AppSettingsRepository settings;
+    private final EmployeeRepository employees;
 
     public AttendanceReportService(
             ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
-            AppSettingsRepository settings
+            AppSettingsRepository settings,
+            EmployeeRepository employees
     ) {
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
         this.settings = settings;
+        this.employees = employees;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +106,34 @@ public class AttendanceReportService {
                     "art-decor-attendance-" + from + "-to-" + to + ".csv",
                     "text/csv; charset=UTF-8",
                     csv(rows).getBytes(StandardCharsets.UTF_8)
+            );
+        };
+    }
+
+    @Transactional(readOnly = true)
+    public ExportFile exportEmployee(UUID employeeId, LocalDate from, LocalDate to, String format) {
+        validateRange(from, to);
+        EmployeeEntity employee = employees.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee was not found."));
+        List<AttendanceReportRow> rows = employeeHistory(employeeId, from, to);
+        String normalized = format == null ? "csv" : format.toLowerCase(Locale.ROOT);
+        String baseName = "art-decor-" + employee.getEmployeeCode() + "-" + from + "-to-" + to;
+
+        return switch (normalized) {
+            case "pdf" -> new ExportFile(
+                    baseName + ".pdf",
+                    "application/pdf",
+                    SimplePdf.render(companyName() + " Employee Attendance", employeeReportLines(employee, from, to, rows))
+            );
+            case "xlsx", "xls", "excel" -> new ExportFile(
+                    baseName + ".xls",
+                    "application/vnd.ms-excel",
+                    employeeExcelXml(employee, from, to, rows).getBytes(StandardCharsets.UTF_8)
+            );
+            default -> new ExportFile(
+                    baseName + ".csv",
+                    "text/csv; charset=UTF-8",
+                    employeeCsv(employee, from, to, rows).getBytes(StandardCharsets.UTF_8)
             );
         };
     }
@@ -312,6 +346,29 @@ public class AttendanceReportService {
         return builder.toString();
     }
 
+    private String employeeCsv(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
+        AttendanceReportSummary summary = summarize(rows);
+        StringBuilder builder = new StringBuilder();
+        builder.append(csvValue("Employee name")).append(',').append(csvValue(employee.getFullName())).append('\n');
+        builder.append(csvValue("Employee code")).append(',').append(csvValue(employee.getEmployeeCode())).append('\n');
+        builder.append(csvValue("Date range")).append(',').append(csvValue(from + " to " + to)).append('\n');
+        builder.append(csvValue("Total worked days")).append(',').append(workedDays(rows)).append('\n');
+        builder.append(csvValue("Total worked hours")).append(',').append(minutesToHours(summary.workedMinutes())).append('\n');
+        builder.append(csvValue("Total overtime")).append(',').append(minutesToHours(summary.overtimeMinutes())).append('\n');
+        builder.append(csvValue("Late days")).append(',').append(summary.late()).append('\n');
+        builder.append(csvValue("Absent days")).append(',').append(summary.absent()).append("\n\n");
+        builder.append("Date,Check In,Check Out,Worked Hours,Status\n");
+        for (AttendanceReportRow row : rows) {
+            builder.append(csvValue(row.workDate().toString())).append(',')
+                    .append(csvValue(time(row.checkedInAt()))).append(',')
+                    .append(csvValue(time(row.checkedOutAt()))).append(',')
+                    .append(String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes()))).append(',')
+                    .append(csvValue(row.autoCheckout() ? "Auto Check Out" : row.status()))
+                    .append('\n');
+        }
+        return builder.toString();
+    }
+
     private String excelXml(List<AttendanceReportRow> rows) {
         StringBuilder builder = new StringBuilder("""
                 <?xml version="1.0"?>
@@ -335,6 +392,37 @@ public class AttendanceReportService {
                     row.autoCheckout() ? "Auto Check Out" : "Manual",
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.overtimeMinutes()))
+            )));
+        }
+        builder.append("</Table></Worksheet></Workbook>");
+        return builder.toString();
+    }
+
+    private String employeeExcelXml(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
+        AttendanceReportSummary summary = summarize(rows);
+        StringBuilder builder = new StringBuilder("""
+                <?xml version="1.0"?>
+                <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+                 xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+                <Worksheet ss:Name="Employee Attendance"><Table>
+                """);
+        builder.append(excelRow(List.of("Employee name", employee.getFullName())));
+        builder.append(excelRow(List.of("Employee code", employee.getEmployeeCode())));
+        builder.append(excelRow(List.of("Date range", from + " to " + to)));
+        builder.append(excelRow(List.of("Total worked days", String.valueOf(workedDays(rows)))));
+        builder.append(excelRow(List.of("Total worked hours", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())))));
+        builder.append(excelRow(List.of("Total overtime", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.overtimeMinutes())))));
+        builder.append(excelRow(List.of("Late days", String.valueOf(summary.late()))));
+        builder.append(excelRow(List.of("Absent days", String.valueOf(summary.absent()))));
+        builder.append(excelRow(List.of()));
+        builder.append(excelRow(List.of("Date", "Check In", "Check Out", "Worked Hours", "Status")));
+        for (AttendanceReportRow row : rows) {
+            builder.append(excelRow(List.of(
+                    row.workDate().toString(),
+                    time(row.checkedInAt()),
+                    time(row.checkedOutAt()),
+                    String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
+                    row.autoCheckout() ? "Auto Check Out" : row.status()
             )));
         }
         builder.append("</Table></Worksheet></Workbook>");
@@ -368,8 +456,46 @@ public class AttendanceReportService {
         return lines;
     }
 
+    private List<String> employeeReportLines(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
+        AttendanceReportSummary summary = summarize(rows);
+        List<String> lines = new ArrayList<>();
+        lines.add(companyName());
+        lines.add("Employee: " + employee.getFullName() + " (" + employee.getEmployeeCode() + ")");
+        lines.add("Date range: " + from + " to " + to);
+        lines.add("");
+        lines.add("Worked days: " + workedDays(rows) + "    Worked hours: " + String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())));
+        lines.add("Overtime: " + String.format(Locale.ROOT, "%.2f", minutesToHours(summary.overtimeMinutes()))
+                + "    Late days: " + summary.late() + "    Absent days: " + summary.absent());
+        lines.add("");
+        lines.add("Date | Check In | Check Out | Worked | Status");
+        for (AttendanceReportRow row : rows) {
+            lines.add(row.workDate() + " | " + time(row.checkedInAt()) + " | " + time(row.checkedOutAt()) + " | "
+                    + String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())) + " | "
+                    + (row.autoCheckout() ? "Auto Check Out" : row.status()));
+        }
+        return lines;
+    }
+
     private double minutesToHours(int minutes) {
         return minutes / 60.0;
+    }
+
+    private int workedDays(List<AttendanceReportRow> rows) {
+        return (int) rows.stream()
+                .filter(row -> !row.absent())
+                .filter(row -> row.workedMinutes() > 0 || row.checkedInAt() != null)
+                .count();
+    }
+
+    private String time(Instant value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private String companyName() {
+        return settings.findAll().stream()
+                .findFirst()
+                .map(setting -> setting.getCompanyName() == null ? "Art Decor Events" : setting.getCompanyName())
+                .orElse("Art Decor Events");
     }
 
     private String gps(Double latitude, Double longitude) {
