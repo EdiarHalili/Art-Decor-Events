@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Check, Edit3, Power, PowerOff, Search, UserRoundCheck, X } from "lucide-react";
+import { CalendarClock, Check, Edit3, Power, PowerOff, Search, Trash2, UserRoundCheck, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -7,6 +7,7 @@ import {
   cancelCheckInWindow,
   closeCheckInWindow,
   createCheckInWindow,
+  deleteCheckInWindow,
   listCheckInWindows,
   listEmployees,
   openCheckInWindow,
@@ -151,6 +152,25 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       setMessage(successMessage);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The window action could not be completed.");
+    }
+  }
+
+  async function deleteCancelled(windowId: string) {
+    const confirmed = globalThis.confirm("Delete this cancelled daily check-in window permanently?");
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+    try {
+      await deleteCheckInWindow(accessToken, windowId);
+      setWindows((current) => current.filter((window) => window.id !== windowId));
+      if (editingWindowId === windowId) {
+        resetForm();
+      }
+      setMessage("Cancelled daily check-in window deleted.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The cancelled window could not be deleted.");
     }
   }
 
@@ -359,15 +379,25 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                     <Edit3 size={16} />
                     Edit
                   </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Daily check-in window cancelled.")}
-                    disabled={window.status === "CANCELLED"}
-                  >
-                    <X size={16} />
-                    Cancel
-                  </Button>
+                  {window.status === "CANCELLED" ? (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => void deleteCancelled(window.id)}
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Daily check-in window cancelled.")}
+                    >
+                      <X size={16} />
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

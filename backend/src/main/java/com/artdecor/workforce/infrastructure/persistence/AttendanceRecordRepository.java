@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 public interface AttendanceRecordRepository extends JpaRepository<AttendanceRecordEntity, UUID> {
     Optional<AttendanceRecordEntity> findByScheduleIdAndEmployeeId(UUID scheduleId, UUID employeeId);
 
+    void deleteByScheduleId(UUID scheduleId);
+
     @Query("""
             select record
             from AttendanceRecordEntity record

@@ -1,6 +1,7 @@
 package com.artdecor.workforce.application.checkinwindow;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
@@ -18,15 +19,18 @@ public class DailyCheckInWindowService {
 
     private final WorkScheduleRepository windows;
     private final ScheduleAssignmentRepository assignments;
+    private final AttendanceRecordRepository attendanceRecords;
     private final EmployeeRepository employees;
 
     public DailyCheckInWindowService(
             WorkScheduleRepository windows,
             ScheduleAssignmentRepository assignments,
+            AttendanceRecordRepository attendanceRecords,
             EmployeeRepository employees
     ) {
         this.windows = windows;
         this.assignments = assignments;
+        this.attendanceRecords = attendanceRecords;
         this.employees = employees;
     }
 
@@ -90,6 +94,17 @@ public class DailyCheckInWindowService {
         WorkScheduleEntity window = findWindow(windowId);
         window.setStatus(WorkScheduleStatus.CANCELLED);
         return toResponse(window);
+    }
+
+    @Transactional
+    public void deleteCancelledWindow(UUID windowId) {
+        WorkScheduleEntity window = findWindow(windowId);
+        if (window.getStatus() != WorkScheduleStatus.CANCELLED) {
+            throw new DailyCheckInWindowException("Only cancelled daily check-in windows can be deleted.");
+        }
+        attendanceRecords.deleteByScheduleId(windowId);
+        assignments.deleteByScheduleId(windowId);
+        windows.delete(window);
     }
 
     @Transactional
@@ -161,4 +176,3 @@ public class DailyCheckInWindowService {
         );
     }
 }
-

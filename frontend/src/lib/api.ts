@@ -393,6 +393,12 @@ export async function cancelCheckInWindow(accessToken: string, windowId: string)
   });
 }
 
+export async function deleteCheckInWindow(accessToken: string, windowId: string): Promise<void> {
+  return authorizedRequest<void>(`/admin/check-in-windows/${windowId}`, accessToken, {
+    method: "DELETE",
+  });
+}
+
 export async function getAttendanceReport(
   accessToken: string,
   params: { from: string; to: string; period: "daily" | "weekly" | "monthly" },

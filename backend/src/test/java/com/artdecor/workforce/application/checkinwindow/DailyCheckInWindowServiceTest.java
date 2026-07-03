@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -26,6 +27,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class DailyCheckInWindowServiceTest {
     private final WorkScheduleRepository windows = org.mockito.Mockito.mock(WorkScheduleRepository.class);
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
+    private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
     private DailyCheckInWindowService service;
     private UUID employeeId;
@@ -33,7 +35,7 @@ class DailyCheckInWindowServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyCheckInWindowService(windows, assignments, employees);
+        service = new DailyCheckInWindowService(windows, assignments, attendanceRecords, employees);
         employeeId = UUID.randomUUID();
         employee = new EmployeeEntity();
         ReflectionTestUtils.setField(employee, "id", employeeId);
@@ -91,6 +93,31 @@ class DailyCheckInWindowServiceTest {
 
         assertThat(service.openWindow(windowId).status()).isEqualTo("CHECK_IN_OPEN");
         assertThat(service.closeWindow(windowId).status()).isEqualTo("CHECK_IN_CLOSED");
+    }
+
+    @Test
+    void deletesOnlyCancelledWindows() {
+        UUID windowId = UUID.randomUUID();
+        WorkScheduleEntity window = window(windowId);
+        window.setStatus(WorkScheduleStatus.CANCELLED);
+        when(windows.findById(windowId)).thenReturn(Optional.of(window));
+
+        service.deleteCancelledWindow(windowId);
+
+        org.mockito.Mockito.verify(attendanceRecords).deleteByScheduleId(windowId);
+        org.mockito.Mockito.verify(assignments).deleteByScheduleId(windowId);
+        org.mockito.Mockito.verify(windows).delete(window);
+    }
+
+    @Test
+    void rejectsDeleteForActiveWindows() {
+        UUID windowId = UUID.randomUUID();
+        WorkScheduleEntity window = window(windowId);
+        when(windows.findById(windowId)).thenReturn(Optional.of(window));
+
+        assertThatThrownBy(() -> service.deleteCancelledWindow(windowId))
+                .isInstanceOf(DailyCheckInWindowException.class)
+                .hasMessageContaining("Only cancelled");
     }
 
     private DailyCheckInWindowCommand command(Set<UUID> employeeIds) {
