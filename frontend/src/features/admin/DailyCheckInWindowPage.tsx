@@ -356,29 +356,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => void runWindowAction(window.id, openCheckInWindow, "Check-in opened manually.")}
-                    disabled={window.status === "CANCELLED" || window.status === "CHECK_IN_OPEN"}
-                  >
-                    <Power size={16} />
-                    Open
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Check-in closed manually.")}
-                    disabled={window.status === "CANCELLED" || window.status === "CHECK_IN_CLOSED"}
-                  >
-                    <PowerOff size={16} />
-                    Close
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => editWindow(window)} disabled={window.status === "CANCELLED"}>
-                    <Edit3 size={16} />
-                    Edit
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2">
                   {window.status === "CANCELLED" ? (
                     <Button
                       type="button"
@@ -386,17 +364,41 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                       onClick={() => void deleteCancelled(window.id)}
                     >
                       <Trash2 size={16} />
-                      Delete
+                      Delete cancelled
                     </Button>
                   ) : (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Daily check-in window cancelled.")}
-                    >
-                      <X size={16} />
-                      Cancel
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void runWindowAction(window.id, openCheckInWindow, "Check-in opened manually.")}
+                        disabled={window.status === "CHECK_IN_OPEN"}
+                      >
+                        <Power size={16} />
+                        Open
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Check-in closed manually.")}
+                        disabled={window.status === "CHECK_IN_CLOSED"}
+                      >
+                        <PowerOff size={16} />
+                        Close
+                      </Button>
+                      <Button type="button" variant="ghost" onClick={() => editWindow(window)}>
+                        <Edit3 size={16} />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Daily check-in window cancelled.")}
+                      >
+                        <X size={16} />
+                        Cancel
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
