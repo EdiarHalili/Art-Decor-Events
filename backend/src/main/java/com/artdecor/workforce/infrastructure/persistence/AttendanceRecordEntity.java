@@ -59,6 +59,9 @@ public class AttendanceRecordEntity {
     private int overtimeMinutes;
 
     @Column(nullable = false)
+    private boolean autoCheckout;
+
+    @Column(nullable = false)
     private boolean requiresApproval;
 
     private String approvalReason;
@@ -149,6 +152,14 @@ public class AttendanceRecordEntity {
         this.overtimeMinutes = overtimeMinutes;
     }
 
+    public boolean isAutoCheckout() {
+        return autoCheckout;
+    }
+
+    public void setAutoCheckout(boolean autoCheckout) {
+        this.autoCheckout = autoCheckout;
+    }
+
     public boolean isRequiresApproval() {
         return requiresApproval;
     }
@@ -170,4 +181,3 @@ public class AttendanceRecordEntity {
         updatedAt = Instant.now();
     }
 }
-

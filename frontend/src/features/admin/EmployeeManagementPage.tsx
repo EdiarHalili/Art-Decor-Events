@@ -354,13 +354,13 @@ function EmployeeProfile({
               </div>
               <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
                 <span>Check In: {formatTime(row.checkedInAt)}</span>
-                <span>Check Out: {formatTime(row.checkedOutAt)}</span>
+                <span>Check Out: {row.autoCheckout ? `Auto Check Out: ${formatTime(row.checkedOutAt)}` : formatTime(row.checkedOutAt)}</span>
                 <span>Worked: {formatMinutes(row.workedMinutes)}</span>
                 <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.absent ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                  Status: {formatStatus(row.status)}
+                  Status: {row.autoCheckout ? "Auto Check Out" : formatStatus(row.status)}
                 </span>
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
                   {row.late ? "Late" : "On time"}

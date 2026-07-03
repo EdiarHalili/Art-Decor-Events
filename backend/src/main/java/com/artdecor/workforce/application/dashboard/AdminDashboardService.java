@@ -89,6 +89,7 @@ public class AdminDashboardService {
                         record.getCheckedOutAt(),
                         record.getWorkedMinutes(),
                         record.getOvertimeMinutes(),
+                        record.isAutoCheckout(),
                         record.getStatus() == AttendanceStatus.LATE
                 ))
                 .toList();

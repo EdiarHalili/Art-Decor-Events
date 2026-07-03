@@ -112,6 +112,7 @@ public class AttendanceService {
         record.setCheckOutDevice(command.device());
         record.setWorkedMinutes((int) Duration.between(record.getCheckedInAt(), now).toMinutes());
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, now));
+        record.setAutoCheckout(false);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
 
         audit.log(principal, "CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", record.getId());
@@ -144,6 +145,7 @@ public class AttendanceService {
                 record.getCheckedOutAt(),
                 record.getWorkedMinutes(),
                 record.getOvertimeMinutes(),
+                record.isAutoCheckout(),
                 record.isRequiresApproval(),
                 record.getApprovalReason()
         );

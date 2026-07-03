@@ -130,6 +130,7 @@ public class AttendanceReportService {
                 0,
                 0,
                 false,
+                false,
                 true
         );
     }
@@ -146,6 +147,7 @@ public class AttendanceReportService {
                 record.getCheckedOutAt(),
                 record.getWorkedMinutes(),
                 record.getOvertimeMinutes(),
+                record.isAutoCheckout(),
                 record.getStatus() == AttendanceStatus.LATE,
                 false
         );
@@ -237,7 +239,7 @@ public class AttendanceReportService {
     }
 
     private String csv(List<AttendanceReportRow> rows) {
-        StringBuilder builder = new StringBuilder("Date,Employee ID,Employee,Status,Check In,Check Out,Worked Hours,Overtime Hours\n");
+        StringBuilder builder = new StringBuilder("Date,Employee ID,Employee,Status,Check In,Check Out,Checkout Type,Worked Hours,Overtime Hours\n");
         for (AttendanceReportRow row : rows) {
             builder.append(csvValue(row.workDate().toString())).append(',')
                     .append(csvValue(row.employeeCode())).append(',')
@@ -245,6 +247,7 @@ public class AttendanceReportService {
                     .append(csvValue(row.status())).append(',')
                     .append(csvValue(row.checkedInAt() == null ? "" : row.checkedInAt().toString())).append(',')
                     .append(csvValue(row.checkedOutAt() == null ? "" : row.checkedOutAt().toString())).append(',')
+                    .append(csvValue(row.autoCheckout() ? "Auto Check Out" : "Manual")).append(',')
                     .append(minutesToHours(row.workedMinutes())).append(',')
                     .append(minutesToHours(row.overtimeMinutes())).append('\n');
         }
@@ -258,7 +261,7 @@ public class AttendanceReportService {
                  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
                 <Worksheet ss:Name="Attendance"><Table>
                 """);
-        builder.append(excelRow(List.of("Date", "Employee ID", "Employee", "Status", "Check In", "Check Out", "Worked Hours", "Overtime Hours")));
+        builder.append(excelRow(List.of("Date", "Employee ID", "Employee", "Status", "Check In", "Check Out", "Checkout Type", "Worked Hours", "Overtime Hours")));
         for (AttendanceReportRow row : rows) {
             builder.append(excelRow(List.of(
                     row.workDate().toString(),
@@ -267,6 +270,7 @@ public class AttendanceReportService {
                     row.status(),
                     row.checkedInAt() == null ? "" : row.checkedInAt().toString(),
                     row.checkedOutAt() == null ? "" : row.checkedOutAt().toString(),
+                    row.autoCheckout() ? "Auto Check Out" : "Manual",
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.overtimeMinutes()))
             )));
@@ -291,9 +295,10 @@ public class AttendanceReportService {
         lines.add("Assigned: " + summary.assigned() + "  Present: " + summary.present() + "  Late: " + summary.late() + "  Absent: " + summary.absent());
         lines.add("Worked hours: " + String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())));
         lines.add("");
-        lines.add("Date | Employee | Status | Worked");
+        lines.add("Date | Employee | Status | Checkout | Worked");
         for (AttendanceReportRow row : rows) {
             lines.add(row.workDate() + " | " + row.employeeName() + " | " + row.status() + " | "
+                    + (row.autoCheckout() ? "Auto Check Out" : "Manual") + " | "
                     + String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())));
         }
         return lines;

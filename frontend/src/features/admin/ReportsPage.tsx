@@ -268,10 +268,15 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                     <span className="block text-xs text-muted-foreground">{row.employeeCode}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{label(row.status)}</span>
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status, row.autoCheckout)}`}>
+                      {row.autoCheckout ? "auto check out" : label(row.status)}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{time(row.checkedInAt)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{time(row.checkedOutAt)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {time(row.checkedOutAt)}
+                    {row.autoCheckout && <span className="mt-1 block text-xs text-primary">Auto Check Out</span>}
+                  </td>
                   <td className="px-4 py-3">{hours(row.workedMinutes)}</td>
                   <td className="px-4 py-3">{hours(row.overtimeMinutes)}</td>
                 </tr>
@@ -323,7 +328,10 @@ function label(status: AttendanceReportRow["status"]) {
   return status.replace("_", " ").toLowerCase();
 }
 
-function statusClass(status: AttendanceReportRow["status"]) {
+function statusClass(status: AttendanceReportRow["status"], autoCheckout = false) {
+  if (autoCheckout) {
+    return "bg-primary/15 text-primary";
+  }
   if (status === "ABSENT") {
     return "bg-destructive/15 text-destructive";
   }

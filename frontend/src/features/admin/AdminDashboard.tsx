@@ -212,12 +212,12 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
                       <span>In: {formatTime(row.checkedInAt)}</span>
-                      <span>Out: {formatTime(row.checkedOutAt)}</span>
+                      <span>Out: {formatTime(row.checkedOutAt)}{row.autoCheckout ? " (Auto)" : ""}</span>
                       <span>Worked: {formatMinutes(row.workedMinutes)}</span>
                       <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
                     </div>
                     <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                      {row.status.replaceAll("_", " ")}
+                      {row.autoCheckout ? "AUTO CHECK OUT" : row.status.replaceAll("_", " ")}
                     </span>
                   </div>
                 ))}

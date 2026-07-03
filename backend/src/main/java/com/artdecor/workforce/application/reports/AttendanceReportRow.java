@@ -14,6 +14,7 @@ public record AttendanceReportRow(
         Instant checkedOutAt,
         int workedMinutes,
         int overtimeMinutes,
+        boolean autoCheckout,
         boolean late,
         boolean absent
 ) {

@@ -67,6 +67,7 @@ export type AdminLiveAttendanceRow = {
   checkedOutAt: string | null;
   workedMinutes: number;
   overtimeMinutes: number;
+  autoCheckout: boolean;
   late: boolean;
 };
 
@@ -92,6 +93,7 @@ export type AttendanceResponse = {
   checkedOutAt: string | null;
   workedMinutes: number;
   overtimeMinutes: number;
+  autoCheckout: boolean;
   requiresApproval: boolean;
   approvalReason: string | null;
 };
@@ -119,6 +121,7 @@ export type AttendanceReportRow = {
   checkedOutAt: string | null;
   workedMinutes: number;
   overtimeMinutes: number;
+  autoCheckout: boolean;
   late: boolean;
   absent: boolean;
 };

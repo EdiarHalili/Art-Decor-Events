@@ -11,6 +11,7 @@ public record AdminLiveAttendanceRow(
         Instant checkedOutAt,
         int workedMinutes,
         int overtimeMinutes,
+        boolean autoCheckout,
         boolean late
 ) {
 }

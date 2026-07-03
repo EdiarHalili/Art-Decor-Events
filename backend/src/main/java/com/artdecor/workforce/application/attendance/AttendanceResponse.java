@@ -11,8 +11,8 @@ public record AttendanceResponse(
         Instant checkedOutAt,
         int workedMinutes,
         int overtimeMinutes,
+        boolean autoCheckout,
         boolean requiresApproval,
         String approvalReason
 ) {
 }
-
