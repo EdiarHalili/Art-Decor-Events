@@ -110,10 +110,16 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
     setMessage("");
 
     try {
+      const validationMessage = validateWindowForm(form);
+      if (validationMessage) {
+        setMessage(validationMessage);
+        return;
+      }
+
       const payload = {
         workDate: form.workDate,
-        checkInOpensAt: localDateTimeToIso(form.workDate, form.checkInOpensAt),
-        checkInClosesAt: localDateTimeToIso(form.workDate, form.checkInClosesAt),
+        checkInOpensAt: localDateTimeToIso(form.workDate, form.checkInOpensAt, settings?.timezone),
+        checkInClosesAt: localDateTimeToIso(form.workDate, form.checkInClosesAt, settings?.timezone),
         employeeIds: form.employeeIds,
       };
 
@@ -126,8 +132,8 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       setEditingWindowId(null);
       setEmployeeQuery("");
       setMessage(editingWindowId ? "Daily check-in window updated." : "Daily check-in window scheduled.");
-    } catch {
-      setMessage("The window could not be saved. Check the date, times, and selected employees.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The window could not be saved.");
     } finally {
       setSaving(false);
     }
@@ -143,8 +149,8 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       const updated = await action(accessToken, windowId);
       setWindows((current) => upsertWindow(current, updated));
       setMessage(successMessage);
-    } catch {
-      setMessage("The window action could not be completed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The window action could not be completed.");
     }
   }
 
@@ -325,7 +331,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {formatTime(window.checkInOpensAt)} - {formatTime(window.checkInClosesAt)} -{" "}
+                    {formatTime(window.checkInOpensAt, settings?.timezone)} - {formatTime(window.checkInClosesAt, settings?.timezone)} -{" "}
                     {window.allowedEmployeeCount} allowed workers
                   </p>
                 </div>
@@ -372,8 +378,46 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
   );
 }
 
-function localDateTimeToIso(date: string, time: string) {
-  return new Date(`${date}T${time}:00`).toISOString();
+function validateWindowForm(form: WindowForm) {
+  if (!form.employeeIds.length) {
+    return "Select at least one allowed employee before saving the daily check-in window.";
+  }
+  if (!form.workDate || !form.checkInOpensAt || !form.checkInClosesAt) {
+    return "Date, opening time, and closing time are required.";
+  }
+  if (form.checkInClosesAt <= form.checkInOpensAt) {
+    return "Check-in close time must be after the opening time.";
+  }
+  return "";
+}
+
+function localDateTimeToIso(date: string, time: string, timezone = "Europe/Berlin") {
+  const utcGuess = new Date(`${date}T${time}:00Z`);
+  const offset = getTimeZoneOffsetMs(timezone, utcGuess);
+  return new Date(utcGuess.getTime() - offset).toISOString();
+}
+
+function getTimeZoneOffsetMs(timezone: string, date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  const asUtc = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+  );
+  return asUtc - date.getTime();
 }
 
 function localDateInputValue() {
@@ -400,8 +444,8 @@ function formatDate(value: string) {
   );
 }
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+function formatTime(value: string, timezone = "Europe/Berlin") {
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", timeZone: timezone }).format(new Date(value));
 }
 
 function statusClass(status: DailyCheckInWindow["status"]) {

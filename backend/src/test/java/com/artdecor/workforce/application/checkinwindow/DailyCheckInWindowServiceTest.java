@@ -72,6 +72,17 @@ class DailyCheckInWindowServiceTest {
     }
 
     @Test
+    void cancelledWindowDoesNotBlockNewWindowForSameDate() {
+        when(windows.existsByWorkDateAndStatusNot(LocalDate.of(2026, 7, 4), WorkScheduleStatus.CANCELLED))
+                .thenReturn(false);
+
+        DailyCheckInWindowResponse response = service.createWindow(command(Set.of(employeeId)));
+
+        assertThat(response.workDate()).isEqualTo(LocalDate.of(2026, 7, 4));
+        assertThat(response.status()).isEqualTo("PUBLISHED");
+    }
+
+    @Test
     void opensAndClosesWindowManually() {
         UUID windowId = UUID.randomUUID();
         WorkScheduleEntity window = window(windowId);
@@ -102,4 +113,3 @@ class DailyCheckInWindowServiceTest {
         return window;
     }
 }
-

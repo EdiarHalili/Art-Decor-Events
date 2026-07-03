@@ -20,6 +20,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [message, setMessage] = useState("");
   const [actionLoading, setActionLoading] = useState<"CHECK_IN" | "CHECK_OUT" | null>(null);
   const [queuedCount, setQueuedCount] = useState(getQueuedAttendanceActions().length);
+  const [todayFresh, setTodayFresh] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -37,9 +39,12 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     getEmployeeToday(session.accessToken)
       .then((response) => {
         setToday(response);
+        setTodayFresh(true);
+        setNow(response.serverNow ? new Date(response.serverNow).getTime() : Date.now());
         cacheToday(session.employeeId, response);
       })
       .catch(() => {
+        setTodayFresh(false);
         setMessage("Today's assignment could not be loaded. Attendance actions will be queued if needed.");
       });
 
@@ -52,6 +57,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       window.removeEventListener("offline", syncOnlineState);
     };
   }, [session.accessToken]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow((current) => current + 1000), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const employeeName = today?.employeeName ?? session.fullName;
 
@@ -84,6 +94,10 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
     if (!today?.scheduleId || !session.employeeId) {
       setMessage("No active daily check-in window is available for attendance.");
+      return;
+    }
+    if (navigator.onLine && !todayFresh) {
+      setMessage("Refreshing today's check-in window. Please try again in a moment.");
       return;
     }
 
@@ -144,6 +158,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       getEmployeeToday(session.accessToken)
         .then((response) => {
           setToday(response);
+          setTodayFresh(true);
+          setNow(response.serverNow ? new Date(response.serverNow).getTime() : Date.now());
           cacheToday(session.employeeId, response);
         })
         .catch(() => undefined);
@@ -196,6 +212,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
               Status
             </div>
             <p className="mt-2 text-muted-foreground">{today?.status ?? "Checking current status..."}</p>
+            {today && <p className="mt-2 font-medium text-primary">{countdownText(today, now)}</p>}
             <p className="mt-2 text-xs text-muted-foreground">
               GPS capture is {settings?.gpsEnabled === false ? "off for this company." : "optional and will be requested only when attendance is recorded."}
             </p>
@@ -206,7 +223,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           <div className="mt-5 grid gap-3">
             <Button
               className="h-14 text-base sm:h-16"
-              disabled={!today?.checkInOpen || actionLoading !== null}
+              disabled={!today?.checkInOpen || actionLoading !== null || (online && !todayFresh)}
               onClick={() => void submitAttendance("CHECK_IN")}
             >
               {actionLoading === "CHECK_IN" ? "Recording..." : "Check In"}
@@ -214,7 +231,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             <Button
               className="h-14 text-base sm:h-16"
               variant="secondary"
-              disabled={!today?.checkOutAvailable || actionLoading !== null}
+              disabled={!today?.checkOutAvailable || actionLoading !== null || (online && !todayFresh)}
               onClick={() => void submitAttendance("CHECK_OUT")}
             >
               {actionLoading === "CHECK_OUT" ? "Recording..." : "Check Out"}
@@ -241,6 +258,36 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       </div>
     </main>
   );
+}
+
+function countdownText(today: EmployeeToday, nowMs: number) {
+  if (!today.checkInOpensAt || !today.checkInClosesAt) {
+    return "No check-in window scheduled.";
+  }
+  const opensAt = new Date(today.checkInOpensAt).getTime();
+  const closesAt = new Date(today.checkInClosesAt).getTime();
+  if (nowMs < opensAt) {
+    return `Check-in opens in ${formatDuration(opensAt - nowMs)}.`;
+  }
+  if (nowMs <= closesAt || today.checkInOpen) {
+    const remaining = Math.max(closesAt - nowMs, 0);
+    return remaining > 0 ? `Check-in closes in ${formatDuration(remaining)}.` : "Check-in is open manually.";
+  }
+  return "Window closed.";
+}
+
+function formatDuration(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
 }
 
 function cacheToday(employeeId: string | null, today: EmployeeToday) {

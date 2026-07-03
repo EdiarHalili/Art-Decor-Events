@@ -44,6 +44,7 @@ class EmployeeTodayServiceTest {
         assertThat(response.assignment()).contains("No assignment");
         assertThat(response.scheduleId()).isNull();
         assertThat(response.checkInOpen()).isFalse();
+        assertThat(response.serverNow()).isEqualTo(Instant.parse("2026-07-03T06:55:00Z"));
         assertThat(response.announcements()).isNotEmpty();
     }
 }

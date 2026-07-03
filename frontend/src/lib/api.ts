@@ -64,6 +64,9 @@ export type EmployeeToday = {
   status: string;
   checkInOpen: boolean;
   checkOutAvailable: boolean;
+  checkInOpensAt: string | null;
+  checkInClosesAt: string | null;
+  serverNow: string;
   announcements: string[];
 };
 

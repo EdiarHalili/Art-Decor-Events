@@ -64,6 +64,9 @@ public class EmployeeTodayService {
                             status,
                             checkInOpen,
                             checkOutAvailable,
+                            schedule.getCheckInOpensAt(),
+                            schedule.getCheckInClosesAt(),
+                            now,
                             announcements()
                     );
                 })
@@ -74,6 +77,9 @@ public class EmployeeTodayService {
                         "Check-in is not open.",
                         false,
                         false,
+                        null,
+                        null,
+                        Instant.now(clock),
                         announcements()
                 ));
     }
