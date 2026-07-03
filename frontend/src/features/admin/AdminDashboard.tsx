@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, RefreshCw, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
@@ -123,11 +123,36 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
 function DashboardOverview({ accessToken }: { accessToken: string }) {
   const [snapshot, setSnapshot] = useState<AdminDashboardSnapshot | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getAdminDashboard(accessToken)
-      .then(setSnapshot)
-      .catch(() => setMessage("Dashboard data could not be loaded."));
+    let active = true;
+
+    async function loadDashboard() {
+      setLoading(true);
+      try {
+        const nextSnapshot = await getAdminDashboard(accessToken);
+        if (active) {
+          setSnapshot(nextSnapshot);
+          setMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setMessage(error instanceof Error ? error.message : "Dashboard data could not be loaded.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadDashboard();
+    const interval = window.setInterval(() => void loadDashboard(), 15000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, [accessToken]);
 
   const kpis = [
@@ -169,9 +194,33 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
 
           <section className="mt-6 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
             <Card className="p-5">
-              <h2 className="font-semibold">Live attendance</h2>
-              <div className="mt-5 rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                Attendance activity will appear here when daily check-in windows are opened.
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-semibold">Live attendance</h2>
+                {loading && <RefreshCw className="animate-spin text-muted-foreground" size={16} />}
+              </div>
+              <div className="mt-5 divide-y divide-border rounded-lg border border-border">
+                {!loading && (snapshot?.liveAttendance.length ?? 0) === 0 && (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No employees are checked in yet today.
+                  </div>
+                )}
+                {snapshot?.liveAttendance.map((row) => (
+                  <div key={`${row.employeeId}-${row.checkedInAt}`} className="grid gap-3 p-4 text-sm md:grid-cols-[1.2fr_1fr_auto] md:items-center">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{row.employeeName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
+                      <span>In: {formatTime(row.checkedInAt)}</span>
+                      <span>Out: {formatTime(row.checkedOutAt)}</span>
+                      <span>Worked: {formatMinutes(row.workedMinutes)}</span>
+                      <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
+                    </div>
+                    <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
+                      {row.status.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                ))}
               </div>
             </Card>
             <Card className="p-5">
@@ -187,4 +236,17 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
           </section>
     </>
   );
+}
+
+function formatTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function formatMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `${hours}h ${remainder}m`;
 }

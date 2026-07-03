@@ -55,6 +55,27 @@ class AttendanceReportServiceTest {
         assertThat(pdf.content()).startsWith("%PDF".getBytes());
     }
 
+    @Test
+    void employeeHistoryPrefersActualAttendanceOverSameDayAbsentAssignment() {
+        LocalDate date = LocalDate.of(2026, 7, 3);
+        EmployeeEntity employee = employee("EMP001", "Present Worker");
+        WorkScheduleEntity checkedInSchedule = schedule(date);
+        WorkScheduleEntity replacementSchedule = schedule(date);
+
+        ScheduleAssignmentEntity replacementAssignment = assignment(replacementSchedule, employee);
+        AttendanceRecordEntity record = record(checkedInSchedule, employee);
+
+        when(assignments.findReportAssignments(date, date, WorkScheduleStatus.CANCELLED))
+                .thenReturn(List.of(replacementAssignment));
+        when(attendanceRecords.findReportRecords(date, date)).thenReturn(List.of(record));
+
+        List<AttendanceReportRow> history = service.employeeHistory(employee.getId(), date, date);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.getFirst().status()).isEqualTo(AttendanceStatus.CHECKED_OUT.name());
+        assertThat(history.getFirst().checkedInAt()).isEqualTo(Instant.parse("2026-07-03T04:55:00Z"));
+    }
+
     private WorkScheduleEntity schedule(LocalDate date) {
         WorkScheduleEntity schedule = new WorkScheduleEntity();
         ReflectionTestUtils.setField(schedule, "id", UUID.randomUUID());

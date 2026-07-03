@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,8 +56,23 @@ public class AttendanceReportService {
     @Transactional(readOnly = true)
     public List<AttendanceReportRow> employeeHistory(UUID employeeId, LocalDate from, LocalDate to) {
         validateRange(from, to);
-        return rows(from, to).stream()
+        List<AttendanceReportRow> assignmentRows = rows(from, to).stream()
                 .filter(row -> row.employeeId().equals(employeeId.toString()))
+                .toList();
+        List<AttendanceReportRow> actualAttendanceRows = attendanceRecords.findReportRecords(from, to).stream()
+                .filter(record -> record.getEmployee().getId().equals(employeeId))
+                .map(this::attendanceRow)
+                .toList();
+
+        return java.util.stream.Stream.concat(assignmentRows.stream(), actualAttendanceRows.stream())
+                .collect(Collectors.toMap(
+                        AttendanceReportRow::workDate,
+                        row -> row,
+                        this::preferredHistoryRow,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
                 .toList();
     }
 
@@ -133,6 +149,19 @@ public class AttendanceReportService {
                 record.getStatus() == AttendanceStatus.LATE,
                 false
         );
+    }
+
+    private AttendanceReportRow preferredHistoryRow(AttendanceReportRow first, AttendanceReportRow second) {
+        if (first.absent() != second.absent()) {
+            return first.absent() ? second : first;
+        }
+        if (first.checkedInAt() == null) {
+            return second;
+        }
+        if (second.checkedInAt() == null) {
+            return first;
+        }
+        return first.checkedInAt().isAfter(second.checkedInAt()) ? first : second;
     }
 
     private AttendanceReportSummary summarize(List<AttendanceReportRow> rows) {

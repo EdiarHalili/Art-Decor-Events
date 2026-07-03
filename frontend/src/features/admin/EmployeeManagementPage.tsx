@@ -364,11 +364,26 @@ function EmployeeProfile({
         <div className="mt-3 divide-y divide-border rounded-lg border border-border">
           {historyLoading && <p className="p-4 text-sm text-muted-foreground">Loading attendance history...</p>}
           {!historyLoading && history.length === 0 && <p className="p-4 text-sm text-muted-foreground">No attendance records for this month.</p>}
-          {history.slice(0, 8).map((row) => (
-            <div key={`${row.scheduleId}-${row.workDate}`} className="grid gap-2 p-3 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
-              <span className="font-medium">{formatDate(row.workDate)}</span>
-              <span className="text-muted-foreground">{row.status.replaceAll("_", " ")}</span>
-              <span className="text-muted-foreground">{formatMinutes(row.workedMinutes)}</span>
+          {history.slice(0, 12).map((row) => (
+            <div key={`${row.scheduleId}-${row.workDate}`} className="grid gap-3 p-4 text-sm lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
+              <div>
+                <p className="font-semibold">{formatDate(row.workDate)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
+              </div>
+              <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
+                <span>Check In: {formatTime(row.checkedInAt)}</span>
+                <span>Check Out: {formatTime(row.checkedOutAt)}</span>
+                <span>Worked: {formatMinutes(row.workedMinutes)}</span>
+                <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.absent ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
+                  Status: {formatStatus(row.status)}
+                </span>
+                <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                  {row.late ? "Late" : "On time"}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -409,11 +424,22 @@ function dateOnly(date: Date) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
 function formatMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return `${hours}h ${remainder}m`;
+}
+
+function formatStatus(status: string) {
+  return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

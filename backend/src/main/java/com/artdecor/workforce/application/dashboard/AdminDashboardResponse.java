@@ -13,7 +13,7 @@ public record AdminDashboardResponse(
         long inactiveEmployees,
         long administrators,
         long supervisors,
+        List<AdminLiveAttendanceRow> liveAttendance,
         List<String> quickActions
 ) {
 }
-

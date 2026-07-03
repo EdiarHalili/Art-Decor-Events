@@ -54,7 +54,20 @@ export type AdminDashboardSnapshot = {
   inactiveEmployees: number;
   administrators: number;
   supervisors: number;
+  liveAttendance: AdminLiveAttendanceRow[];
   quickActions: string[];
+};
+
+export type AdminLiveAttendanceRow = {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  status: "PRESENT" | "LATE" | "ABSENT" | "CHECKED_OUT" | "PENDING_APPROVAL" | "SCHEDULED";
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
+  workedMinutes: number;
+  overtimeMinutes: number;
+  late: boolean;
 };
 
 export type EmployeeToday = {
