@@ -163,6 +163,7 @@ public class AttendanceReportService {
     private AttendanceReportRow absentRow(ScheduleAssignmentEntity assignment) {
         return new AttendanceReportRow(
                 assignment.getSchedule().getWorkDate(),
+                null,
                 assignment.getSchedule().getId().toString(),
                 assignment.getEmployee().getId().toString(),
                 assignment.getEmployee().getEmployeeCode(),
@@ -179,6 +180,7 @@ public class AttendanceReportService {
                 0,
                 0,
                 false,
+                null,
                 false,
                 true
         );
@@ -187,6 +189,7 @@ public class AttendanceReportService {
     private AttendanceReportRow attendanceRow(AttendanceRecordEntity record, WorkplaceCoordinates workplace) {
         return new AttendanceReportRow(
                 record.getSchedule().getWorkDate(),
+                record.getId() == null ? null : record.getId().toString(),
                 record.getSchedule().getId().toString(),
                 record.getEmployee().getId().toString(),
                 record.getEmployee().getEmployeeCode(),
@@ -203,6 +206,7 @@ public class AttendanceReportService {
                 record.getWorkedMinutes(),
                 record.getOvertimeMinutes(),
                 record.isAutoCheckout(),
+                record.getCheckoutType().name(),
                 record.getStatus() == AttendanceStatus.LATE,
                 false
         );
@@ -342,7 +346,7 @@ public class AttendanceReportService {
                     .append(csvValue(row.checkedOutAt() == null ? "" : row.checkedOutAt().toString())).append(',')
                     .append(csvValue(gps(row.checkOutLatitude(), row.checkOutLongitude()))).append(',')
                     .append(csvValue(row.checkOutDistanceMeters() == null ? "" : row.checkOutDistanceMeters().toString())).append(',')
-                    .append(csvValue(row.autoCheckout() ? "Auto Check Out" : "Manual")).append(',')
+                    .append(csvValue(checkoutTypeLabel(row))).append(',')
                     .append(minutesToHours(row.workedMinutes())).append(',')
                     .append(minutesToHours(row.overtimeMinutes())).append('\n');
         }
@@ -366,7 +370,7 @@ public class AttendanceReportService {
                     .append(csvValue(time(row.checkedInAt()))).append(',')
                     .append(csvValue(time(row.checkedOutAt()))).append(',')
                     .append(String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes()))).append(',')
-                    .append(csvValue(row.autoCheckout() ? "Auto Check Out" : row.status()))
+                    .append(csvValue(statusLabel(row)))
                     .append('\n');
         }
         return builder.toString();
@@ -392,7 +396,7 @@ public class AttendanceReportService {
                     row.checkedOutAt() == null ? "" : row.checkedOutAt().toString(),
                     gps(row.checkOutLatitude(), row.checkOutLongitude()),
                     row.checkOutDistanceMeters() == null ? "" : row.checkOutDistanceMeters().toString(),
-                    row.autoCheckout() ? "Auto Check Out" : "Manual",
+                    checkoutTypeLabel(row),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.overtimeMinutes()))
             )));
@@ -425,7 +429,7 @@ public class AttendanceReportService {
                     time(row.checkedInAt()),
                     time(row.checkedOutAt()),
                     String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())),
-                    row.autoCheckout() ? "Auto Check Out" : row.status()
+                    statusLabel(row)
             )));
         }
         builder.append("</Table></Worksheet></Workbook>");
@@ -453,7 +457,7 @@ public class AttendanceReportService {
             lines.add(row.workDate() + " | " + row.employeeName() + " | " + row.status() + " | "
                     + gps(row.checkInLatitude(), row.checkInLongitude()) + " | "
                     + gps(row.checkOutLatitude(), row.checkOutLongitude()) + " | "
-                    + (row.autoCheckout() ? "Auto Check Out" : "Manual") + " | "
+                    + checkoutTypeLabel(row) + " | "
                     + String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())));
         }
         return lines;
@@ -488,18 +492,19 @@ public class AttendanceReportService {
                 .flatMap(row -> gpsLines(row).stream())
                 .toList();
 
-        boolean hasAutoCheckout = rows.stream().anyMatch(AttendanceReportRow::autoCheckout);
+        boolean hasSystemCheckout = rows.stream().anyMatch(row ->
+                row.autoCheckout() || (row.checkoutType() != null && !row.checkoutType().equals("MANUAL_EMPLOYEE")));
         if (!gpsLines.isEmpty()) {
             lines.add("");
-            if (hasAutoCheckout) {
-                lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi.");
+            if (hasSystemCheckout) {
+                lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi. Admin Check Out = dalje e regjistruar nga administratori.");
                 lines.add("");
             }
             lines.add("GPS");
             lines.addAll(gpsLines);
-        } else if (hasAutoCheckout) {
+        } else if (hasSystemCheckout) {
             lines.add("");
-            lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi.");
+            lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi. Admin Check Out = dalje e regjistruar nga administratori.");
         }
         lines.add("");
         lines.add("Totali i diteve te punuara : " + totals.workedDays());
@@ -540,8 +545,11 @@ public class AttendanceReportService {
         if (row.checkedOutAt() == null) {
             return "-";
         }
-        if (row.autoCheckout()) {
+        if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
             return "Auto Check Out " + time(row.checkedOutAt(), zone);
+        }
+        if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
+            return "Admin Check Out " + time(row.checkedOutAt(), zone);
         }
         return dateTime(row.checkedOutAt(), zone);
     }
@@ -557,8 +565,11 @@ public class AttendanceReportService {
     }
 
     private String statusLabel(AttendanceReportRow row) {
-        if (row.autoCheckout()) {
+        if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
             return "Auto dalje";
+        }
+        if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
+            return "Dalje nga admin";
         }
         if (row.absent()) {
             return "Mungese";
@@ -576,6 +587,19 @@ public class AttendanceReportService {
             return "Ne pritje";
         }
         return row.status();
+    }
+
+    private String checkoutTypeLabel(AttendanceReportRow row) {
+        if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
+            return "Auto checkout";
+        }
+        if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
+            return "Admin checkout";
+        }
+        if ("MANUAL_EMPLOYEE".equals(row.checkoutType())) {
+            return "Manual employee checkout";
+        }
+        return "";
     }
 
     private ZoneId businessZone() {

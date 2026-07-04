@@ -1,5 +1,6 @@
 package com.artdecor.workforce.infrastructure.persistence;
 
+import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +37,13 @@ public class WorkScheduleEntity {
 
     private Instant plannedStartAt;
     private Instant plannedEndAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CheckoutMode checkoutMode = CheckoutMode.SCHEDULED_AUTO;
+
+    @Column(nullable = false)
+    private boolean autoCheckoutEnabled = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -102,6 +110,22 @@ public class WorkScheduleEntity {
 
     public void setPlannedEndAt(Instant plannedEndAt) {
         this.plannedEndAt = plannedEndAt;
+    }
+
+    public CheckoutMode getCheckoutMode() {
+        return checkoutMode;
+    }
+
+    public void setCheckoutMode(CheckoutMode checkoutMode) {
+        this.checkoutMode = checkoutMode;
+    }
+
+    public boolean isAutoCheckoutEnabled() {
+        return autoCheckoutEnabled;
+    }
+
+    public void setAutoCheckoutEnabled(boolean autoCheckoutEnabled) {
+        this.autoCheckoutEnabled = autoCheckoutEnabled;
     }
 
     public WorkScheduleStatus getStatus() {

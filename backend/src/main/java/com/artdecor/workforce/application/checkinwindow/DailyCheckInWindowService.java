@@ -1,6 +1,7 @@
 package com.artdecor.workforce.application.checkinwindow;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -133,8 +134,10 @@ public class DailyCheckInWindowService {
         window.setWorkDate(command.workDate());
         window.setCheckInOpensAt(command.checkInOpensAt());
         window.setCheckInClosesAt(command.checkInClosesAt());
-        window.setPlannedStartAt(command.checkInClosesAt());
-        window.setPlannedEndAt(null);
+        window.setCheckoutMode(command.checkoutMode() == null ? CheckoutMode.SCHEDULED_AUTO : command.checkoutMode());
+        window.setAutoCheckoutEnabled(command.autoCheckoutEnabled());
+        window.setPlannedStartAt(command.checkInOpensAt());
+        window.setPlannedEndAt(command.autoCheckoutEnabled() ? command.checkInClosesAt() : null);
     }
 
     private void replaceAssignments(WorkScheduleEntity window, Set<UUID> employeeIds) {
@@ -155,6 +158,10 @@ public class DailyCheckInWindowService {
         }
         if (!command.checkInClosesAt().isAfter(command.checkInOpensAt())) {
             throw new DailyCheckInWindowException("Invalid open/close time.");
+        }
+        if (command.checkoutMode() == CheckoutMode.UNLIMITED_24_7 && command.autoCheckoutEnabled()
+                && !command.checkInClosesAt().isAfter(command.checkInOpensAt())) {
+            throw new DailyCheckInWindowException("Optional auto checkout time must be after the opening time.");
         }
     }
 
@@ -208,6 +215,8 @@ public class DailyCheckInWindowService {
                 window.getWorkDate(),
                 window.getCheckInOpensAt(),
                 window.getCheckInClosesAt(),
+                window.getCheckoutMode().name(),
+                window.isAutoCheckoutEnabled(),
                 window.getStatus().name(),
                 employeeIds,
                 employeeIds.size(),

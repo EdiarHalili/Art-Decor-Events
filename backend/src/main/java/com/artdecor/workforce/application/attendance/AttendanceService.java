@@ -3,6 +3,8 @@ package com.artdecor.workforce.application.attendance;
 import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.AttendanceStatus;
+import com.artdecor.workforce.domain.CheckoutMode;
+import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
@@ -67,11 +69,12 @@ public class AttendanceService {
         }
 
         Instant now = Instant.now(clock);
+        boolean unlimited = schedule.getCheckoutMode() == CheckoutMode.UNLIMITED_24_7;
         if (schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
             if (now.isBefore(schedule.getCheckInOpensAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
             }
-            if (now.isAfter(schedule.getCheckInClosesAt())) {
+            if (!unlimited && now.isAfter(schedule.getCheckInClosesAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
             }
         }
@@ -117,12 +120,37 @@ public class AttendanceService {
         record.setWorkedMinutes((int) Duration.between(record.getCheckedInAt(), now).toMinutes());
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, now));
         record.setAutoCheckout(false);
+        record.setCheckoutType(CheckoutType.MANUAL_EMPLOYEE);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
 
         audit.log(principal, "CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", record.getId());
         if (liveLocations.existsByAttendanceRecordId(record.getId())) {
             audit.log(principal, "LIVE_LOCATION_TRACKING_STOPPED", "ATTENDANCE_RECORD", record.getId());
         }
+        return toResponse(record);
+    }
+
+    @Transactional
+    public AttendanceResponse adminCheckOut(AuthenticatedPrincipal principal, java.util.UUID attendanceRecordId, Instant checkedOutAt) {
+        AttendanceRecordEntity record = attendanceRecords.findById(attendanceRecordId)
+                .orElseThrow(() -> new AttendanceException("ATTENDANCE_RECORD_NOT_FOUND", "Attendance record not found."));
+        if (record.getCheckedInAt() == null) {
+            throw new AttendanceException("CHECK_IN_REQUIRED", "Employee must check in before checking out.");
+        }
+        if (record.getCheckedOutAt() != null) {
+            throw new AttendanceException("DUPLICATE_CHECK_OUT", "Employee is already checked out.");
+        }
+        if (checkedOutAt.isBefore(record.getCheckedInAt())) {
+            throw new AttendanceException("INVALID_CHECKOUT_TIME", "Checkout time cannot be before check-in time.");
+        }
+
+        record.setCheckedOutAt(checkedOutAt);
+        record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkedOutAt).toMinutes()));
+        record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkedOutAt));
+        record.setAutoCheckout(false);
+        record.setCheckoutType(CheckoutType.ADMIN_CHECKED_OUT);
+        record.setStatus(AttendanceStatus.CHECKED_OUT);
+        audit.log(principal, "ADMIN_CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", record.getId());
         return toResponse(record);
     }
 
@@ -153,6 +181,7 @@ public class AttendanceService {
                 record.getWorkedMinutes(),
                 record.getOvertimeMinutes(),
                 record.isAutoCheckout(),
+                record.getCheckoutType().name(),
                 record.isRequiresApproval(),
                 record.getApprovalReason()
         );

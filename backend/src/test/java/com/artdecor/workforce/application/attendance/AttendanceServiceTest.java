@@ -10,6 +10,7 @@ import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.settings.AppSettingsResponse;
 import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.AttendanceStatus;
+import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
@@ -155,6 +156,29 @@ class AttendanceServiceTest {
         service.checkOut(principal, command());
 
         verify(audit).log(principal, "LIVE_LOCATION_TRACKING_STOPPED", "ATTENDANCE_RECORD", recordId);
+    }
+
+    @Test
+    void adminCheckoutSetsTypeAndRejectsDuplicateCheckout() {
+        UUID recordId = UUID.randomUUID();
+        AuthenticatedPrincipal admin = new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", recordId);
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:00:00Z"));
+        when(attendanceRecords.findById(recordId)).thenReturn(Optional.of(existing));
+
+        AttendanceResponse response = service.adminCheckOut(admin, recordId, Instant.parse("2026-07-03T14:00:00Z"));
+
+        assertThat(response.status()).isEqualTo(AttendanceStatus.CHECKED_OUT.name());
+        assertThat(response.workedMinutes()).isEqualTo(480);
+        assertThat(response.checkoutType()).isEqualTo(CheckoutType.ADMIN_CHECKED_OUT.name());
+        verify(audit).log(admin, "ADMIN_CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", recordId);
+
+        assertThatThrownBy(() -> service.adminCheckOut(admin, recordId, Instant.parse("2026-07-03T15:00:00Z")))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessageContaining("already checked out");
     }
 
     private AttendanceActionCommand command() {

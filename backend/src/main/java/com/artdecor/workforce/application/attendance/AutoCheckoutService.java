@@ -1,6 +1,8 @@
 package com.artdecor.workforce.application.attendance;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
+import com.artdecor.workforce.domain.CheckoutMode;
+import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
@@ -51,6 +53,12 @@ public class AutoCheckoutService {
             if (record.getCheckedOutAt() != null || record.getCheckedInAt() == null) {
                 continue;
             }
+            if (!record.getSchedule().isAutoCheckoutEnabled()
+                    || record.getSchedule().getCheckoutMode() == CheckoutMode.MANUAL_ADMIN
+                    || (record.getSchedule().getCheckoutMode() == CheckoutMode.UNLIMITED_24_7
+                    && !record.getSchedule().isAutoCheckoutEnabled())) {
+                continue;
+            }
             autoCheckout(record);
             updated++;
         }
@@ -60,7 +68,9 @@ public class AutoCheckoutService {
 
     private void completeDueWindows(Instant now) {
         for (var schedule : schedules.findWindowsDueForCompletion(now, COMPLETION_CANDIDATES)) {
-            schedule.setStatus(WorkScheduleStatus.COMPLETED);
+            if (schedule.getCheckoutMode() == CheckoutMode.SCHEDULED_AUTO && schedule.isAutoCheckoutEnabled()) {
+                schedule.setStatus(WorkScheduleStatus.COMPLETED);
+            }
         }
     }
 
@@ -70,6 +80,7 @@ public class AutoCheckoutService {
         record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkoutAt).toMinutes()));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkoutAt));
         record.setAutoCheckout(true);
+        record.setCheckoutType(CheckoutType.AUTO_CHECKED_OUT);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
     }
 

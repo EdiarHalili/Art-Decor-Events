@@ -270,8 +270,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                     <span className="block text-xs text-muted-foreground">{row.employeeCode}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status, row.autoCheckout)}`}>
-                      {row.autoCheckout ? "Auto Check Out" : label(row.status)}
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status, row.checkoutType)}`}>
+                      {checkoutTypeLabel(row.checkoutType, row.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{time(row.checkedInAt)}</td>
@@ -280,7 +280,9 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {time(row.checkedOutAt)}
-                    {row.autoCheckout && <span className="mt-1 block text-xs text-primary">Auto Check Out</span>}
+                    {row.checkoutType && row.checkoutType !== "MANUAL_EMPLOYEE" && (
+                      <span className="mt-1 block text-xs text-primary">{checkoutTypeLabel(row.checkoutType, row.status)}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <GpsLink latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
@@ -359,8 +361,21 @@ function label(status: AttendanceReportRow["status"]) {
   return status.replace("_", " ").toLowerCase();
 }
 
-function statusClass(status: AttendanceReportRow["status"], autoCheckout = false) {
-  if (autoCheckout) {
+function checkoutTypeLabel(type: AttendanceReportRow["checkoutType"], status: AttendanceReportRow["status"]) {
+  if (type === "AUTO_CHECKED_OUT") {
+    return "Auto Check Out";
+  }
+  if (type === "ADMIN_CHECKED_OUT") {
+    return "Admin Check Out";
+  }
+  if (status === "CHECKED_OUT") {
+    return "Manual Employee Check Out";
+  }
+  return label(status);
+}
+
+function statusClass(status: AttendanceReportRow["status"], checkoutType: AttendanceReportRow["checkoutType"] = null) {
+  if (checkoutType === "AUTO_CHECKED_OUT" || checkoutType === "ADMIN_CHECKED_OUT") {
     return "bg-primary/15 text-primary";
   }
   if (status === "ABSENT") {

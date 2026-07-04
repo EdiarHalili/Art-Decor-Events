@@ -1,6 +1,7 @@
 package com.artdecor.workforce.infrastructure.persistence;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
+import com.artdecor.workforce.domain.CheckoutType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -60,6 +61,10 @@ public class AttendanceRecordEntity {
 
     @Column(nullable = false)
     private boolean autoCheckout;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CheckoutType checkoutType = CheckoutType.MANUAL_EMPLOYEE;
 
     @Column(nullable = false)
     private boolean requiresApproval;
@@ -174,6 +179,14 @@ public class AttendanceRecordEntity {
 
     public void setAutoCheckout(boolean autoCheckout) {
         this.autoCheckout = autoCheckout;
+    }
+
+    public CheckoutType getCheckoutType() {
+        return checkoutType;
+    }
+
+    public void setCheckoutType(CheckoutType checkoutType) {
+        this.checkoutType = checkoutType;
     }
 
     public boolean isRequiresApproval() {

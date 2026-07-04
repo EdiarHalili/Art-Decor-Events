@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 public record AttendanceReportRow(
         LocalDate workDate,
+        String attendanceRecordId,
         String scheduleId,
         String employeeId,
         String employeeCode,
@@ -21,6 +22,7 @@ public record AttendanceReportRow(
         int workedMinutes,
         int overtimeMinutes,
         boolean autoCheckout,
+        String checkoutType,
         boolean late,
         boolean absent
 ) {

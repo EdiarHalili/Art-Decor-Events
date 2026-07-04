@@ -15,6 +15,7 @@ import {
   type DailyCheckInWindow,
   type Employee,
   type AppSettings,
+  type CheckoutMode,
 } from "../../lib/api";
 
 type DailyCheckInWindowPageProps = {
@@ -26,6 +27,8 @@ type WindowForm = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
+  checkoutMode: CheckoutMode;
+  autoCheckoutEnabled: boolean;
   employeeIds: string[];
 };
 
@@ -33,6 +36,8 @@ const emptyForm: WindowForm = {
   workDate: localDateInputValue(),
   checkInOpensAt: "06:50",
   checkInClosesAt: "07:10",
+  checkoutMode: "SCHEDULED_AUTO",
+  autoCheckoutEnabled: true,
   employeeIds: [],
 };
 
@@ -124,6 +129,8 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
         workDate: form.workDate,
         checkInOpensAt: localDateTimeToIso(form.workDate, form.checkInOpensAt, settings?.timezone),
         checkInClosesAt: localDateTimeToIso(windowCloseDate(form), form.checkInClosesAt, settings?.timezone),
+        checkoutMode: form.checkoutMode,
+        autoCheckoutEnabled: form.checkoutMode === "SCHEDULED_AUTO" ? form.autoCheckoutEnabled : form.autoCheckoutEnabled,
         employeeIds: form.employeeIds,
       };
 
@@ -201,6 +208,8 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       workDate: window.workDate,
       checkInOpensAt: isoToLocalTime(window.checkInOpensAt),
       checkInClosesAt: isoToLocalTime(window.checkInClosesAt),
+      checkoutMode: window.checkoutMode,
+      autoCheckoutEnabled: window.autoCheckoutEnabled,
       employeeIds: window.employeeIds,
     });
     setMessage("");
@@ -258,6 +267,42 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
           {overnightNotice && (
             <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
               {overnightNotice}
+            </p>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 text-sm font-medium">
+              <span>Checkout mode</span>
+              <select
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                value={form.checkoutMode}
+                onChange={(event) => {
+                  const checkoutMode = event.target.value as CheckoutMode;
+                  setForm({
+                    ...form,
+                    checkoutMode,
+                    autoCheckoutEnabled: checkoutMode === "SCHEDULED_AUTO" ? true : false,
+                  });
+                }}
+              >
+                <option value="SCHEDULED_AUTO">Scheduled auto checkout</option>
+                <option value="MANUAL_ADMIN">Manual admin checkout</option>
+                <option value="UNLIMITED_24_7">Unlimited / 24-7</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={form.autoCheckoutEnabled}
+                onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
+              />
+              Auto checkout enabled
+            </label>
+          </div>
+          {form.checkoutMode === "UNLIMITED_24_7" && (
+            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              Unlimited / 24-7 keeps check-in open until an admin closes the window. Auto checkout only runs if enabled.
             </p>
           )}
 
@@ -360,6 +405,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {formatWindowRange(window, settings?.timezone)} -{" "}
+                    {checkoutModeLabel(window.checkoutMode)} - {window.autoCheckoutEnabled ? "auto checkout on" : "auto checkout off"} -{" "}
                     {window.allowedEmployeeCount} allowed workers
                   </p>
                 </div>
@@ -509,6 +555,16 @@ function formatWindowRange(window: DailyCheckInWindow, timezone = "Europe/Berlin
   return localDateInTimezone(opensAt, timezone) === localDateInTimezone(closesAt, timezone)
     ? range
     : `${range} (closes tomorrow)`;
+}
+
+function checkoutModeLabel(mode: CheckoutMode) {
+  if (mode === "MANUAL_ADMIN") {
+    return "Manual admin checkout";
+  }
+  if (mode === "UNLIMITED_24_7") {
+    return "Unlimited / 24-7";
+  }
+  return "Scheduled auto checkout";
 }
 
 function localDateInTimezone(date: Date, timezone: string) {

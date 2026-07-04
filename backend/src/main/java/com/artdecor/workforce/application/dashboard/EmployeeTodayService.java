@@ -2,6 +2,7 @@ package com.artdecor.workforce.application.dashboard;
 
 import com.artdecor.workforce.application.auth.AuthException;
 import com.artdecor.workforce.application.notifications.NotificationService;
+import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -63,7 +64,13 @@ public class EmployeeTodayService {
                     var attendance = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
                     boolean checkedIn = attendance.map(record -> record.getCheckedInAt() != null).orElse(false);
                     boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);
-                    boolean checkInOpen = !checkedIn && isCheckInOpen(schedule.getStatus(), schedule.getCheckInOpensAt(), schedule.getCheckInClosesAt(), now);
+                    boolean checkInOpen = !checkedIn && isCheckInOpen(
+                            schedule.getStatus(),
+                            schedule.getCheckoutMode(),
+                            schedule.getCheckInOpensAt(),
+                            schedule.getCheckInClosesAt(),
+                            now
+                    );
                     boolean checkOutAvailable = checkedIn && !checkedOut;
                     String status = statusText(schedule.getStatus(), checkInOpen, checkOutAvailable, checkedOut);
                     return new EmployeeTodayResponse(
@@ -100,12 +107,15 @@ public class EmployeeTodayService {
         return visible.isEmpty() ? List.of("Welcome to Art Decor Events Workforce.") : visible;
     }
 
-    private boolean isCheckInOpen(WorkScheduleStatus status, Instant opensAt, Instant closesAt, Instant now) {
+    private boolean isCheckInOpen(WorkScheduleStatus status, CheckoutMode checkoutMode, Instant opensAt, Instant closesAt, Instant now) {
         if (status == WorkScheduleStatus.CANCELLED || status == WorkScheduleStatus.CHECK_IN_CLOSED) {
             return false;
         }
         if (status == WorkScheduleStatus.CHECK_IN_OPEN) {
             return true;
+        }
+        if (checkoutMode == CheckoutMode.UNLIMITED_24_7) {
+            return !now.isBefore(opensAt);
         }
         return !now.isBefore(opensAt) && !now.isAfter(closesAt);
     }

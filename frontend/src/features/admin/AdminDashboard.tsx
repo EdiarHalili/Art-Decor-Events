@@ -4,7 +4,7 @@ import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { getAdminDashboard, type AdminDashboardSnapshot, type AppSettings, type AuthResponse } from "../../lib/api";
+import { adminCheckout, getAdminDashboard, type AdminDashboardSnapshot, type AppSettings, type AuthResponse, type CheckoutType } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
@@ -155,6 +155,27 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
+  async function checkoutFromDashboard(attendanceRecordId: string) {
+    const value = globalThis.prompt("Checkout time (YYYY-MM-DD HH:mm)");
+    if (!value) {
+      return;
+    }
+    setMessage("");
+    try {
+      const parsed = new Date(value.replace(" ", "T"));
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error("Enter checkout time as YYYY-MM-DD HH:mm.");
+      }
+      const checkedOutAt = parsed.toISOString();
+      await adminCheckout(accessToken, attendanceRecordId, checkedOutAt);
+      const nextSnapshot = await getAdminDashboard(accessToken);
+      setSnapshot(nextSnapshot);
+      setMessage("Admin checkout recorded.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Admin checkout could not be recorded.");
+    }
+  }
+
   const kpis = [
     { label: "Present", value: snapshot?.present ?? 0, icon: UserCheck },
     { label: "Working now", value: snapshot?.currentlyWorking ?? 0, icon: UsersRound },
@@ -212,13 +233,20 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
                       <span>In: {formatTime(row.checkedInAt)}</span>
-                      <span>{row.autoCheckout ? "Auto Check Out" : "Out"}: {formatTime(row.checkedOutAt)}</span>
+                      <span>{checkoutTypeLabel(row.checkoutType, row.status)}: {formatTime(row.checkedOutAt)}</span>
                       <span>Worked: {formatMinutes(row.workedMinutes)}</span>
                       <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
                     </div>
-                    <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                      {row.autoCheckout ? "AUTO CHECK OUT" : row.status.replaceAll("_", " ")}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
+                        {checkoutTypeLabel(row.checkoutType, row.status)}
+                      </span>
+                      {!row.checkedOutAt && (
+                        <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void checkoutFromDashboard(row.attendanceRecordId)}>
+                          Checkout
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -297,4 +325,17 @@ function formatMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return `${hours}h ${remainder}m`;
+}
+
+function checkoutTypeLabel(type: CheckoutType | null, status: string) {
+  if (type === "AUTO_CHECKED_OUT") {
+    return "AUTO CHECKOUT";
+  }
+  if (type === "ADMIN_CHECKED_OUT") {
+    return "ADMIN CHECKOUT";
+  }
+  if (status === "CHECKED_OUT") {
+    return "EMPLOYEE CHECKOUT";
+  }
+  return status.replaceAll("_", " ");
 }

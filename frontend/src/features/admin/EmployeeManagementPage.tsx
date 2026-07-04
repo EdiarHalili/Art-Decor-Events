@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import {
+  adminCheckout,
   createEmployee,
   deactivateEmployee,
   exportEmployeeAttendance,
@@ -12,6 +13,7 @@ import {
   resetEmployeePassword,
   updateEmployee,
   type AttendanceReportRow,
+  type CheckoutType,
   type Employee,
 } from "../../lib/api";
 
@@ -79,18 +81,22 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       return;
     }
 
+    void loadHistory(selected.id);
+  }, [accessToken, selected?.id]);
+
+  async function loadHistory(employeeId: string) {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     setHistoryLoading(true);
-    getEmployeeHistory(accessToken, selected.id, {
+    getEmployeeHistory(accessToken, employeeId, {
       from: dateOnly(from),
       to: dateOnly(to),
     })
       .then(setHistory)
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoading(false));
-  }, [accessToken, selected?.id]);
+  }
 
   const filteredEmployees = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -289,6 +295,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
                 const response = await resetEmployeePassword(accessToken, selected.id);
                 return response.temporaryPassword;
               }}
+              onAttendanceChanged={() => void loadHistory(selected.id)}
             />
           ) : (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -309,6 +316,7 @@ function EmployeeProfile({
   onEdit,
   onDeactivate,
   onResetPassword,
+  onAttendanceChanged,
 }: {
   accessToken: string;
   employee: Employee;
@@ -317,6 +325,7 @@ function EmployeeProfile({
   onEdit: () => void;
   onDeactivate: () => void;
   onResetPassword: () => Promise<string>;
+  onAttendanceChanged: () => void;
 }) {
   const defaultRange = exportRange("this-month");
   const [rangePreset, setRangePreset] = useState<ExportRangePreset>("this-month");
@@ -376,6 +385,28 @@ function EmployeeProfile({
       setExportMessage(error instanceof Error ? error.message : "Password could not be reset.");
     } finally {
       setResettingPassword(false);
+    }
+  }
+
+  async function checkoutFromProfile(row: AttendanceReportRow) {
+    if (!row.attendanceRecordId) {
+      setExportMessage("Attendance record is missing.");
+      return;
+    }
+    const value = globalThis.prompt("Checkout time (YYYY-MM-DD HH:mm)");
+    if (!value) {
+      return;
+    }
+    try {
+      const parsed = new Date(value.replace(" ", "T"));
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error("Enter checkout time as YYYY-MM-DD HH:mm.");
+      }
+      await adminCheckout(accessToken, row.attendanceRecordId, parsed.toISOString());
+      setExportMessage("Admin checkout recorded.");
+      onAttendanceChanged();
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Admin checkout could not be recorded.");
     }
   }
 
@@ -481,7 +512,7 @@ function EmployeeProfile({
               </div>
               <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
                 <span>Check In: {formatTime(row.checkedInAt)}</span>
-                <span>Check Out: {row.autoCheckout ? `Auto Check Out: ${formatTime(row.checkedOutAt)}` : formatTime(row.checkedOutAt)}</span>
+                <span>Check Out: {checkoutLabel(row.checkoutType, row.checkedOutAt)}</span>
                 <GpsCell label="Check In GPS" latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
                 <GpsCell label="Check Out GPS" latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
                 <span>Worked: {formatMinutes(row.workedMinutes)}</span>
@@ -489,11 +520,16 @@ function EmployeeProfile({
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.absent ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                  Status: {row.autoCheckout ? "Auto Check Out" : formatStatus(row.status)}
+                  Status: {checkoutTypeLabel(row.checkoutType, row.status)}
                 </span>
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
                   {row.late ? "Late" : "On time"}
                 </span>
+                {!row.checkedOutAt && row.attendanceRecordId && (
+                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void checkoutFromProfile(row)}>
+                    Admin checkout
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -602,6 +638,30 @@ function formatMinutes(minutes: number) {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function checkoutLabel(type: CheckoutType | null, checkedOutAt: string | null) {
+  const time = formatTime(checkedOutAt);
+  if (type === "AUTO_CHECKED_OUT") {
+    return `Auto Check Out: ${time}`;
+  }
+  if (type === "ADMIN_CHECKED_OUT") {
+    return `Admin Check Out: ${time}`;
+  }
+  return time;
+}
+
+function checkoutTypeLabel(type: CheckoutType | null, status: string) {
+  if (type === "AUTO_CHECKED_OUT") {
+    return "Auto Check Out";
+  }
+  if (type === "ADMIN_CHECKED_OUT") {
+    return "Admin Check Out";
+  }
+  if (status === "CHECKED_OUT") {
+    return "Manual Employee Check Out";
+  }
+  return formatStatus(status);
 }
 
 function mapUrl(latitude: number, longitude: number) {

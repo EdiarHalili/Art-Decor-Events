@@ -62,6 +62,7 @@ export type AdminDashboardSnapshot = {
 };
 
 export type AdminLiveAttendanceRow = {
+  attendanceRecordId: string;
   employeeId: string;
   employeeCode: string;
   employeeName: string;
@@ -71,6 +72,7 @@ export type AdminLiveAttendanceRow = {
   workedMinutes: number;
   overtimeMinutes: number;
   autoCheckout: boolean;
+  checkoutType: CheckoutType;
   late: boolean;
 };
 
@@ -108,6 +110,7 @@ export type AttendanceResponse = {
   workedMinutes: number;
   overtimeMinutes: number;
   autoCheckout: boolean;
+  checkoutType: CheckoutType;
   requiresApproval: boolean;
   approvalReason: string | null;
 };
@@ -117,6 +120,8 @@ export type DailyCheckInWindow = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
+  checkoutMode: CheckoutMode;
+  autoCheckoutEnabled: boolean;
   status: "DRAFT" | "PUBLISHED" | "CHECK_IN_OPEN" | "CHECK_IN_CLOSED" | "CANCELLED" | "COMPLETED";
   employeeIds: string[];
   allowedEmployeeCount: number;
@@ -126,6 +131,7 @@ export type DailyCheckInWindow = {
 
 export type AttendanceReportRow = {
   workDate: string;
+  attendanceRecordId: string | null;
   scheduleId: string;
   employeeId: string;
   employeeCode: string;
@@ -142,6 +148,7 @@ export type AttendanceReportRow = {
   workedMinutes: number;
   overtimeMinutes: number;
   autoCheckout: boolean;
+  checkoutType: CheckoutType | null;
   late: boolean;
   absent: boolean;
 };
@@ -243,8 +250,13 @@ type DailyCheckInWindowPayload = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
+  checkoutMode: CheckoutMode;
+  autoCheckoutEnabled: boolean;
   employeeIds: string[];
 };
+
+export type CheckoutMode = "SCHEDULED_AUTO" | "MANUAL_ADMIN" | "UNLIMITED_24_7";
+export type CheckoutType = "MANUAL_EMPLOYEE" | "AUTO_CHECKED_OUT" | "ADMIN_CHECKED_OUT";
 
 export async function loginEmployee(username: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
@@ -395,6 +407,17 @@ export async function checkOut(
   return authorizedRequest<AttendanceResponse>("/employee/attendance/check-out", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function adminCheckout(
+  accessToken: string,
+  attendanceRecordId: string,
+  checkedOutAt: string,
+): Promise<AttendanceResponse> {
+  return authorizedRequest<AttendanceResponse>(`/admin/attendance/${attendanceRecordId}/checkout`, accessToken, {
+    method: "POST",
+    body: JSON.stringify({ checkedOutAt }),
   });
 }
 

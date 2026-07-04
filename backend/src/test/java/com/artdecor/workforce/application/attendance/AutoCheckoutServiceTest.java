@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
+import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
@@ -40,6 +41,7 @@ class AutoCheckoutServiceTest {
         assertThat(record.getCheckedOutAt()).isEqualTo(Instant.parse("2026-07-03T21:00:00Z"));
         assertThat(record.getWorkedMinutes()).isEqualTo(420);
         assertThat(record.isAutoCheckout()).isTrue();
+        assertThat(record.getCheckoutType()).isEqualTo(CheckoutType.AUTO_CHECKED_OUT);
         assertThat(record.getSchedule().getStatus()).isEqualTo(WorkScheduleStatus.COMPLETED);
     }
 

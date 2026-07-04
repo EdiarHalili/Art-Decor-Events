@@ -12,6 +12,7 @@ public record AttendanceResponse(
         int workedMinutes,
         int overtimeMinutes,
         boolean autoCheckout,
+        String checkoutType,
         boolean requiresApproval,
         String approvalReason
 ) {

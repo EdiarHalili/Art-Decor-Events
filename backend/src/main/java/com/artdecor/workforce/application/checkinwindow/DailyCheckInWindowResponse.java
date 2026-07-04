@@ -9,6 +9,8 @@ public record DailyCheckInWindowResponse(
         LocalDate workDate,
         Instant checkInOpensAt,
         Instant checkInClosesAt,
+        String checkoutMode,
+        boolean autoCheckoutEnabled,
         String status,
         List<String> employeeIds,
         int allowedEmployeeCount,
@@ -16,4 +18,3 @@ public record DailyCheckInWindowResponse(
         Instant updatedAt
 ) {
 }
-

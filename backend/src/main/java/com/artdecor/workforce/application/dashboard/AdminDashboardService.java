@@ -89,6 +89,7 @@ public class AdminDashboardService {
                 .filter(record -> record.getCheckedInAt() != null)
                 .sorted(Comparator.comparing(AttendanceRecordEntity::getCheckedInAt).reversed())
                 .map(record -> new AdminLiveAttendanceRow(
+                        record.getId() == null ? null : record.getId().toString(),
                         record.getEmployee().getId().toString(),
                         record.getEmployee().getEmployeeCode(),
                         record.getEmployee().getFullName(),
@@ -98,6 +99,7 @@ public class AdminDashboardService {
                         record.getWorkedMinutes(),
                         record.getOvertimeMinutes(),
                         record.isAutoCheckout(),
+                        record.getCheckoutType().name(),
                         record.getStatus() == AttendanceStatus.LATE
                 ))
                 .toList();

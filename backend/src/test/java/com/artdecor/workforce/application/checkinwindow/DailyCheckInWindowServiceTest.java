@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -144,6 +145,8 @@ class DailyCheckInWindowServiceTest {
                 LocalDate.of(2026, 7, 4),
                 Instant.parse("2026-07-04T04:50:00Z"),
                 Instant.parse("2026-07-04T05:10:00Z"),
+                CheckoutMode.SCHEDULED_AUTO,
+                true,
                 employeeIds
         );
     }
@@ -153,6 +156,8 @@ class DailyCheckInWindowServiceTest {
                 LocalDate.of(2026, 7, 4),
                 Instant.parse("2026-07-04T16:00:00Z"),
                 Instant.parse("2026-07-05T05:10:00Z"),
+                CheckoutMode.SCHEDULED_AUTO,
+                true,
                 employeeIds
         );
     }
