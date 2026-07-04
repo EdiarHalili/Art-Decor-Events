@@ -104,6 +104,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
     () => new Set(form.employeeIds),
     [form.employeeIds],
   );
+  const overnightNotice = isOvernightWindow(form)
+    ? `This window crosses midnight and will close tomorrow at ${form.checkInClosesAt}.`
+    : "";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,7 +123,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       const payload = {
         workDate: form.workDate,
         checkInOpensAt: localDateTimeToIso(form.workDate, form.checkInOpensAt, settings?.timezone),
-        checkInClosesAt: localDateTimeToIso(form.workDate, form.checkInClosesAt, settings?.timezone),
+        checkInClosesAt: localDateTimeToIso(windowCloseDate(form), form.checkInClosesAt, settings?.timezone),
         employeeIds: form.employeeIds,
       };
 
@@ -132,7 +135,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       setForm(emptyForm);
       setEditingWindowId(null);
       setEmployeeQuery("");
-      setMessage(editingWindowId ? "Daily check-in window updated." : "Daily check-in window scheduled.");
+      setMessage(overnightNotice || (editingWindowId ? "Daily check-in window updated." : "Daily check-in window scheduled."));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The window could not be saved.");
     } finally {
@@ -183,9 +186,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
     }));
   }
 
-  function selectAllFiltered() {
-    const ids = filteredEmployees.map((employee) => employee.id);
-    setForm((current) => ({ ...current, employeeIds: Array.from(new Set([...current.employeeIds, ...ids])) }));
+  function selectAllEmployees() {
+    const ids = activeEmployees.map((employee) => employee.id);
+    setForm((current) => ({ ...current, employeeIds: ids }));
   }
 
   function clearEmployees() {
@@ -252,6 +255,11 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
               />
             </label>
           </div>
+          {overnightNotice && (
+            <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+              {overnightNotice}
+            </p>
+          )}
 
           <div className="rounded-lg border border-border">
             <div className="border-b border-border p-3">
@@ -261,9 +269,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   <p className="text-xs text-muted-foreground">{form.employeeIds.length} selected</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllFiltered}>
+                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllEmployees}>
                     <Check size={16} />
-                    Select
+                    Select All
                   </Button>
                   <Button type="button" variant="ghost" className="h-9 px-3" onClick={clearEmployees}>
                     <X size={16} />
@@ -351,7 +359,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {formatTime(window.checkInOpensAt, settings?.timezone)} - {formatTime(window.checkInClosesAt, settings?.timezone)} -{" "}
+                    {formatWindowRange(window, settings?.timezone)} -{" "}
                     {window.allowedEmployeeCount} allowed workers
                   </p>
                 </div>
@@ -412,15 +420,29 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
 
 function validateWindowForm(form: WindowForm) {
   if (!form.employeeIds.length) {
-    return "Select at least one allowed employee before saving the daily check-in window.";
+    return "Please select at least one employee.";
   }
   if (!form.workDate || !form.checkInOpensAt || !form.checkInClosesAt) {
     return "Date, opening time, and closing time are required.";
   }
-  if (form.checkInClosesAt <= form.checkInOpensAt) {
-    return "Check-in close time must be after the opening time.";
+  if (form.checkInClosesAt === form.checkInOpensAt) {
+    return "Invalid open/close time.";
   }
   return "";
+}
+
+function isOvernightWindow(form: WindowForm) {
+  return Boolean(form.workDate && form.checkInOpensAt && form.checkInClosesAt && form.checkInClosesAt < form.checkInOpensAt);
+}
+
+function windowCloseDate(form: WindowForm) {
+  return isOvernightWindow(form) ? addDays(form.workDate, 1) : form.workDate;
+}
+
+function addDays(dateValue: string, days: number) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 function localDateTimeToIso(date: string, time: string, timezone = "Europe/Berlin") {
@@ -478,6 +500,26 @@ function formatDate(value: string) {
 
 function formatTime(value: string, timezone = "Europe/Berlin") {
   return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", timeZone: timezone }).format(new Date(value));
+}
+
+function formatWindowRange(window: DailyCheckInWindow, timezone = "Europe/Berlin") {
+  const opensAt = new Date(window.checkInOpensAt);
+  const closesAt = new Date(window.checkInClosesAt);
+  const range = `${formatTime(window.checkInOpensAt, timezone)} - ${formatTime(window.checkInClosesAt, timezone)}`;
+  return localDateInTimezone(opensAt, timezone) === localDateInTimezone(closesAt, timezone)
+    ? range
+    : `${range} (closes tomorrow)`;
+}
+
+function localDateInTimezone(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function statusClass(status: DailyCheckInWindow["status"]) {

@@ -10,12 +10,19 @@ import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmployeeTodayService {
+    private static final Set<WorkScheduleStatus> INACTIVE_ASSIGNMENT_STATUSES = EnumSet.of(
+            WorkScheduleStatus.CANCELLED,
+            WorkScheduleStatus.COMPLETED
+    );
+
     private final EmployeeRepository employees;
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
@@ -41,16 +48,18 @@ public class EmployeeTodayService {
         var employee = employees.findById(principal.employeeId())
                 .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
 
+        Instant now = Instant.now(clock);
+
         return assignments.findCurrentAssignmentsForEmployee(
                         employee.getId(),
                         LocalDate.now(clock),
-                        WorkScheduleStatus.CANCELLED
+                        now,
+                        INACTIVE_ASSIGNMENT_STATUSES
                 )
                 .stream()
                 .findFirst()
                 .map(assignment -> {
                     var schedule = assignment.getSchedule();
-                    Instant now = Instant.now(clock);
                     var attendance = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
                     boolean checkedIn = attendance.map(record -> record.getCheckedInAt() != null).orElse(false);
                     boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);

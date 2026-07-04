@@ -13,8 +13,10 @@ import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntit
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,7 +37,8 @@ class DailyCheckInWindowServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DailyCheckInWindowService(windows, assignments, attendanceRecords, employees);
+        Clock clock = Clock.fixed(Instant.parse("2026-07-03T12:00:00Z"), ZoneOffset.UTC);
+        service = new DailyCheckInWindowService(windows, assignments, attendanceRecords, employees, clock);
         employeeId = UUID.randomUUID();
         employee = new EmployeeEntity();
         ReflectionTestUtils.setField(employee, "id", employeeId);
@@ -44,6 +47,8 @@ class DailyCheckInWindowServiceTest {
         employee.setPinHash("hash");
 
         when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(windows.findOverlappingWindows(any(), any(), any(), any())).thenReturn(List.of());
+        when(windows.findOverlappingWindowsExcluding(any(), any(), any(), any(), any())).thenReturn(List.of());
         when(windows.save(any(WorkScheduleEntity.class))).thenAnswer(invocation -> {
             WorkScheduleEntity window = invocation.getArgument(0);
             ReflectionTestUtils.setField(window, "id", UUID.randomUUID());
@@ -64,24 +69,38 @@ class DailyCheckInWindowServiceTest {
     }
 
     @Test
-    void rejectsDuplicateActiveDate() {
-        when(windows.existsByWorkDateAndStatusNot(LocalDate.of(2026, 7, 4), WorkScheduleStatus.CANCELLED))
-                .thenReturn(true);
+    void rejectsOverlappingActiveWindow() {
+        when(windows.findOverlappingWindows(any(), any(), any(), any()))
+                .thenReturn(List.of(window(UUID.randomUUID())));
 
         assertThatThrownBy(() -> service.createWindow(command(Set.of(employeeId))))
                 .isInstanceOf(DailyCheckInWindowException.class)
-                .hasMessageContaining("already exists");
+                .hasMessageContaining("This time range overlaps an active window.");
     }
 
     @Test
-    void cancelledWindowDoesNotBlockNewWindowForSameDate() {
-        when(windows.existsByWorkDateAndStatusNot(LocalDate.of(2026, 7, 4), WorkScheduleStatus.CANCELLED))
-                .thenReturn(false);
+    void closedCompletedOrCancelledWindowsDoNotBlockNewWindowForSameDate() {
+        when(windows.findOverlappingWindows(any(), any(), any(), any())).thenReturn(List.of());
 
         DailyCheckInWindowResponse response = service.createWindow(command(Set.of(employeeId)));
 
         assertThat(response.workDate()).isEqualTo(LocalDate.of(2026, 7, 4));
         assertThat(response.status()).isEqualTo("PUBLISHED");
+    }
+
+    @Test
+    void createsOvernightWindowWhenCloseIsNextDay() {
+        DailyCheckInWindowResponse response = service.createWindow(overnightCommand(Set.of(employeeId)));
+
+        assertThat(response.checkInOpensAt()).isEqualTo(Instant.parse("2026-07-04T16:00:00Z"));
+        assertThat(response.checkInClosesAt()).isEqualTo(Instant.parse("2026-07-05T05:10:00Z"));
+    }
+
+    @Test
+    void rejectsEmptyEmployeeSelectionWithClearMessage() {
+        assertThatThrownBy(() -> service.createWindow(command(Set.of())))
+                .isInstanceOf(DailyCheckInWindowException.class)
+                .hasMessageContaining("Please select at least one employee.");
     }
 
     @Test
@@ -125,6 +144,15 @@ class DailyCheckInWindowServiceTest {
                 LocalDate.of(2026, 7, 4),
                 Instant.parse("2026-07-04T04:50:00Z"),
                 Instant.parse("2026-07-04T05:10:00Z"),
+                employeeIds
+        );
+    }
+
+    private DailyCheckInWindowCommand overnightCommand(Set<UUID> employeeIds) {
+        return new DailyCheckInWindowCommand(
+                LocalDate.of(2026, 7, 4),
+                Instant.parse("2026-07-04T16:00:00Z"),
+                Instant.parse("2026-07-05T05:10:00Z"),
                 employeeIds
         );
     }

@@ -4,20 +4,34 @@ import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumSet;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AutoCheckoutService {
+    private static final java.util.Set<WorkScheduleStatus> COMPLETION_CANDIDATES = EnumSet.of(
+            WorkScheduleStatus.PUBLISHED,
+            WorkScheduleStatus.CHECK_IN_OPEN,
+            WorkScheduleStatus.CHECK_IN_CLOSED
+    );
+
     private final AttendanceRecordRepository attendanceRecords;
+    private final WorkScheduleRepository schedules;
     private final Clock clock;
 
-    public AutoCheckoutService(AttendanceRecordRepository attendanceRecords, Clock clock) {
+    public AutoCheckoutService(
+            AttendanceRecordRepository attendanceRecords,
+            WorkScheduleRepository schedules,
+            Clock clock
+    ) {
         this.attendanceRecords = attendanceRecords;
+        this.schedules = schedules;
         this.clock = clock;
     }
 
@@ -40,7 +54,14 @@ public class AutoCheckoutService {
             autoCheckout(record);
             updated++;
         }
+        completeDueWindows(now);
         return updated;
+    }
+
+    private void completeDueWindows(Instant now) {
+        for (var schedule : schedules.findWindowsDueForCompletion(now, COMPLETION_CANDIDATES)) {
+            schedule.setStatus(WorkScheduleStatus.COMPLETED);
+        }
     }
 
     private void autoCheckout(AttendanceRecordEntity record) {

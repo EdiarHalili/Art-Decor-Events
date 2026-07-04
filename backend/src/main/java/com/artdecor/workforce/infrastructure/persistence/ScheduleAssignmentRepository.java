@@ -1,7 +1,9 @@
 package com.artdecor.workforce.infrastructure.persistence;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,14 +25,18 @@ public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssi
             join fetch assignment.employee employee
             join fetch assignment.schedule schedule
             where employee.id = :employeeId
-              and schedule.workDate = :workDate
-              and schedule.status <> :excludedStatus
-            order by assignment.createdAt desc
+              and schedule.status not in :excludedStatuses
+              and (
+                    schedule.workDate = :workDate
+                    or (schedule.checkInOpensAt <= :now and schedule.checkInClosesAt >= :now)
+              )
+            order by schedule.checkInOpensAt desc, assignment.createdAt desc
             """)
     List<ScheduleAssignmentEntity> findCurrentAssignmentsForEmployee(
             @Param("employeeId") UUID employeeId,
             @Param("workDate") LocalDate workDate,
-            @Param("excludedStatus") WorkScheduleStatus excludedStatus
+            @Param("now") Instant now,
+            @Param("excludedStatuses") Collection<WorkScheduleStatus> excludedStatuses
     );
 
     @Query("""

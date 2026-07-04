@@ -7,6 +7,9 @@ import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntit
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -16,22 +19,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DailyCheckInWindowService {
     private static final String WINDOW_TITLE = "Daily check-in window";
+    private static final Set<WorkScheduleStatus> OVERLAP_BLOCKING_STATUSES = EnumSet.of(
+            WorkScheduleStatus.PUBLISHED,
+            WorkScheduleStatus.CHECK_IN_OPEN
+    );
 
     private final WorkScheduleRepository windows;
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
     private final EmployeeRepository employees;
+    private final Clock clock;
 
     public DailyCheckInWindowService(
             WorkScheduleRepository windows,
             ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
-            EmployeeRepository employees
+            EmployeeRepository employees,
+            Clock clock
     ) {
         this.windows = windows;
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
         this.employees = employees;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -44,9 +54,7 @@ public class DailyCheckInWindowService {
     @Transactional
     public DailyCheckInWindowResponse createWindow(DailyCheckInWindowCommand command) {
         validate(command);
-        if (windows.existsByWorkDateAndStatusNot(command.workDate(), WorkScheduleStatus.CANCELLED)) {
-            throw new DailyCheckInWindowException("A daily check-in window already exists for this date.");
-        }
+        ensureNoActiveOverlap(command, null);
 
         WorkScheduleEntity window = new WorkScheduleEntity();
         apply(window, command);
@@ -64,9 +72,7 @@ public class DailyCheckInWindowService {
         if (window.getStatus() == WorkScheduleStatus.CANCELLED) {
             throw new DailyCheckInWindowException("Cancelled daily check-in windows cannot be edited.");
         }
-        if (windows.existsByWorkDateAndStatusNotAndIdNot(command.workDate(), WorkScheduleStatus.CANCELLED, windowId)) {
-            throw new DailyCheckInWindowException("A daily check-in window already exists for this date.");
-        }
+        ensureNoActiveOverlap(command, windowId);
 
         apply(window, command);
         replaceAssignments(window, command.employeeIds());
@@ -77,6 +83,7 @@ public class DailyCheckInWindowService {
     public DailyCheckInWindowResponse openWindow(UUID windowId) {
         WorkScheduleEntity window = findWindow(windowId);
         ensureNotCancelled(window);
+        ensureNoActiveOverlap(window);
         window.setStatus(WorkScheduleStatus.CHECK_IN_OPEN);
         return toResponse(window);
     }
@@ -143,12 +150,45 @@ public class DailyCheckInWindowService {
     }
 
     private void validate(DailyCheckInWindowCommand command) {
-        if (command.checkInClosesAt().isBefore(command.checkInOpensAt())
-                || command.checkInClosesAt().equals(command.checkInOpensAt())) {
-            throw new DailyCheckInWindowException("Check-in close time must be after open time.");
-        }
         if (command.employeeIds() == null || command.employeeIds().isEmpty()) {
-            throw new DailyCheckInWindowException("Select at least one allowed employee.");
+            throw new DailyCheckInWindowException("Please select at least one employee.");
+        }
+        if (!command.checkInClosesAt().isAfter(command.checkInOpensAt())) {
+            throw new DailyCheckInWindowException("Invalid open/close time.");
+        }
+    }
+
+    private void ensureNoActiveOverlap(DailyCheckInWindowCommand command, UUID currentWindowId) {
+        Instant now = Instant.now(clock);
+        List<WorkScheduleEntity> overlapping = currentWindowId == null
+                ? windows.findOverlappingWindows(
+                        command.checkInOpensAt(),
+                        command.checkInClosesAt(),
+                        now,
+                        OVERLAP_BLOCKING_STATUSES
+                )
+                : windows.findOverlappingWindowsExcluding(
+                        currentWindowId,
+                        command.checkInOpensAt(),
+                        command.checkInClosesAt(),
+                        now,
+                        OVERLAP_BLOCKING_STATUSES
+                );
+        if (!overlapping.isEmpty()) {
+            throw new DailyCheckInWindowException("This time range overlaps an active window.");
+        }
+    }
+
+    private void ensureNoActiveOverlap(WorkScheduleEntity window) {
+        List<WorkScheduleEntity> overlapping = windows.findOverlappingWindowsExcluding(
+                window.getId(),
+                window.getCheckInOpensAt(),
+                window.getCheckInClosesAt(),
+                Instant.now(clock),
+                OVERLAP_BLOCKING_STATUSES
+        );
+        if (!overlapping.isEmpty()) {
+            throw new DailyCheckInWindowException("This time range overlaps an active window.");
         }
     }
 
