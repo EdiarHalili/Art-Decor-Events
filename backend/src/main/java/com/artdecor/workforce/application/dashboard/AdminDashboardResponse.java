@@ -14,6 +14,7 @@ public record AdminDashboardResponse(
         long administrators,
         long supervisors,
         List<AdminLiveAttendanceRow> liveAttendance,
+        List<AdminLiveLocationRow> liveLocations,
         List<String> quickActions
 ) {
 }

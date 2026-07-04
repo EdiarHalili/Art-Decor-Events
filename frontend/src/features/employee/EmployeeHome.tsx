@@ -5,7 +5,7 @@ import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { checkIn, checkOut, getEmployeeToday, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import { checkIn, checkOut, getEmployeeToday, recordLiveLocation, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
 import { getQueuedAttendanceActions, queueAttendanceAction, syncQueuedAttendanceActions } from "../../lib/offlineQueue";
 
 type EmployeeHomeProps = {
@@ -22,6 +22,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [queuedCount, setQueuedCount] = useState(getQueuedAttendanceActions().length);
   const [todayFresh, setTodayFresh] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [liveTrackingActive, setLiveTrackingActive] = useState(false);
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -63,6 +64,46 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const trackingEnabled = Boolean(settings?.liveLocationTrackingEnabled && today?.checkOutAvailable && online);
+    if (!trackingEnabled) {
+      setLiveTrackingActive(false);
+      return;
+    }
+
+    let cancelled = false;
+    const intervalMinutes = Math.max(5, settings?.liveLocationIntervalMinutes ?? 10);
+
+    async function sendLiveLocation() {
+      const location = await captureLiveLocation();
+      if (cancelled || !location) {
+        return;
+      }
+      try {
+        await recordLiveLocation(session.accessToken, {
+          ...location,
+          capturedAt: new Date().toISOString(),
+          device: deviceMetadata(),
+        });
+        if (!cancelled) {
+          setLiveTrackingActive(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setLiveTrackingActive(false);
+        }
+      }
+    }
+
+    void sendLiveLocation();
+    const timer = window.setInterval(() => void sendLiveLocation(), intervalMinutes * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      setLiveTrackingActive(false);
+    };
+  }, [online, session.accessToken, settings?.liveLocationIntervalMinutes, settings?.liveLocationTrackingEnabled, today?.checkOutAvailable]);
+
   const employeeName = today?.employeeName ?? session.fullName;
 
   async function captureLocation(): Promise<{ latitude?: number; longitude?: number }> {
@@ -79,6 +120,25 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           }),
         () => resolve({}),
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
+      );
+    });
+  }
+
+  async function captureLiveLocation(): Promise<{ latitude: number; longitude: number; accuracyMeters?: number } | null> {
+    if (!("geolocation" in navigator)) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) =>
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracyMeters: position.coords.accuracy,
+          }),
+        () => resolve(null),
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
       );
     });
   }
@@ -216,6 +276,13 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             <p className="mt-2 text-xs text-muted-foreground">
               GPS capture is {settings?.gpsEnabled === false ? "off for this company." : "optional and will be requested only when attendance is recorded."}
             </p>
+            {today?.checkOutAvailable && settings?.liveLocationTrackingEnabled && (
+              <p className="mt-2 text-xs font-medium text-primary">
+                {liveTrackingActive
+                  ? `Live location tracking is active every ${Math.max(5, settings.liveLocationIntervalMinutes)} minutes.`
+                  : "Live location tracking will run only while you are checked in."}
+              </p>
+            )}
           </div>
 
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}

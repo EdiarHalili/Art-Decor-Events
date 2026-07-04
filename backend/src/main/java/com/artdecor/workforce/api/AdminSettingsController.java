@@ -70,12 +70,15 @@ public class AdminSettingsController {
             @DecimalMin("-90.0") @DecimalMax("90.0") Double workplaceLatitude,
             @DecimalMin("-180.0") @DecimalMax("180.0") Double workplaceLongitude,
             boolean notificationsEnabled,
+            boolean liveLocationTrackingEnabled,
+            @Min(5) @Max(60) int liveLocationIntervalMinutes,
             @Min(5) @Max(1440) int sessionTimeoutMinutes
     ) {
         AppSettingsCommand toCommand() {
             return new AppSettingsCommand(companyName, logoUrl, primaryColor, accentColor, timezone,
                     defaultCheckInOpenTime, defaultCheckInCloseTime, allowedLateMinutes, gpsEnabled,
-                    workplaceLatitude, workplaceLongitude, notificationsEnabled, sessionTimeoutMinutes);
+                    workplaceLatitude, workplaceLongitude, notificationsEnabled, liveLocationTrackingEnabled,
+                    liveLocationIntervalMinutes, sessionTimeoutMinutes);
         }
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, RefreshCw, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, MapPin, RefreshCw, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
@@ -224,6 +224,42 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
               </div>
             </Card>
             <Card className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="text-primary" size={19} />
+                  <h2 className="font-semibold">Live locations</h2>
+                </div>
+                <span className="text-xs text-muted-foreground">{snapshot?.liveLocations.length ?? 0} active</span>
+              </div>
+              <div className="mt-5 divide-y divide-border rounded-lg border border-border">
+                {(snapshot?.liveLocations.length ?? 0) === 0 && (
+                  <div className="p-5 text-sm text-muted-foreground">
+                    No live locations are available. Locations appear only while employees are checked in and tracking is enabled.
+                  </div>
+                )}
+                {snapshot?.liveLocations.map((location) => (
+                  <div key={location.attendanceRecordId} className="grid gap-3 p-4 text-sm md:grid-cols-[1fr_auto] md:items-center">
+                    <div>
+                      <p className="font-semibold">{location.employeeName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {location.employeeCode} · {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                        {location.accuracyMeters != null ? ` · ±${Math.round(location.accuracyMeters)}m` : ""}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">Updated {formatDateTime(location.capturedAt)}</p>
+                    </div>
+                    <a
+                      className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-muted"
+                      href={`https://maps.google.com/?q=${location.latitude},${location.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View on Map
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="p-5">
               <h2 className="font-semibold">Quick actions</h2>
               <div className="mt-5 grid gap-3">
                 {(snapshot?.quickActions ?? ["Add employee", "Create check-in window", "Post announcement"]).map((action) => (
@@ -243,6 +279,18 @@ function formatTime(value: string | null) {
     return "-";
   }
   return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function formatMinutes(minutes: number) {

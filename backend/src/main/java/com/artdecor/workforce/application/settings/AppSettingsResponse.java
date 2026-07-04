@@ -16,6 +16,8 @@ public record AppSettingsResponse(
         Double workplaceLatitude,
         Double workplaceLongitude,
         boolean notificationsEnabled,
+        boolean liveLocationTrackingEnabled,
+        int liveLocationIntervalMinutes,
         int sessionTimeoutMinutes,
         Instant updatedAt
 ) {

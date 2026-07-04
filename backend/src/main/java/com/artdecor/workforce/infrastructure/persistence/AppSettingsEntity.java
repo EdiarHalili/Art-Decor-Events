@@ -50,6 +50,12 @@ public class AppSettingsEntity {
     private boolean notificationsEnabled = true;
 
     @Column(nullable = false)
+    private boolean liveLocationTrackingEnabled;
+
+    @Column(nullable = false)
+    private int liveLocationIntervalMinutes = 10;
+
+    @Column(nullable = false)
     private int sessionTimeoutMinutes = 60;
 
     private Instant updatedAt;
@@ -79,6 +85,10 @@ public class AppSettingsEntity {
     public void setWorkplaceLongitude(Double workplaceLongitude) { this.workplaceLongitude = workplaceLongitude; }
     public boolean isNotificationsEnabled() { return notificationsEnabled; }
     public void setNotificationsEnabled(boolean notificationsEnabled) { this.notificationsEnabled = notificationsEnabled; }
+    public boolean isLiveLocationTrackingEnabled() { return liveLocationTrackingEnabled; }
+    public void setLiveLocationTrackingEnabled(boolean liveLocationTrackingEnabled) { this.liveLocationTrackingEnabled = liveLocationTrackingEnabled; }
+    public int getLiveLocationIntervalMinutes() { return liveLocationIntervalMinutes; }
+    public void setLiveLocationIntervalMinutes(int liveLocationIntervalMinutes) { this.liveLocationIntervalMinutes = liveLocationIntervalMinutes; }
     public int getSessionTimeoutMinutes() { return sessionTimeoutMinutes; }
     public void setSessionTimeoutMinutes(int sessionTimeoutMinutes) { this.sessionTimeoutMinutes = sessionTimeoutMinutes; }
     public Instant getUpdatedAt() { return updatedAt; }

@@ -55,6 +55,7 @@ export type AdminDashboardSnapshot = {
   administrators: number;
   supervisors: number;
   liveAttendance: AdminLiveAttendanceRow[];
+  liveLocations: AdminLiveLocationRow[];
   quickActions: string[];
 };
 
@@ -69,6 +70,17 @@ export type AdminLiveAttendanceRow = {
   overtimeMinutes: number;
   autoCheckout: boolean;
   late: boolean;
+};
+
+export type AdminLiveLocationRow = {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  attendanceRecordId: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number | null;
+  capturedAt: string;
 };
 
 export type EmployeeToday = {
@@ -187,6 +199,8 @@ export type AppSettings = {
   workplaceLatitude: number | null;
   workplaceLongitude: number | null;
   notificationsEnabled: boolean;
+  liveLocationTrackingEnabled: boolean;
+  liveLocationIntervalMinutes: number;
   sessionTimeoutMinutes: number;
   updatedAt: string | null;
 };
@@ -356,6 +370,22 @@ export async function checkOut(
   payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
 ): Promise<AttendanceResponse> {
   return authorizedRequest<AttendanceResponse>("/employee/attendance/check-out", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function recordLiveLocation(
+  accessToken: string,
+  payload: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    capturedAt: string;
+    device: Record<string, string>;
+  },
+): Promise<void> {
+  return authorizedRequest<void>("/employee/live-location", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
   });

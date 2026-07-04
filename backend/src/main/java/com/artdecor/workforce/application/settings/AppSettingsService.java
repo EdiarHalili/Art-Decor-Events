@@ -36,6 +36,8 @@ public class AppSettingsService {
         entity.setWorkplaceLatitude(command.workplaceLatitude());
         entity.setWorkplaceLongitude(command.workplaceLongitude());
         entity.setNotificationsEnabled(command.notificationsEnabled());
+        entity.setLiveLocationTrackingEnabled(command.liveLocationTrackingEnabled());
+        entity.setLiveLocationIntervalMinutes(command.liveLocationIntervalMinutes());
         entity.setSessionTimeoutMinutes(command.sessionTimeoutMinutes());
         return toResponse(entity);
     }
@@ -60,6 +62,9 @@ public class AppSettingsService {
         }
         if (command.sessionTimeoutMinutes() < 5 || command.sessionTimeoutMinutes() > 1440) {
             throw new IllegalArgumentException("Session timeout must be between 5 minutes and 24 hours.");
+        }
+        if (command.liveLocationIntervalMinutes() < 5 || command.liveLocationIntervalMinutes() > 60) {
+            throw new IllegalArgumentException("Live location interval must be between 5 and 60 minutes.");
         }
         if ((command.workplaceLatitude() == null) != (command.workplaceLongitude() == null)) {
             throw new IllegalArgumentException("Workplace latitude and longitude must be configured together.");
@@ -94,6 +99,8 @@ public class AppSettingsService {
                 entity.getWorkplaceLatitude(),
                 entity.getWorkplaceLongitude(),
                 entity.isNotificationsEnabled(),
+                entity.isLiveLocationTrackingEnabled(),
+                entity.getLiveLocationIntervalMinutes() <= 0 ? 10 : entity.getLiveLocationIntervalMinutes(),
                 entity.getSessionTimeoutMinutes(),
                 entity.getUpdatedAt()
         );

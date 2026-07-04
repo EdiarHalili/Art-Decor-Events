@@ -7,6 +7,7 @@ import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
@@ -23,6 +24,7 @@ public class AttendanceService {
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
     private final EmployeeRepository employees;
+    private final LiveLocationUpdateRepository liveLocations;
     private final AppSettingsService settings;
     private final AuditService audit;
     private final Clock clock;
@@ -32,6 +34,7 @@ public class AttendanceService {
             ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
             EmployeeRepository employees,
+            LiveLocationUpdateRepository liveLocations,
             AppSettingsService settings,
             AuditService audit,
             Clock clock
@@ -40,6 +43,7 @@ public class AttendanceService {
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
         this.employees = employees;
+        this.liveLocations = liveLocations;
         this.settings = settings;
         this.audit = audit;
         this.clock = clock;
@@ -116,6 +120,9 @@ public class AttendanceService {
         record.setStatus(AttendanceStatus.CHECKED_OUT);
 
         audit.log(principal, "CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", record.getId());
+        if (liveLocations.existsByAttendanceRecordId(record.getId())) {
+            audit.log(principal, "LIVE_LOCATION_TRACKING_STOPPED", "ATTENDANCE_RECORD", record.getId());
+        }
         return toResponse(record);
     }
 

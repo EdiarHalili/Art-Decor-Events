@@ -7,6 +7,8 @@ import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateEntity;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import java.time.LocalDate;
@@ -24,17 +26,20 @@ public class AdminDashboardService {
     private final UserAccountRepository users;
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
+    private final LiveLocationUpdateRepository liveLocations;
 
     public AdminDashboardService(
             EmployeeRepository employees,
             UserAccountRepository users,
             ScheduleAssignmentRepository assignments,
-            AttendanceRecordRepository attendanceRecords
+            AttendanceRecordRepository attendanceRecords,
+            LiveLocationUpdateRepository liveLocations
     ) {
         this.employees = employees;
         this.users = users;
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
+        this.liveLocations = liveLocations;
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +77,9 @@ public class AdminDashboardService {
                 users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE),
                 users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE),
                 liveAttendance(latestRecordByEmployee.values().stream().toList()),
+                liveLocations(latestRecordByEmployee.values().stream()
+                        .filter(record -> record.getCheckedOutAt() == null)
+                        .toList()),
                 List.of("Create check-in window", "Add employee profiles", "Post announcement")
         );
     }
@@ -91,6 +99,28 @@ public class AdminDashboardService {
                         record.getOvertimeMinutes(),
                         record.isAutoCheckout(),
                         record.getStatus() == AttendanceStatus.LATE
+                ))
+                .toList();
+    }
+
+    private List<AdminLiveLocationRow> liveLocations(List<AttendanceRecordEntity> activeRecords) {
+        if (activeRecords.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, AttendanceRecordEntity> activeRecordById = activeRecords.stream()
+                .collect(Collectors.toMap(AttendanceRecordEntity::getId, record -> record));
+        return liveLocations.findLatestForAttendanceRecords(activeRecordById.keySet())
+                .stream()
+                .sorted(Comparator.comparing(LiveLocationUpdateEntity::getCapturedAt).reversed())
+                .map(update -> new AdminLiveLocationRow(
+                        update.getEmployee().getId().toString(),
+                        update.getEmployee().getEmployeeCode(),
+                        update.getEmployee().getFullName(),
+                        update.getAttendanceRecord().getId().toString(),
+                        update.getLatitude(),
+                        update.getLongitude(),
+                        update.getAccuracyMeters(),
+                        update.getCapturedAt()
                 ))
                 .toList();
     }

@@ -3,6 +3,7 @@ package com.artdecor.workforce.application.attendance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.application.audit.AuditService;
@@ -15,6 +16,7 @@ import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
@@ -37,6 +39,7 @@ class AttendanceServiceTest {
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
+    private final LiveLocationUpdateRepository liveLocations = org.mockito.Mockito.mock(LiveLocationUpdateRepository.class);
     private final AppSettingsService settings = org.mockito.Mockito.mock(AppSettingsService.class);
     private final AuditService audit = org.mockito.Mockito.mock(AuditService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T06:55:00Z"), ZoneOffset.UTC);
@@ -49,7 +52,7 @@ class AttendanceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AttendanceService(schedules, assignments, attendanceRecords, employees, settings, audit, clock);
+        service = new AttendanceService(schedules, assignments, attendanceRecords, employees, liveLocations, settings, audit, clock);
         employeeId = UUID.randomUUID();
         scheduleId = UUID.randomUUID();
         employee = employee(employeeId);
@@ -73,6 +76,8 @@ class AttendanceServiceTest {
                 null,
                 null,
                 true,
+                false,
+                10,
                 60,
                 Instant.parse("2026-07-03T00:00:00Z")
         ));
@@ -134,6 +139,22 @@ class AttendanceServiceTest {
 
         assertThat(response.status()).isEqualTo(AttendanceStatus.CHECKED_OUT.name());
         assertThat(response.workedMinutes()).isEqualTo(55);
+    }
+
+    @Test
+    void logsLiveTrackingStopWhenCheckedOutAfterLocationUpdates() {
+        UUID recordId = UUID.randomUUID();
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", recordId);
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:00:00Z"));
+        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+        when(liveLocations.existsByAttendanceRecordId(recordId)).thenReturn(true);
+
+        service.checkOut(principal, command());
+
+        verify(audit).log(principal, "LIVE_LOCATION_TRACKING_STOPPED", "ATTENDANCE_RECORD", recordId);
     }
 
     private AttendanceActionCommand command() {

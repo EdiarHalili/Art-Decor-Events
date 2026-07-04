@@ -9,6 +9,18 @@ import org.springframework.data.repository.query.Param;
 public interface AttendanceRecordRepository extends JpaRepository<AttendanceRecordEntity, UUID> {
     Optional<AttendanceRecordEntity> findByScheduleIdAndEmployeeId(UUID scheduleId, UUID employeeId);
 
+    @Query("""
+            select record
+            from AttendanceRecordEntity record
+            join fetch record.employee employee
+            join fetch record.schedule schedule
+            where employee.id = :employeeId
+              and record.checkedInAt is not null
+              and record.checkedOutAt is null
+            order by record.checkedInAt desc
+            """)
+    java.util.List<AttendanceRecordEntity> findActiveRecordsByEmployeeId(@Param("employeeId") UUID employeeId);
+
     void deleteByScheduleId(UUID scheduleId);
 
     @Query("""

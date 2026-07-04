@@ -35,6 +35,8 @@ const fallbackSettings: AppSettings = {
   workplaceLatitude: null,
   workplaceLongitude: null,
   notificationsEnabled: true,
+  liveLocationTrackingEnabled: false,
+  liveLocationIntervalMinutes: 10,
   sessionTimeoutMinutes: 60,
   updatedAt: null,
 };
@@ -194,6 +196,10 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
             <Input type="number" min="0" max="240" value={form.allowedLateMinutes} onChange={(event) => setForm({ ...form, allowedLateMinutes: Number(event.target.value) })} />
           </label>
           <label className="space-y-1 text-sm font-medium">
+            <span>Live tracking interval minutes</span>
+            <Input type="number" min="5" max="60" value={form.liveLocationIntervalMinutes} onChange={(event) => setForm({ ...form, liveLocationIntervalMinutes: Number(event.target.value) })} />
+          </label>
+          <label className="space-y-1 text-sm font-medium">
             <span>Workplace latitude</span>
             <Input
               type="number"
@@ -220,6 +226,7 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
           <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
             <Toggle label="GPS capture" checked={form.gpsEnabled} onChange={(checked) => setForm({ ...form, gpsEnabled: checked })} />
             <Toggle label="Notifications" checked={form.notificationsEnabled} onChange={(checked) => setForm({ ...form, notificationsEnabled: checked })} />
+            <Toggle label="Live location tracking" checked={form.liveLocationTrackingEnabled} onChange={(checked) => setForm({ ...form, liveLocationTrackingEnabled: checked })} />
           </div>
           <Button className="md:col-span-2" disabled={saving}>
             <Save size={18} />

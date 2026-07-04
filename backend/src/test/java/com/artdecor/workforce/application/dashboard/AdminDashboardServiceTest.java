@@ -11,6 +11,8 @@ import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateEntity;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
@@ -27,7 +29,8 @@ class AdminDashboardServiceTest {
     private final UserAccountRepository users = org.mockito.Mockito.mock(UserAccountRepository.class);
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
-    private final AdminDashboardService service = new AdminDashboardService(employees, users, assignments, attendanceRecords);
+    private final LiveLocationUpdateRepository liveLocations = org.mockito.Mockito.mock(LiveLocationUpdateRepository.class);
+    private final AdminDashboardService service = new AdminDashboardService(employees, users, assignments, attendanceRecords, liveLocations);
 
     @Test
     void returnsCurrentWorkforceSnapshot() {
@@ -67,10 +70,22 @@ class AdminDashboardServiceTest {
         assignment.setEmployee(employee);
 
         AttendanceRecordEntity record = new AttendanceRecordEntity();
+        UUID recordId = UUID.randomUUID();
+        ReflectionTestUtils.setField(record, "id", recordId);
         record.setSchedule(schedule);
         record.setEmployee(employee);
         record.setStatus(AttendanceStatus.PRESENT);
         record.setCheckedInAt(Instant.parse("2026-07-03T04:58:00Z"));
+
+        LiveLocationUpdateEntity location = new LiveLocationUpdateEntity();
+        ReflectionTestUtils.setField(location, "id", UUID.randomUUID());
+        location.setAttendanceRecord(record);
+        location.setEmployee(employee);
+        location.setSchedule(schedule);
+        location.setLatitude(42.30413);
+        location.setLongitude(21.64894);
+        location.setAccuracyMeters(18.0);
+        location.setCapturedAt(Instant.parse("2026-07-03T05:05:00Z"));
 
         when(employees.countByStatus(UserStatus.ACTIVE)).thenReturn(1L);
         when(employees.countByStatus(UserStatus.INACTIVE)).thenReturn(0L);
@@ -78,6 +93,7 @@ class AdminDashboardServiceTest {
         when(users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE)).thenReturn(0L);
         when(attendanceRecords.findReportRecords(today, today)).thenReturn(List.of(record));
         when(assignments.findReportAssignments(today, today, WorkScheduleStatus.CANCELLED)).thenReturn(List.of(assignment));
+        when(liveLocations.findLatestForAttendanceRecords(java.util.Set.of(recordId))).thenReturn(List.of(location));
 
         AdminDashboardResponse response = service.snapshot();
 
@@ -86,6 +102,8 @@ class AdminDashboardServiceTest {
         assertThat(response.absent()).isZero();
         assertThat(response.liveAttendance()).hasSize(1);
         assertThat(response.liveAttendance().getFirst().employeeName()).isEqualTo("Demo Employee");
+        assertThat(response.liveLocations()).hasSize(1);
+        assertThat(response.liveLocations().getFirst().latitude()).isEqualTo(42.30413);
     }
 
     @Test
