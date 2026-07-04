@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class AttendanceServiceTest {
@@ -95,6 +96,24 @@ class AttendanceServiceTest {
 
         assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
         assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T06:55:00Z"));
+    }
+
+    @Test
+    void storesBrowserGpsCoordinatesWithoutSwappingLatitudeAndLongitude() {
+        AttendanceActionCommand gpsCommand = new AttendanceActionCommand(
+                scheduleId,
+                42.30413,
+                21.64894,
+                Map.of("platform", "test")
+        );
+
+        service.checkIn(principal, gpsCommand);
+
+        ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
+        verify(attendanceRecords).save(captor.capture());
+        AttendanceRecordEntity saved = captor.getValue();
+        assertThat(saved.getCheckInLatitude()).isEqualTo(42.30413);
+        assertThat(saved.getCheckInLongitude()).isEqualTo(21.64894);
     }
 
     @Test

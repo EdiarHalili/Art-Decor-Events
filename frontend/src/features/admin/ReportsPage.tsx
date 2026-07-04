@@ -7,6 +7,7 @@ import {
   exportAttendanceReport,
   getAttendanceReport,
   getEmployeeHistory,
+  mapLocationUrl,
   type AttendanceReport,
   type AttendanceReportRow,
   type EmployeeAttendanceSummary,
@@ -391,7 +392,7 @@ function statusClass(status: AttendanceReportRow["status"], checkoutType: Attend
 }
 
 function mapUrl(latitude: number, longitude: number) {
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+  return mapLocationUrl(latitude, longitude);
 }
 
 function formatDistance(meters: number) {

@@ -10,6 +10,7 @@ import {
   exportEmployeeAttendance,
   getEmployeeHistory,
   listEmployees,
+  mapLocationUrl,
   resetEmployeePassword,
   updateEmployee,
   type AttendanceReportRow,
@@ -665,7 +666,7 @@ function checkoutTypeLabel(type: CheckoutType | null, status: string) {
 }
 
 function mapUrl(latitude: number, longitude: number) {
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+  return mapLocationUrl(latitude, longitude);
 }
 
 function formatDistance(meters: number) {

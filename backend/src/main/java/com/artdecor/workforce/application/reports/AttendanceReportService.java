@@ -2,6 +2,7 @@ package com.artdecor.workforce.application.reports;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.application.location.GpsDebugLogger;
 import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
@@ -187,7 +188,7 @@ public class AttendanceReportService {
     }
 
     private AttendanceReportRow attendanceRow(AttendanceRecordEntity record, WorkplaceCoordinates workplace) {
-        return new AttendanceReportRow(
+        AttendanceReportRow row = new AttendanceReportRow(
                 record.getSchedule().getWorkDate(),
                 record.getId() == null ? null : record.getId().toString(),
                 record.getSchedule().getId().toString(),
@@ -210,6 +211,15 @@ public class AttendanceReportService {
                 record.getStatus() == AttendanceStatus.LATE,
                 false
         );
+        GpsDebugLogger.log(
+                "attendance API row",
+                "attendanceRecordId", row.attendanceRecordId(),
+                "checkInLatitude", row.checkInLatitude(),
+                "checkInLongitude", row.checkInLongitude(),
+                "checkOutLatitude", row.checkOutLatitude(),
+                "checkOutLongitude", row.checkOutLongitude()
+        );
+        return row;
     }
 
     private WorkplaceCoordinates workplaceCoordinates() {

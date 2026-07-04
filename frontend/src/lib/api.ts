@@ -383,7 +383,16 @@ export async function deactivateAdminUser(accessToken: string, userId: string): 
 }
 
 export async function getAdminDashboard(accessToken: string): Promise<AdminDashboardSnapshot> {
-  return authorizedRequest<AdminDashboardSnapshot>("/admin/dashboard", accessToken);
+  const response = await authorizedRequest<AdminDashboardSnapshot>("/admin/dashboard", accessToken);
+  response.liveLocations.forEach((location) =>
+    debugGpsLog("api returned live location", {
+      employeeId: location.employeeId,
+      attendanceRecordId: location.attendanceRecordId,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    }),
+  );
+  return response;
 }
 
 export async function getEmployeeToday(accessToken: string): Promise<EmployeeToday> {
@@ -394,6 +403,11 @@ export async function checkIn(
   accessToken: string,
   payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
 ): Promise<AttendanceResponse> {
+  debugGpsLog("check-in API request payload", {
+    scheduleId: payload.scheduleId,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+  });
   return authorizedRequest<AttendanceResponse>("/employee/attendance/check-in", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -404,6 +418,11 @@ export async function checkOut(
   accessToken: string,
   payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
 ): Promise<AttendanceResponse> {
+  debugGpsLog("check-out API request payload", {
+    scheduleId: payload.scheduleId,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+  });
   return authorizedRequest<AttendanceResponse>("/employee/attendance/check-out", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -431,6 +450,12 @@ export async function recordLiveLocation(
     device: Record<string, string>;
   },
 ): Promise<void> {
+  debugGpsLog("live-location API request payload", {
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    accuracyMeters: payload.accuracyMeters,
+    capturedAt: payload.capturedAt,
+  });
   return authorizedRequest<void>("/employee/live-location", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -490,10 +515,12 @@ export async function getAttendanceReport(
   accessToken: string,
   params: { from: string; to: string; period: "daily" | "weekly" | "monthly" },
 ): Promise<AttendanceReport> {
-  return authorizedRequest<AttendanceReport>(
+  const response = await authorizedRequest<AttendanceReport>(
     `/admin/reports/attendance?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&period=${params.period}`,
     accessToken,
   );
+  logAttendanceRows("api returned attendance report", response.rows);
+  return response;
 }
 
 export async function getEmployeeHistory(
@@ -501,10 +528,12 @@ export async function getEmployeeHistory(
   employeeId: string,
   params: { from: string; to: string },
 ): Promise<AttendanceReportRow[]> {
-  return authorizedRequest<AttendanceReportRow[]>(
+  const response = await authorizedRequest<AttendanceReportRow[]>(
     `/admin/reports/employees/${employeeId}/history?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}`,
     accessToken,
   );
+  logAttendanceRows("api returned employee history", response);
+  return response;
 }
 
 export async function exportAttendanceReport(
@@ -652,4 +681,39 @@ async function errorMessage(response: Response) {
   } catch {
     return "The request could not be completed.";
   }
+}
+
+export function mapLocationUrl(latitude: number, longitude: number) {
+  const url = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
+  debugGpsLog("map URL generated", { latitude, longitude, url });
+  return url;
+}
+
+export function debugGpsLog(stage: string, values: Record<string, unknown>) {
+  if (!gpsDebugEnabled()) {
+    return;
+  }
+  console.debug(`[GPS DEBUG] ${stage}`, values);
+}
+
+function gpsDebugEnabled() {
+  if (typeof window !== "undefined" && window.localStorage.getItem("artdecor.gpsDebug") === "false") {
+    return false;
+  }
+  return import.meta.env.DEV;
+}
+
+function logAttendanceRows(stage: string, rows: AttendanceReportRow[]) {
+  rows
+    .filter((row) => row.checkInLatitude != null || row.checkOutLatitude != null)
+    .forEach((row) =>
+      debugGpsLog(stage, {
+        attendanceRecordId: row.attendanceRecordId,
+        employeeId: row.employeeId,
+        checkInLatitude: row.checkInLatitude,
+        checkInLongitude: row.checkInLongitude,
+        checkOutLatitude: row.checkOutLatitude,
+        checkOutLongitude: row.checkOutLongitude,
+      }),
+    );
 }

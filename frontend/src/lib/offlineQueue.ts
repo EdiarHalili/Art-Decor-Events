@@ -1,4 +1,4 @@
-import { checkIn, checkOut } from "./api";
+import { checkIn, checkOut, debugGpsLog } from "./api";
 
 export type OfflineAttendanceAction = {
   id: string;
@@ -62,6 +62,12 @@ export async function syncQueuedAttendanceActions(accessToken: string): Promise<
           offlineActionId: action.id,
         },
       };
+      debugGpsLog("offline attendance sync payload", {
+        type: action.type,
+        scheduleId: payload.scheduleId,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+      });
       if (action.type === "CHECK_IN") {
         await checkIn(accessToken, payload);
       } else {

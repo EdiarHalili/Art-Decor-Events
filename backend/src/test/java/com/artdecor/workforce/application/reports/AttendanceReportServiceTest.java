@@ -52,6 +52,12 @@ class AttendanceReportServiceTest {
         assertThat(response.summary().workedMinutes()).isEqualTo(480);
         assertThat(response.rows()).extracting(AttendanceReportRow::status)
                 .containsExactly(AttendanceStatus.ABSENT.name(), AttendanceStatus.CHECKED_OUT.name());
+        AttendanceReportRow presentRow = response.rows().stream()
+                .filter(row -> row.employeeCode().equals("EMP001"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(presentRow.checkInLatitude()).isEqualTo(42.30413);
+        assertThat(presentRow.checkInLongitude()).isEqualTo(21.64894);
 
         ExportFile csv = service.export(date, date, "csv");
         assertThat(csv.filename()).endsWith(".csv");
@@ -111,6 +117,7 @@ class AttendanceReportServiceTest {
                 .contains("Auto Check Out")
                 .contains("GPS")
                 .contains("View on Map")
+                .contains("https://maps.google.com/?q=42.30413,21.64894")
                 .contains("Totali i diteve te punuara : 1")
                 .contains("Totali i oreve normale    : 8h")
                 .contains("Totali i oreve shtese     : 1h 05min")
@@ -152,6 +159,8 @@ class AttendanceReportServiceTest {
         record.setCheckedInAt(Instant.parse("2026-07-03T04:55:00Z"));
         record.setCheckedOutAt(Instant.parse("2026-07-03T12:55:00Z"));
         record.setWorkedMinutes(480);
+        record.setCheckInLatitude(42.30413);
+        record.setCheckInLongitude(21.64894);
         return record;
     }
 }

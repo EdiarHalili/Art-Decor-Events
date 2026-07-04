@@ -5,7 +5,7 @@ import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { checkIn, checkOut, getEmployeeToday, recordLiveLocation, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import { checkIn, checkOut, debugGpsLog, getEmployeeToday, recordLiveLocation, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
 import { getQueuedAttendanceActions, queueAttendanceAction, syncQueuedAttendanceActions } from "../../lib/offlineQueue";
 
 type EmployeeHomeProps = {
@@ -113,11 +113,18 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (position) =>
-          resolve({
+        (position) => {
+          const location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          }),
+          };
+          debugGpsLog("browser attendance geolocation", {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracyMeters: position.coords.accuracy,
+          });
+          resolve(location);
+        },
         () => resolve({}),
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
       );
@@ -131,12 +138,15 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (position) =>
-          resolve({
+        (position) => {
+          const location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracyMeters: position.coords.accuracy,
-          }),
+          };
+          debugGpsLog("browser live geolocation", location);
+          resolve(location);
+        },
         () => resolve(null),
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
       );
@@ -165,6 +175,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     setMessage("");
     const location = settings?.gpsEnabled === false ? {} : await captureLocation();
     const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
+    debugGpsLog(`${type.toLowerCase().replace("_", "-")} prepared payload`, {
+      scheduleId: payload.scheduleId,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+    });
 
     if (!navigator.onLine) {
       queueAttendanceAction({

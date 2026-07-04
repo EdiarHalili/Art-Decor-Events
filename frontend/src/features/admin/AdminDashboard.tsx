@@ -4,7 +4,7 @@ import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { adminCheckout, getAdminDashboard, type AdminDashboardSnapshot, type AppSettings, type AuthResponse, type CheckoutType } from "../../lib/api";
+import { adminCheckout, getAdminDashboard, mapLocationUrl, type AdminDashboardSnapshot, type AppSettings, type AuthResponse, type CheckoutType } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
@@ -277,7 +277,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                     </div>
                     <a
                       className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-muted"
-                      href={`https://maps.google.com/?q=${location.latitude},${location.longitude}`}
+                      href={mapLocationUrl(location.latitude, location.longitude)}
                       target="_blank"
                       rel="noreferrer"
                     >

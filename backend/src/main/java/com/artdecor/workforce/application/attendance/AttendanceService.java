@@ -1,6 +1,7 @@
 package com.artdecor.workforce.application.attendance;
 
 import com.artdecor.workforce.application.audit.AuditService;
+import com.artdecor.workforce.application.location.GpsDebugLogger;
 import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.CheckoutMode;
@@ -86,6 +87,14 @@ public class AttendanceService {
 
         AttendanceRecordEntity record = existing.orElseGet(AttendanceRecordEntity::new);
         boolean gpsEnabled = settings.current().gpsEnabled();
+        GpsDebugLogger.log(
+                "check-in request",
+                "employeeId", employee.getId(),
+                "scheduleId", schedule.getId(),
+                "latitude", command.latitude(),
+                "longitude", command.longitude(),
+                "gpsEnabled", gpsEnabled
+        );
         record.setSchedule(schedule);
         record.setEmployee(employee);
         record.setCheckedInAt(now);
@@ -95,6 +104,12 @@ public class AttendanceService {
         record.setStatus(isLate(schedule, now) ? AttendanceStatus.LATE : AttendanceStatus.PRESENT);
 
         AttendanceRecordEntity saved = attendanceRecords.save(record);
+        GpsDebugLogger.log(
+                "check-in stored",
+                "attendanceRecordId", saved.getId(),
+                "checkInLatitude", saved.getCheckInLatitude(),
+                "checkInLongitude", saved.getCheckInLongitude()
+        );
         audit.log(principal, "CHECK_IN_RECORDED", "ATTENDANCE_RECORD", saved.getId());
         return toResponse(saved);
     }
@@ -113,6 +128,14 @@ public class AttendanceService {
 
         Instant now = Instant.now(clock);
         boolean gpsEnabled = settings.current().gpsEnabled();
+        GpsDebugLogger.log(
+                "check-out request",
+                "employeeId", employee.getId(),
+                "scheduleId", command.scheduleId(),
+                "latitude", command.latitude(),
+                "longitude", command.longitude(),
+                "gpsEnabled", gpsEnabled
+        );
         record.setCheckedOutAt(now);
         record.setCheckOutLatitude(gpsEnabled ? command.latitude() : null);
         record.setCheckOutLongitude(gpsEnabled ? command.longitude() : null);
@@ -122,6 +145,12 @@ public class AttendanceService {
         record.setAutoCheckout(false);
         record.setCheckoutType(CheckoutType.MANUAL_EMPLOYEE);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
+        GpsDebugLogger.log(
+                "check-out stored",
+                "attendanceRecordId", record.getId(),
+                "checkOutLatitude", record.getCheckOutLatitude(),
+                "checkOutLongitude", record.getCheckOutLongitude()
+        );
 
         audit.log(principal, "CHECK_OUT_RECORDED", "ATTENDANCE_RECORD", record.getId());
         if (liveLocations.existsByAttendanceRecordId(record.getId())) {

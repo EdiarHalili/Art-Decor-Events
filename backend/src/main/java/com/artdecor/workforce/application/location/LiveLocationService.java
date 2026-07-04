@@ -41,6 +41,13 @@ public class LiveLocationService {
             throw new AttendanceException("LIVE_LOCATION_DISABLED", "Live location tracking is disabled.");
         }
         validate(command);
+        GpsDebugLogger.log(
+                "live-location request",
+                "employeeId", principal.employeeId(),
+                "latitude", command.latitude(),
+                "longitude", command.longitude(),
+                "accuracyMeters", command.accuracyMeters()
+        );
 
         AttendanceRecordEntity attendanceRecord = attendanceRecords.findActiveRecordsByEmployeeId(principal.employeeId())
                 .stream()
@@ -64,6 +71,13 @@ public class LiveLocationService {
         update.setDevice(command.device());
 
         LiveLocationUpdateEntity saved = liveLocations.save(update);
+        GpsDebugLogger.log(
+                "live-location stored",
+                "liveLocationId", saved.getId(),
+                "attendanceRecordId", saved.getAttendanceRecord().getId(),
+                "latitude", saved.getLatitude(),
+                "longitude", saved.getLongitude()
+        );
         if (firstUpdate) {
             audit.log(principal, "LIVE_LOCATION_TRACKING_STARTED", "ATTENDANCE_RECORD", attendanceRecord.getId());
         }
