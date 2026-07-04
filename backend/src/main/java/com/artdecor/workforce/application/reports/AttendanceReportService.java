@@ -460,28 +460,23 @@ public class AttendanceReportService {
     }
 
     private List<String> employeeReportLines(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
-        AttendanceReportSummary summary = summarize(rows);
         ZoneId zone = businessZone();
+        EmployeePdfTotals totals = employeePdfTotals(rows);
         List<String> lines = new ArrayList<>();
         lines.add("Kompania : " + companyName());
         lines.add("Punetori : " + employee.getFullName());
         lines.add("Kodi     : " + employee.getEmployeeCode());
         lines.add("Periudha : " + PDF_DATE.format(from) + " - " + PDF_DATE.format(to));
         lines.add("");
-        lines.add("Permbledhje");
-        lines.add("Ditet e punuara: " + workedDays(rows)
-                + "    Oret totale: " + minutesLabel(summary.workedMinutes())
-                + "    Oret shtese: " + minutesLabel(summary.overtimeMinutes()));
-        lines.add("Ditet me vonese: " + summary.late() + "    Mungesat: " + summary.absent());
-        lines.add("");
-        lines.add(String.format("%-10s %-7s %-7s %-8s %s", "Data", "Hyrja", "Dalja", "Oret", "Statusi"));
-        lines.add("---------- ------- ------- -------- ----------------");
+        lines.add(String.format("%-10s %-17s %-22s %-13s %s",
+                "Data", "Check In", "Check Out", "Oret e punes", "Statusi"));
+        lines.add("---------- ----------------- ---------------------- ------------- ----------------");
         for (AttendanceReportRow row : rows) {
             lines.add(String.format(
-                    "%-10s %-7s %-7s %-8s %s",
+                    "%-10s %-17s %-22s %-13s %s",
                     PDF_DATE.format(row.workDate()),
-                    time(row.checkedInAt(), zone),
-                    row.autoCheckout() ? time(row.checkedOutAt(), zone) + "*" : time(row.checkedOutAt(), zone),
+                    dateTime(row.checkedInAt(), zone),
+                    checkOutLabel(row, zone),
                     minutesLabel(row.workedMinutes()),
                     statusLabel(row)
             ));
@@ -490,27 +485,27 @@ public class AttendanceReportService {
         List<String> gpsLines = rows.stream()
                 .filter(row -> hasGps(row.checkInLatitude(), row.checkInLongitude())
                         || hasGps(row.checkOutLatitude(), row.checkOutLongitude()))
-                .map(row -> String.format(
-                        "%-10s  Hyrja: %-28s  Dalja: %s",
-                        PDF_DATE.format(row.workDate()),
-                        gpsWithDistance(row.checkInLatitude(), row.checkInLongitude(), row.checkInDistanceMeters()),
-                        gpsWithDistance(row.checkOutLatitude(), row.checkOutLongitude(), row.checkOutDistanceMeters())
-                ))
+                .flatMap(row -> gpsLines(row).stream())
                 .toList();
 
         boolean hasAutoCheckout = rows.stream().anyMatch(AttendanceReportRow::autoCheckout);
         if (!gpsLines.isEmpty()) {
             lines.add("");
             if (hasAutoCheckout) {
-                lines.add("* Dalje automatike nga sistemi.");
+                lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi.");
                 lines.add("");
             }
-            lines.add("GPS (vetem ditet me koordinata)");
+            lines.add("GPS");
             lines.addAll(gpsLines);
         } else if (hasAutoCheckout) {
             lines.add("");
-            lines.add("* Dalje automatike nga sistemi.");
+            lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi.");
         }
+        lines.add("");
+        lines.add("Totali i diteve te punuara : " + totals.workedDays());
+        lines.add("Totali i oreve normale    : " + minutesLabel(totals.normalMinutes()));
+        lines.add("Totali i oreve shtese     : " + minutesLabel(totals.overtimeMinutes()));
+        lines.add("Totali i oreve            : " + minutesLabel(totals.totalMinutes()));
         return lines;
     }
 
@@ -533,9 +528,32 @@ public class AttendanceReportService {
         return value == null ? "-" : PDF_TIME.withZone(zone).format(value);
     }
 
+    private String date(Instant value, ZoneId zone) {
+        return value == null ? "-" : PDF_DATE.withZone(zone).format(value);
+    }
+
+    private String dateTime(Instant value, ZoneId zone) {
+        return value == null ? "-" : date(value, zone) + " " + time(value, zone);
+    }
+
+    private String checkOutLabel(AttendanceReportRow row, ZoneId zone) {
+        if (row.checkedOutAt() == null) {
+            return "-";
+        }
+        if (row.autoCheckout()) {
+            return "Auto Check Out " + time(row.checkedOutAt(), zone);
+        }
+        return dateTime(row.checkedOutAt(), zone);
+    }
+
     private String minutesLabel(int minutes) {
         int safeMinutes = Math.max(minutes, 0);
-        return (safeMinutes / 60) + "h " + String.format(Locale.ROOT, "%02d", safeMinutes % 60) + "m";
+        int hours = safeMinutes / 60;
+        int remainingMinutes = safeMinutes % 60;
+        if (remainingMinutes == 0) {
+            return hours + "h";
+        }
+        return hours + "h " + String.format(Locale.ROOT, "%02d", remainingMinutes) + "min";
     }
 
     private String statusLabel(AttendanceReportRow row) {
@@ -603,6 +621,42 @@ public class AttendanceReportService {
             value += " (" + distanceMeters + " m)";
         }
         return value;
+    }
+
+    private List<String> gpsLines(AttendanceReportRow row) {
+        List<String> lines = new ArrayList<>();
+        lines.add(PDF_DATE.format(row.workDate()));
+        lines.add("  Check In GPS : " + gpsWithDistance(row.checkInLatitude(), row.checkInLongitude(), row.checkInDistanceMeters()));
+        lines.add("  Check Out GPS: " + gpsWithDistance(row.checkOutLatitude(), row.checkOutLongitude(), row.checkOutDistanceMeters()));
+        if (hasGps(row.checkInLatitude(), row.checkInLongitude())) {
+            lines.add("  View on Map  : " + mapUrl(row.checkInLatitude(), row.checkInLongitude()));
+        } else if (hasGps(row.checkOutLatitude(), row.checkOutLongitude())) {
+            lines.add("  View on Map  : " + mapUrl(row.checkOutLatitude(), row.checkOutLongitude()));
+        }
+        return lines;
+    }
+
+    private String mapUrl(Double latitude, Double longitude) {
+        return String.format(Locale.ROOT, "https://maps.google.com/?q=%.5f,%.5f", latitude, longitude);
+    }
+
+    private EmployeePdfTotals employeePdfTotals(List<AttendanceReportRow> rows) {
+        int normalMinutes = 0;
+        int overtimeMinutes = 0;
+        int workedDays = 0;
+        for (AttendanceReportRow row : rows) {
+            if (row.absent() || row.workedMinutes() <= 0) {
+                continue;
+            }
+            workedDays++;
+            int dayNormalMinutes = Math.min(row.workedMinutes(), 8 * 60);
+            normalMinutes += dayNormalMinutes;
+            overtimeMinutes += Math.max(row.workedMinutes() - dayNormalMinutes, 0);
+        }
+        return new EmployeePdfTotals(workedDays, normalMinutes, overtimeMinutes, normalMinutes + overtimeMinutes);
+    }
+
+    private record EmployeePdfTotals(int workedDays, int normalMinutes, int overtimeMinutes, int totalMinutes) {
     }
 
     private String csvValue(String value) {

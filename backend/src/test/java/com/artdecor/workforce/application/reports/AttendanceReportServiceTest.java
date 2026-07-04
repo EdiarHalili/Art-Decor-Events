@@ -88,6 +88,10 @@ class AttendanceReportServiceTest {
         EmployeeEntity employee = employee("EMP001", "Present Worker");
         WorkScheduleEntity schedule = schedule(date);
         AttendanceRecordEntity record = record(schedule, employee);
+        record.setWorkedMinutes(545);
+        record.setCheckInLatitude(42.30413);
+        record.setCheckInLongitude(21.64894);
+        record.setAutoCheckout(true);
 
         when(employees.findById(employee.getId())).thenReturn(Optional.of(employee));
         when(assignments.findReportAssignments(date, date, WorkScheduleStatus.CANCELLED)).thenReturn(List.of());
@@ -102,9 +106,15 @@ class AttendanceReportServiceTest {
         assertThat(new String(pdf.content(), StandardCharsets.ISO_8859_1))
                 .contains("Permbledhje mujore e punes")
                 .contains("Punetori : Present Worker")
-                .contains("Data       Hyrja")
-                .contains("Oret totale")
-                .doesNotContain("Check In GPS");
+                .contains("Data       Check In")
+                .contains("03.07.2026 06:55")
+                .contains("Auto Check Out")
+                .contains("GPS")
+                .contains("View on Map")
+                .contains("Totali i diteve te punuara : 1")
+                .contains("Totali i oreve normale    : 8h")
+                .contains("Totali i oreve shtese     : 1h 05min")
+                .contains("Totali i oreve            : 9h 05min");
     }
 
     private WorkScheduleEntity schedule(LocalDate date) {
