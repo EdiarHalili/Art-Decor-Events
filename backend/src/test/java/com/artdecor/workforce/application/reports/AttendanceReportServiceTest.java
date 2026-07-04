@@ -13,6 +13,7 @@ import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -98,6 +99,12 @@ class AttendanceReportServiceTest {
 
         ExportFile pdf = service.exportEmployee(employee.getId(), date, date, "pdf");
         assertThat(pdf.content()).startsWith("%PDF".getBytes());
+        assertThat(new String(pdf.content(), StandardCharsets.ISO_8859_1))
+                .contains("Permbledhje mujore e punes")
+                .contains("Punetori : Present Worker")
+                .contains("Data       Hyrja")
+                .contains("Oret totale")
+                .doesNotContain("Check In GPS");
     }
 
     private WorkScheduleEntity schedule(LocalDate date) {
