@@ -68,6 +68,23 @@ public class AdminDailyCheckInWindowController {
             @PathVariable UUID windowId,
             @Valid @RequestBody DailyCheckInWindowRequest request
     ) {
+        return updateWindowInternal(principal, windowId, request);
+    }
+
+    @PostMapping("/{windowId}/update")
+    public ResponseEntity<DailyCheckInWindowResponse> updateWindowWithPost(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID windowId,
+            @Valid @RequestBody DailyCheckInWindowRequest request
+    ) {
+        return updateWindowInternal(principal, windowId, request);
+    }
+
+    private ResponseEntity<DailyCheckInWindowResponse> updateWindowInternal(
+            AuthenticatedPrincipal principal,
+            UUID windowId,
+            DailyCheckInWindowRequest request
+    ) {
         DailyCheckInWindowResponse response = service.updateWindow(windowId, request.toCommand());
         audit.log(principal, "DAILY_WINDOW_UPDATED", "WORK_SCHEDULE", windowId);
         return ResponseEntity.ok(response);

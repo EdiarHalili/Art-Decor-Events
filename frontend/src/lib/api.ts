@@ -258,10 +258,10 @@ type DailyCheckInWindowPayload = {
 export type CheckoutMode = "SCHEDULED_AUTO" | "MANUAL_ADMIN" | "UNLIMITED_24_7";
 export type CheckoutType = "MANUAL_EMPLOYEE" | "AUTO_CHECKED_OUT" | "ADMIN_CHECKED_OUT";
 
-export async function loginEmployee(username: string, password: string): Promise<AuthResponse> {
+export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ employeeCode, pin }),
   });
 }
 
@@ -481,8 +481,8 @@ export async function updateCheckInWindow(
   windowId: string,
   payload: DailyCheckInWindowPayload,
 ): Promise<DailyCheckInWindow> {
-  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}`, accessToken, {
-    method: "PATCH",
+  return authorizedRequest<DailyCheckInWindow>(`/admin/check-in-windows/${windowId}/update`, accessToken, {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -633,7 +633,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    notifySessionExpired(response);
+    notifySessionExpired(path, response);
     throw new Error(await errorMessage(response));
   }
 
@@ -652,7 +652,7 @@ async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> 
   });
 
   if (!response.ok) {
-    notifySessionExpired(response);
+    notifySessionExpired(path, response);
     throw new Error(await errorMessage(response));
   }
 
@@ -667,20 +667,50 @@ function jsonHeaders(headers?: HeadersInit) {
   return next;
 }
 
-function notifySessionExpired(response: Response) {
-  if (response.status === 401 && typeof window !== "undefined") {
+function notifySessionExpired(path: string, response: Response) {
+  if (response.status === 401 && path === "/auth/me" && typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("artdecor:session-expired"));
   }
 }
 
 async function errorMessage(response: Response) {
   try {
-    const data = (await response.json()) as { message?: string; details?: Record<string, string> };
-    const fieldMessages = data.details ? Object.values(data.details).filter(Boolean) : [];
-    return [data.message, ...fieldMessages].filter(Boolean).join(" ") || "The request could not be completed.";
+    const data = (await response.json()) as { message?: string; details?: Record<string, unknown> };
+    const fieldMessages = data.details
+      ? Object.entries(data.details)
+          .map(([field, message]) => readableFieldMessage(field, message))
+          .filter(Boolean)
+      : [];
+    if (fieldMessages.length > 0) {
+      return fieldMessages.join(" ");
+    }
+    return data.message || "The request could not be completed.";
   } catch {
     return "The request could not be completed.";
   }
+}
+
+function readableFieldMessage(field: string, message: unknown) {
+  if (typeof message !== "string" || !message.trim()) {
+    return "";
+  }
+  if (message.toLowerCase() === "must not be blank") {
+    return `${fieldLabel(field)} is required.`;
+  }
+  return message;
+}
+
+function fieldLabel(field: string) {
+  const labels: Record<string, string> = {
+    employeeCode: "Employee ID",
+    pin: "PIN",
+    username: "Employee ID",
+    password: "Password",
+    email: "Email",
+    currentPassword: "Current password",
+    newPassword: "New password",
+  };
+  return labels[field] ?? field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
 }
 
 export function mapLocationUrl(latitude: number, longitude: number) {

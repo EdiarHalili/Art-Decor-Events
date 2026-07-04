@@ -16,8 +16,8 @@ type LoginPageProps = {
 
 export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<"employee" | "admin">("employee");
-  const [employeeUsername, setEmployeeUsername] = useState("");
-  const [employeePassword, setEmployeePassword] = useState("");
+  const [employeeCode, setEmployeeCode] = useState("");
+  const [employeePin, setEmployeePin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,8 +29,24 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
     setLoading(true);
 
     try {
+      if (mode === "employee" && !employeeCode.trim()) {
+        setError("Employee ID is required.");
+        return;
+      }
+      if (mode === "employee" && !employeePin.trim()) {
+        setError("PIN is required.");
+        return;
+      }
+      if (mode === "admin" && !email.trim()) {
+        setError("Email is required.");
+        return;
+      }
+      if (mode === "admin" && !password) {
+        setError("Password is required.");
+        return;
+      }
       const session =
-        mode === "employee" ? await loginEmployee(employeeUsername, employeePassword) : await loginAdmin(email, password);
+        mode === "employee" ? await loginEmployee(employeeCode.trim(), employeePin.trim()) : await loginAdmin(email.trim(), password);
       onAuthenticated(session);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Login failed. Please check your details and try again.");
@@ -81,22 +97,24 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
             </Button>
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={submit}>
+          <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
             {mode === "employee" ? (
               <>
                 <label className="block space-y-2">
                   <span className="text-sm font-medium">Employee ID</span>
-                  <Input value={employeeUsername} onChange={(event) => setEmployeeUsername(event.target.value)} required />
+                  <Input value={employeeCode} onChange={(event) => setEmployeeCode(event.target.value)} required />
                 </label>
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium">Password</span>
+                  <span className="text-sm font-medium">PIN</span>
                   <div className="relative">
                     <LockKeyhole className="absolute left-3 top-3 text-muted-foreground" size={18} />
                     <Input
-                      value={employeePassword}
-                      onChange={(event) => setEmployeePassword(event.target.value)}
+                      value={employeePin}
+                      onChange={(event) => setEmployeePin(event.target.value)}
                       className="pl-10"
                       type="password"
+                      inputMode="numeric"
+                      maxLength={8}
                       required
                     />
                   </div>

@@ -69,7 +69,7 @@ class AuthServiceTest {
         employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        AuthResponse response = authService.loginEmployee("EMP001", "secret123");
+        AuthResponse response = authService.loginEmployee("EMP001", "1234");
 
         assertThat(response.accessToken()).isNotBlank();
         assertThat(response.role()).isEqualTo("EMPLOYEE");
@@ -83,8 +83,21 @@ class AuthServiceTest {
         employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "wrongpass"))
+        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "wrongpin"))
                 .isInstanceOf(AuthException.class);
+    }
+
+    @Test
+    void logsInEmployeeWithTemporaryPasswordForFirstLoginCompatibility() {
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", "TempPass123", UserRole.EMPLOYEE);
+        EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
+        employee.setUserAccount(employeeUser);
+        when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
+
+        AuthResponse response = authService.loginEmployee("EMP001", "TempPass123");
+
+        assertThat(response.accessToken()).isNotBlank();
+        assertThat(response.role()).isEqualTo("EMPLOYEE");
     }
 
     @Test

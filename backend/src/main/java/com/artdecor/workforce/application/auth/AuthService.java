@@ -62,16 +62,21 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginEmployee(String username, String password) {
-        var employee = employees.findByEmployeeCodeIgnoreCase(username)
+    public AuthResponse loginEmployee(String employeeCode, String pin) {
+        var employee = employees.findByEmployeeCodeIgnoreCase(employeeCode)
                 .orElseThrow(() -> new AuthException("Invalid credentials."));
         UserAccountEntity user = employee.getUserAccount();
 
         if (employee.getStatus() != UserStatus.ACTIVE
                 || user == null
                 || user.getStatus() != UserStatus.ACTIVE
-                || user.getRole() != UserRole.EMPLOYEE
-                || !passwordEncoder.matches(password, user.getPasswordHash())) {
+                || user.getRole() != UserRole.EMPLOYEE) {
+            throw new AuthException("Invalid credentials.");
+        }
+
+        boolean pinMatches = passwordEncoder.matches(pin, employee.getPinHash());
+        boolean passwordMatches = passwordEncoder.matches(pin, user.getPasswordHash());
+        if (!pinMatches && !passwordMatches) {
             throw new AuthException("Invalid credentials.");
         }
 

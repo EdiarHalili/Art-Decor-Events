@@ -138,7 +138,11 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
         ? await updateCheckInWindow(accessToken, editingWindowId, payload)
         : await createCheckInWindow(accessToken, payload);
 
-      setWindows((current) => upsertWindow(current, saved));
+      try {
+        setWindows(await listCheckInWindows(accessToken));
+      } catch {
+        setWindows((current) => upsertWindow(current, saved));
+      }
       setForm(emptyForm);
       setEditingWindowId(null);
       setEmployeeQuery("");

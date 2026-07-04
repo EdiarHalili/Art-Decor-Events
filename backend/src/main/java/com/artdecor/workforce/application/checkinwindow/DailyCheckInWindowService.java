@@ -11,6 +11,7 @@ import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -142,7 +143,8 @@ public class DailyCheckInWindowService {
 
     private void replaceAssignments(WorkScheduleEntity window, Set<UUID> employeeIds) {
         assignments.deleteByScheduleId(window.getId());
-        for (UUID employeeId : employeeIds) {
+        assignments.flush();
+        for (UUID employeeId : new LinkedHashSet<>(employeeIds)) {
             var employee = employees.findById(employeeId)
                     .orElseThrow(() -> new DailyCheckInWindowException("Selected employee was not found."));
             ScheduleAssignmentEntity assignment = new ScheduleAssignmentEntity();

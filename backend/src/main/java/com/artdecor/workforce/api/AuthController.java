@@ -4,6 +4,7 @@ import com.artdecor.workforce.application.auth.AuthResponse;
 import com.artdecor.workforce.application.auth.AuthService;
 import com.artdecor.workforce.application.auth.CurrentUserResponse;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -32,7 +33,7 @@ public class AuthController {
 
     @PostMapping("/employee/login")
     public ResponseEntity<AuthResponse> employeeLogin(@Valid @RequestBody EmployeeLoginRequest request) {
-        return ResponseEntity.ok(authService.loginEmployee(request.username(), request.password()));
+        return ResponseEntity.ok(authService.loginEmployee(request.employeeCode(), request.pin()));
     }
 
     @PostMapping("/change-password")
@@ -49,20 +50,24 @@ public class AuthController {
     }
 
     public record AdminLoginRequest(
-            @Email @NotBlank String email,
-            @NotBlank String password
+            @Email(message = "Admin email must be a valid email address.") @NotBlank(message = "Admin email is required.") String email,
+            @NotBlank(message = "Admin password is required.") String password
     ) {
     }
 
     public record EmployeeLoginRequest(
-            @NotBlank String username,
-            @NotBlank String password
+            @JsonAlias("username")
+            @NotBlank(message = "Employee ID is required.")
+            String employeeCode,
+            @JsonAlias("password")
+            @NotBlank(message = "PIN is required.")
+            String pin
     ) {
     }
 
     public record ChangePasswordRequest(
-            @NotBlank String currentPassword,
-            @NotBlank @Size(min = 8, max = 128) String newPassword
+            @NotBlank(message = "Current password is required.") String currentPassword,
+            @NotBlank(message = "New password is required.") @Size(min = 8, max = 128, message = "New password must be at least 8 characters.") String newPassword
     ) {
     }
 }
