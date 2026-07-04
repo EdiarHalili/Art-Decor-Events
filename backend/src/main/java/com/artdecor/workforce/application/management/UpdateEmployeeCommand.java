@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 
 public record UpdateEmployeeCommand(
         String fullName,
-        String pin,
+        String password,
         String phone,
         String profilePhotoUrl,
         String positionTitle,

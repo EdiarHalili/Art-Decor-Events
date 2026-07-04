@@ -48,6 +48,7 @@ class UserManagementServiceTest {
         org.mockito.Mockito.verify(users).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getPasswordHash()).isNotEqualTo("ChangeMe123!");
         assertThat(passwordEncoder.matches("ChangeMe123!", userCaptor.getValue().getPasswordHash())).isTrue();
+        assertThat(userCaptor.getValue().isPasswordMustChange()).isTrue();
     }
 
     @Test

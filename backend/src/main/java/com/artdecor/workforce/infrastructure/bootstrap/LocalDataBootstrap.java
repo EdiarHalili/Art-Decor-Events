@@ -51,6 +51,7 @@ public class LocalDataBootstrap implements ApplicationRunner {
         admin.setFullName(properties.adminName());
         admin.setEmail(properties.adminEmail());
         admin.setPasswordHash(passwordEncoder.encode(properties.adminPassword()));
+        admin.setPasswordMustChange(false);
         admin.setRole(UserRole.ADMINISTRATOR);
         admin.setStatus(UserStatus.ACTIVE);
         return users.save(admin);
@@ -82,6 +83,7 @@ public class LocalDataBootstrap implements ApplicationRunner {
         employee.setFullName(properties.employeeName());
         employee.setEmployeeCode(properties.employeeCode());
         employee.setPinHash(passwordEncoder.encode(properties.employeePin()));
+        employee.setUserAccount(createEmployeeUser(properties.employeeName(), properties.employeeCode()));
         employee.setStatus(UserStatus.ACTIVE);
         return employees.save(employee);
     }
@@ -100,6 +102,44 @@ public class LocalDataBootstrap implements ApplicationRunner {
             employee.setFullName(properties.employeeName());
             changed = true;
         }
+        if (employee.getUserAccount() == null) {
+            employee.setUserAccount(createEmployeeUser(properties.employeeName(), properties.employeeCode()));
+            changed = true;
+        } else {
+            UserAccountEntity user = employee.getUserAccount();
+            String employeePassword = defaultEmployeePassword();
+            if (!passwordEncoder.matches(employeePassword, user.getPasswordHash())) {
+                user.setPasswordHash(passwordEncoder.encode(employeePassword));
+                changed = true;
+            }
+            if (user.isPasswordMustChange()) {
+                user.setPasswordMustChange(false);
+                changed = true;
+            }
+            if (user.getRole() != UserRole.EMPLOYEE) {
+                user.setRole(UserRole.EMPLOYEE);
+                changed = true;
+            }
+            if (user.getStatus() != UserStatus.ACTIVE) {
+                user.setStatus(UserStatus.ACTIVE);
+                changed = true;
+            }
+        }
         return changed ? employees.save(employee) : employee;
+    }
+
+    private UserAccountEntity createEmployeeUser(String fullName, String employeeCode) {
+        UserAccountEntity user = new UserAccountEntity();
+        user.setFullName(fullName);
+        user.setEmail(employeeCode.trim().toLowerCase());
+        user.setPasswordHash(passwordEncoder.encode(defaultEmployeePassword()));
+        user.setPasswordMustChange(false);
+        user.setRole(UserRole.EMPLOYEE);
+        user.setStatus(UserStatus.ACTIVE);
+        return users.save(user);
+    }
+
+    private String defaultEmployeePassword() {
+        return properties.employeePin().length() >= 8 ? properties.employeePin() : properties.adminPassword();
     }
 }

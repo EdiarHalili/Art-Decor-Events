@@ -30,6 +30,9 @@ public class UserAccountEntity {
     private String passwordHash;
 
     @Column(nullable = false)
+    private boolean passwordMustChange;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
@@ -68,6 +71,14 @@ public class UserAccountEntity {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public boolean isPasswordMustChange() {
+        return passwordMustChange;
+    }
+
+    public void setPasswordMustChange(boolean passwordMustChange) {
+        this.passwordMustChange = passwordMustChange;
     }
 
     public UserRole getRole() {

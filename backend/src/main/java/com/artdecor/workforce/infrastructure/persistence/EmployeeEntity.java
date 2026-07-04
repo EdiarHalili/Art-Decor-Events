@@ -91,6 +91,14 @@ public class EmployeeEntity {
         this.pinHash = pinHash;
     }
 
+    public UserAccountEntity getUserAccount() {
+        return userAccount;
+    }
+
+    public void setUserAccount(UserAccountEntity userAccount) {
+        this.userAccount = userAccount;
+    }
+
     public UserStatus getStatus() {
         return status;
     }

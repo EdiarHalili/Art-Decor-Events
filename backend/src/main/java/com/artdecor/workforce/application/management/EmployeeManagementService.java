@@ -1,10 +1,14 @@
 package com.artdecor.workforce.application.management;
 
 import com.artdecor.workforce.domain.UserStatus;
+import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,11 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmployeeManagementService {
-    private final EmployeeRepository employees;
-    private final PasswordEncoder passwordEncoder;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final String TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#";
 
-    public EmployeeManagementService(EmployeeRepository employees, PasswordEncoder passwordEncoder) {
+    private final EmployeeRepository employees;
+    private final UserAccountRepository users;
+    private final PasswordEncoder passwordEncoder;
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    public EmployeeManagementService(
+            EmployeeRepository employees,
+            UserAccountRepository users,
+            PasswordEncoder passwordEncoder
+    ) {
         this.employees = employees;
+        this.users = users;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -37,7 +51,9 @@ public class EmployeeManagementService {
         EmployeeEntity employee = new EmployeeEntity();
         employee.setEmployeeCode(command.employeeCode().trim());
         employee.setFullName(command.fullName().trim());
-        employee.setPinHash(passwordEncoder.encode(command.pin()));
+        validatePassword(command.password());
+        employee.setPinHash(passwordEncoder.encode("0000"));
+        employee.setUserAccount(createEmployeeUser(employee.getEmployeeCode(), employee.getFullName(), command.password(), true));
         applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.positionTitle(),
                 command.departmentName(), command.teamName(), command.notes(),
                 command.wageType(), command.baseWage(), command.overtimeMultiplier());
@@ -51,12 +67,17 @@ public class EmployeeManagementService {
                 .orElseThrow(() -> new ManagementException("Employee not found."));
 
         employee.setFullName(command.fullName().trim());
+        if (employee.getUserAccount() != null) {
+            employee.getUserAccount().setFullName(command.fullName().trim());
+        }
         applyEditableFields(employee, command.phone(), command.profilePhotoUrl(), command.positionTitle(),
                 command.departmentName(), command.teamName(), command.notes(),
                 command.wageType(), command.baseWage(), command.overtimeMultiplier());
 
-        if (command.pin() != null && !command.pin().isBlank()) {
-            employee.setPinHash(passwordEncoder.encode(command.pin()));
+        if (command.password() != null && !command.password().isBlank()) {
+            validatePassword(command.password());
+            UserAccountEntity user = ensureEmployeeUser(employee, command.password(), true);
+            employee.setUserAccount(user);
         }
 
         return toResponse(employee);
@@ -67,7 +88,69 @@ public class EmployeeManagementService {
         EmployeeEntity employee = employees.findById(employeeId)
                 .orElseThrow(() -> new ManagementException("Employee not found."));
         employee.setStatus(UserStatus.INACTIVE);
+        if (employee.getUserAccount() != null) {
+            employee.getUserAccount().setStatus(UserStatus.INACTIVE);
+        }
         return toResponse(employee);
+    }
+
+    @Transactional
+    public PasswordResetResponse resetEmployeePassword(UUID employeeId) {
+        EmployeeEntity employee = employees.findById(employeeId)
+                .orElseThrow(() -> new ManagementException("Employee not found."));
+        String temporaryPassword = generateTemporaryPassword();
+        UserAccountEntity user = ensureEmployeeUser(employee, temporaryPassword, true);
+        user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
+        user.setPasswordMustChange(true);
+        employee.setUserAccount(user);
+        return new PasswordResetResponse(temporaryPassword, true);
+    }
+
+    private UserAccountEntity createEmployeeUser(
+            String employeeCode,
+            String fullName,
+            String password,
+            boolean passwordMustChange
+    ) {
+        String username = employeeCode.trim().toLowerCase();
+        if (users.existsByEmailIgnoreCase(username)) {
+            throw new ManagementException("Employee username already exists.");
+        }
+
+        UserAccountEntity user = new UserAccountEntity();
+        user.setFullName(fullName.trim());
+        user.setEmail(username);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setPasswordMustChange(passwordMustChange);
+        user.setRole(UserRole.EMPLOYEE);
+        return users.save(user);
+    }
+
+    private UserAccountEntity ensureEmployeeUser(EmployeeEntity employee, String password, boolean passwordMustChange) {
+        if (employee.getUserAccount() != null) {
+            employee.getUserAccount().setFullName(employee.getFullName());
+            employee.getUserAccount().setEmail(employee.getEmployeeCode().trim().toLowerCase());
+            employee.getUserAccount().setRole(UserRole.EMPLOYEE);
+            employee.getUserAccount().setStatus(employee.getStatus());
+            employee.getUserAccount().setPasswordHash(passwordEncoder.encode(password));
+            employee.getUserAccount().setPasswordMustChange(passwordMustChange);
+            return employee.getUserAccount();
+        }
+        return createEmployeeUser(employee.getEmployeeCode(), employee.getFullName(), password, passwordMustChange);
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
+            throw new ManagementException("Password must be at least 8 characters.");
+        }
+    }
+
+    private String generateTemporaryPassword() {
+        StringBuilder password = new StringBuilder();
+        for (int index = 0; index < 12; index++) {
+            password.append(TEMP_PASSWORD_ALPHABET.charAt(secureRandom.nextInt(TEMP_PASSWORD_ALPHABET.length())));
+        }
+        return password.toString();
     }
 
     private void applyEditableFields(

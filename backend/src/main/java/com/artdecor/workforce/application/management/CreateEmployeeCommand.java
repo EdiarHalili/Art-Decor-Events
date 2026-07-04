@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 public record CreateEmployeeCommand(
         String employeeCode,
         String fullName,
-        String pin,
+        String password,
         String phone,
         String profilePhotoUrl,
         String positionTitle,

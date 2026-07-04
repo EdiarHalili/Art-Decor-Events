@@ -8,7 +8,10 @@ import static org.mockito.Mockito.when;
 import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,25 +22,31 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 class EmployeeManagementServiceTest {
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
+    private final UserAccountRepository users = org.mockito.Mockito.mock(UserAccountRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private EmployeeManagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new EmployeeManagementService(employees, passwordEncoder);
+        service = new EmployeeManagementService(employees, users, passwordEncoder);
         when(employees.save(any(EmployeeEntity.class))).thenAnswer(invocation -> {
             EmployeeEntity employee = invocation.getArgument(0);
             ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
             return employee;
         });
+        when(users.save(any(UserAccountEntity.class))).thenAnswer(invocation -> {
+            UserAccountEntity user = invocation.getArgument(0);
+            ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
+            return user;
+        });
     }
 
     @Test
-    void createsEmployeeWithHashedPinAndPayrollFields() {
+    void createsEmployeeWithPasswordUserAndPayrollFields() {
         EmployeeResponse response = service.createEmployee(new CreateEmployeeCommand(
                 "EMP001",
                 "Season Worker",
-                "1234",
+                "secret123",
                 "+383 44 000 000",
                 null,
                 "Decorator",
@@ -56,8 +65,29 @@ class EmployeeManagementServiceTest {
 
         ArgumentCaptor<EmployeeEntity> employeeCaptor = ArgumentCaptor.forClass(EmployeeEntity.class);
         org.mockito.Mockito.verify(employees).save(employeeCaptor.capture());
-        assertThat(employeeCaptor.getValue().getPinHash()).isNotEqualTo("1234");
-        assertThat(passwordEncoder.matches("1234", employeeCaptor.getValue().getPinHash())).isTrue();
+        assertThat(employeeCaptor.getValue().getUserAccount()).isNotNull();
+        assertThat(employeeCaptor.getValue().getUserAccount().getEmail()).isEqualTo("emp001");
+        assertThat(employeeCaptor.getValue().getUserAccount().isPasswordMustChange()).isTrue();
+        assertThat(passwordEncoder.matches("secret123", employeeCaptor.getValue().getUserAccount().getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void resetsEmployeePasswordAndRequiresChange() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = new EmployeeEntity();
+        ReflectionTestUtils.setField(employee, "id", employeeId);
+        employee.setEmployeeCode("EMP001");
+        employee.setFullName("Season Worker");
+        employee.setPinHash("legacy");
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        PasswordResetResponse response = service.resetEmployeePassword(employeeId);
+
+        assertThat(response.temporaryPassword()).hasSize(12);
+        assertThat(response.passwordMustChange()).isTrue();
+        assertThat(employee.getUserAccount()).isNotNull();
+        assertThat(employee.getUserAccount().isPasswordMustChange()).isTrue();
+        assertThat(passwordEncoder.matches(response.temporaryPassword(), employee.getUserAccount().getPasswordHash())).isTrue();
     }
 
     @Test
@@ -67,7 +97,7 @@ class EmployeeManagementServiceTest {
         assertThatThrownBy(() -> service.createEmployee(new CreateEmployeeCommand(
                 "EMP001",
                 "Season Worker",
-                "1234",
+                "secret123",
                 null,
                 null,
                 null,

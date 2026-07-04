@@ -64,10 +64,12 @@ class AuthServiceTest {
 
     @Test
     void logsInEmployeeWithValidPin() {
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", "secret123", UserRole.EMPLOYEE);
         EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
+        employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        AuthResponse response = authService.loginEmployee("EMP001", "1234");
+        AuthResponse response = authService.loginEmployee("EMP001", "secret123");
 
         assertThat(response.accessToken()).isNotBlank();
         assertThat(response.role()).isEqualTo("EMPLOYEE");
@@ -76,11 +78,30 @@ class AuthServiceTest {
 
     @Test
     void rejectsInvalidEmployeePin() {
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", "secret123", UserRole.EMPLOYEE);
         EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
+        employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "9999"))
+        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "wrongpass"))
                 .isInstanceOf(AuthException.class);
+    }
+
+    @Test
+    void changePasswordClearsFirstLoginFlag() {
+        UserAccountEntity admin = user("Owner", "owner@artdecor.test", "secret123", UserRole.ADMINISTRATOR);
+        admin.setPasswordMustChange(true);
+        when(users.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+        AuthResponse response = authService.changePassword(
+                new com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal(admin.getId(), UserRole.ADMINISTRATOR, null),
+                "secret123",
+                "newSecret123"
+        );
+
+        assertThat(response.passwordMustChange()).isFalse();
+        assertThat(admin.isPasswordMustChange()).isFalse();
+        assertThat(passwordEncoder.matches("newSecret123", admin.getPasswordHash())).isTrue();
     }
 
     private UserAccountEntity user(String fullName, String email, String password, UserRole role) {

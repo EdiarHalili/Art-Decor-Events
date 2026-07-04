@@ -7,6 +7,7 @@ export type AuthResponse = {
   role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
   fullName: string;
   employeeId: string | null;
+  passwordMustChange: boolean;
 };
 
 export type CurrentUserResponse = {
@@ -14,6 +15,7 @@ export type CurrentUserResponse = {
   role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
   fullName: string;
   employeeId: string | null;
+  passwordMustChange: boolean;
 };
 
 export type Employee = {
@@ -244,10 +246,10 @@ type DailyCheckInWindowPayload = {
   employeeIds: string[];
 };
 
-export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
+export async function loginEmployee(username: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
     method: "POST",
-    body: JSON.stringify({ employeeCode, pin }),
+    body: JSON.stringify({ username, password }),
   });
 }
 
@@ -266,6 +268,16 @@ export async function getCurrentUser(accessToken: string): Promise<CurrentUserRe
   });
 }
 
+export async function changePassword(
+  accessToken: string,
+  payload: { currentPassword: string; newPassword: string },
+): Promise<AuthResponse> {
+  return authorizedRequest<AuthResponse>("/auth/change-password", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function listEmployees(accessToken: string): Promise<Employee[]> {
   return authorizedRequest<Employee[]>("/admin/employees", accessToken);
 }
@@ -275,7 +287,7 @@ export async function createEmployee(
   payload: {
     employeeCode: string;
     fullName: string;
-    pin: string;
+    password: string;
     phone?: string;
     profilePhotoUrl?: string;
     positionTitle?: string;
@@ -298,7 +310,7 @@ export async function updateEmployee(
   employeeId: string,
   payload: {
     fullName: string;
-    pin?: string;
+    password?: string;
     phone?: string;
     profilePhotoUrl?: string;
     positionTitle?: string;
@@ -339,6 +351,17 @@ export async function createAdminUser(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function resetEmployeePassword(
+  accessToken: string,
+  employeeId: string,
+): Promise<{ temporaryPassword: string; passwordMustChange: boolean }> {
+  return authorizedRequest<{ temporaryPassword: string; passwordMustChange: boolean }>(
+    `/admin/employees/${employeeId}/reset-password`,
+    accessToken,
+    { method: "POST" },
+  );
 }
 
 export async function deactivateAdminUser(accessToken: string, userId: string): Promise<AdminUser> {

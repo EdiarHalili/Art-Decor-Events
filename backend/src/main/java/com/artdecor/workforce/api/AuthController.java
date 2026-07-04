@@ -7,7 +7,7 @@ import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +32,15 @@ public class AuthController {
 
     @PostMapping("/employee/login")
     public ResponseEntity<AuthResponse> employeeLogin(@Valid @RequestBody EmployeeLoginRequest request) {
-        return ResponseEntity.ok(authService.loginEmployee(request.employeeCode(), request.pin()));
+        return ResponseEntity.ok(authService.loginEmployee(request.username(), request.password()));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<AuthResponse> changePassword(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        return ResponseEntity.ok(authService.changePassword(principal, request.currentPassword(), request.newPassword()));
     }
 
     @GetMapping("/me")
@@ -47,8 +55,14 @@ public class AuthController {
     }
 
     public record EmployeeLoginRequest(
-            @NotBlank String employeeCode,
-            @Pattern(regexp = "\\d{4}", message = "PIN must be 4 digits.") String pin
+            @NotBlank String username,
+            @NotBlank String password
+    ) {
+    }
+
+    public record ChangePasswordRequest(
+            @NotBlank String currentPassword,
+            @NotBlank @Size(min = 8, max = 128) String newPassword
     ) {
     }
 }

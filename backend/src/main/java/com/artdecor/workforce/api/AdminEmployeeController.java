@@ -4,13 +4,13 @@ import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.management.CreateEmployeeCommand;
 import com.artdecor.workforce.application.management.EmployeeManagementService;
 import com.artdecor.workforce.application.management.EmployeeResponse;
+import com.artdecor.workforce.application.management.PasswordResetResponse;
 import com.artdecor.workforce.application.management.UpdateEmployeeCommand;
 import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
@@ -74,10 +74,20 @@ public class AdminEmployeeController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{employeeId}/reset-password")
+    public ResponseEntity<PasswordResetResponse> resetPassword(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID employeeId
+    ) {
+        PasswordResetResponse response = employees.resetEmployeePassword(employeeId);
+        audit.log(principal, "EMPLOYEE_PASSWORD_RESET", "EMPLOYEE", employeeId);
+        return ResponseEntity.ok(response);
+    }
+
     public record CreateEmployeeRequest(
             @NotBlank @Size(max = 40) String employeeCode,
             @NotBlank @Size(max = 160) String fullName,
-            @Pattern(regexp = "\\d{4}", message = "PIN must be 4 digits.") String pin,
+            @NotBlank @Size(min = 8, max = 128) String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,
@@ -89,14 +99,14 @@ public class AdminEmployeeController {
             @DecimalMin("1.00") BigDecimal overtimeMultiplier
     ) {
         CreateEmployeeCommand toCommand() {
-            return new CreateEmployeeCommand(employeeCode, fullName, pin, phone, profilePhotoUrl,
+            return new CreateEmployeeCommand(employeeCode, fullName, password, phone, profilePhotoUrl,
                     positionTitle, departmentName, teamName, notes, wageType, baseWage, overtimeMultiplier);
         }
     }
 
     public record UpdateEmployeeRequest(
             @NotBlank @Size(max = 160) String fullName,
-            @Pattern(regexp = "\\d{4}|", message = "PIN must be 4 digits.") String pin,
+            @Size(min = 8, max = 128) String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,
@@ -108,7 +118,7 @@ public class AdminEmployeeController {
             @DecimalMin("1.00") BigDecimal overtimeMultiplier
     ) {
         UpdateEmployeeCommand toCommand() {
-            return new UpdateEmployeeCommand(fullName, pin, phone, profilePhotoUrl,
+            return new UpdateEmployeeCommand(fullName, password, phone, profilePhotoUrl,
                     positionTitle, departmentName, teamName, notes, wageType, baseWage, overtimeMultiplier);
         }
     }

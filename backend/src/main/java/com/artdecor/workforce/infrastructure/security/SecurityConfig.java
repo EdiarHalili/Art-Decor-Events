@@ -62,7 +62,7 @@ public class SecurityConfig {
                                 writeError(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to perform this action."))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/admin/login", "/api/v1/auth/employee/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/settings").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMINISTRATOR", "SUPERVISOR")

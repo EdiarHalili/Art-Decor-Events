@@ -41,6 +41,7 @@ public class UserManagementService {
         user.setFullName(command.fullName().trim());
         user.setEmail(command.email().trim().toLowerCase());
         user.setPasswordHash(passwordEncoder.encode(command.password()));
+        user.setPasswordMustChange(true);
         user.setRole(command.role());
 
         return toResponse(users.save(user));
@@ -66,4 +67,3 @@ public class UserManagementService {
         );
     }
 }
-

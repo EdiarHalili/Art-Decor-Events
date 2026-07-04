@@ -6,6 +6,7 @@ public record AuthResponse(
         long expiresInSeconds,
         String role,
         String fullName,
-        String employeeId
+        String employeeId,
+        boolean passwordMustChange
 ) {
 }

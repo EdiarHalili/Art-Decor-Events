@@ -52,11 +52,21 @@ class LocalDataBootstrapTest {
 
         new LocalDataBootstrap(properties, users, employees, passwordEncoder).run(null);
 
-        ArgumentCaptor<UserAccountEntity> adminCaptor = ArgumentCaptor.forClass(UserAccountEntity.class);
-        org.mockito.Mockito.verify(users).save(adminCaptor.capture());
-        assertThat(passwordEncoder.matches("ChangeMe123!", adminCaptor.getValue().getPasswordHash())).isTrue();
-        assertThat(adminCaptor.getValue().getRole()).isEqualTo(UserRole.ADMINISTRATOR);
-        assertThat(adminCaptor.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        ArgumentCaptor<UserAccountEntity> userCaptor = ArgumentCaptor.forClass(UserAccountEntity.class);
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.atLeastOnce()).save(userCaptor.capture());
+        assertThat(userCaptor.getAllValues())
+                .anySatisfy(saved -> {
+                    assertThat(saved.getEmail()).isEqualTo("admin@artdecor.local");
+                    assertThat(passwordEncoder.matches("ChangeMe123!", saved.getPasswordHash())).isTrue();
+                    assertThat(saved.getRole()).isEqualTo(UserRole.ADMINISTRATOR);
+                    assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
+                })
+                .anySatisfy(saved -> {
+                    assertThat(saved.getEmail()).isEqualTo("emp001");
+                    assertThat(passwordEncoder.matches("ChangeMe123!", saved.getPasswordHash())).isTrue();
+                    assertThat(saved.getRole()).isEqualTo(UserRole.EMPLOYEE);
+                    assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
+                });
 
         ArgumentCaptor<EmployeeEntity> employeeCaptor = ArgumentCaptor.forClass(EmployeeEntity.class);
         org.mockito.Mockito.verify(employees).save(employeeCaptor.capture());

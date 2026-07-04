@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Camera, Clock3, Edit3, FileSpreadsheet, FileText, Search, UserMinus, UserPlus } from "lucide-react";
+import { Camera, Clock3, Edit3, FileSpreadsheet, FileText, KeyRound, Search, UserMinus, UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -9,6 +9,7 @@ import {
   exportEmployeeAttendance,
   getEmployeeHistory,
   listEmployees,
+  resetEmployeePassword,
   updateEmployee,
   type AttendanceReportRow,
   type Employee,
@@ -21,7 +22,7 @@ type EmployeeManagementPageProps = {
 type EmployeeForm = {
   employeeCode: string;
   fullName: string;
-  pin: string;
+  password: string;
   phone: string;
   profilePhotoUrl: string;
   positionTitle: string;
@@ -35,7 +36,7 @@ type ExportRangePreset = "this-week" | "this-month" | "last-month" | "custom";
 const initialForm: EmployeeForm = {
   employeeCode: "",
   fullName: "",
-  pin: "",
+  password: "",
   phone: "",
   profilePhotoUrl: "",
   positionTitle: "",
@@ -116,7 +117,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
 
     const payload = {
       fullName: form.fullName,
-      pin: form.pin || undefined,
+      password: form.password || undefined,
       phone: form.phone,
       profilePhotoUrl: form.profilePhotoUrl,
       positionTitle: form.positionTitle,
@@ -134,7 +135,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
         : await createEmployee(accessToken, {
             employeeCode: form.employeeCode,
             fullName: form.fullName,
-            pin: form.pin,
+            password: form.password,
             phone: form.phone,
             profilePhotoUrl: form.profilePhotoUrl,
             positionTitle: form.positionTitle,
@@ -175,7 +176,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
     setForm({
       employeeCode: employee.employeeCode,
       fullName: employee.fullName,
-      pin: "",
+      password: "",
       phone: employee.phone ?? "",
       profilePhotoUrl: employee.profilePhotoUrl ?? "",
       positionTitle: employee.positionTitle ?? "",
@@ -213,11 +214,11 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
           />
           <Input placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required />
           <Input
-            placeholder={editingId ? "New 4-digit PIN (optional)" : "4-digit PIN"}
-            value={form.pin}
-            onChange={(event) => setForm({ ...form, pin: event.target.value })}
-            inputMode="numeric"
-            maxLength={4}
+            placeholder={editingId ? "New password (optional)" : "Temporary password"}
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            minLength={8}
+            type="password"
             required={!editingId}
           />
           <Input placeholder="Phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
@@ -284,6 +285,10 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
               historyLoading={historyLoading}
               onEdit={() => startEdit(selected)}
               onDeactivate={() => void deactivate(selected.id)}
+              onResetPassword={async () => {
+                const response = await resetEmployeePassword(accessToken, selected.id);
+                return response.temporaryPassword;
+              }}
             />
           ) : (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -303,6 +308,7 @@ function EmployeeProfile({
   historyLoading,
   onEdit,
   onDeactivate,
+  onResetPassword,
 }: {
   accessToken: string;
   employee: Employee;
@@ -310,6 +316,7 @@ function EmployeeProfile({
   historyLoading: boolean;
   onEdit: () => void;
   onDeactivate: () => void;
+  onResetPassword: () => Promise<string>;
 }) {
   const defaultRange = exportRange("this-month");
   const [rangePreset, setRangePreset] = useState<ExportRangePreset>("this-month");
@@ -317,6 +324,8 @@ function EmployeeProfile({
   const [exportTo, setExportTo] = useState(defaultRange.to);
   const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
   const [exportMessage, setExportMessage] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
   const workedMinutes = history.reduce((total, row) => total + row.workedMinutes, 0);
 
   function updateRange(preset: ExportRangePreset) {
@@ -355,6 +364,21 @@ function EmployeeProfile({
     }
   }
 
+  async function resetPassword() {
+    setExportMessage("");
+    setTemporaryPassword("");
+    setResettingPassword(true);
+    try {
+      const password = await onResetPassword();
+      setTemporaryPassword(password);
+      setExportMessage("Temporary password created. It is shown here only once.");
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Password could not be reset.");
+    } finally {
+      setResettingPassword(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -367,9 +391,21 @@ function EmployeeProfile({
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edit</Button>
+          <Button type="button" variant="secondary" disabled={resettingPassword} onClick={() => void resetPassword()}>
+            <KeyRound size={17} />
+            {resettingPassword ? "Resetting..." : "Reset Password"}
+          </Button>
           <Button type="button" variant="ghost" disabled={employee.status === "INACTIVE"} onClick={onDeactivate}><UserMinus size={17} /></Button>
         </div>
       </div>
+
+      {temporaryPassword && (
+        <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
+          <p className="font-semibold text-primary">Temporary password</p>
+          <p className="mt-2 font-mono text-base">{temporaryPassword}</p>
+          <p className="mt-2 text-muted-foreground">Give this password to the employee now. It will not be shown again.</p>
+        </div>
+      )}
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ProfileField label="Phone" value={employee.phone || "Not set"} />
