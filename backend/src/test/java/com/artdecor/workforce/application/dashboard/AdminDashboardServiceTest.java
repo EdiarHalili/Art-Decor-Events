@@ -6,15 +6,12 @@ import static org.mockito.Mockito.when;
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
-import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateEntity;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
-import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
-import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import java.time.Instant;
@@ -27,10 +24,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AdminDashboardServiceTest {
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
     private final UserAccountRepository users = org.mockito.Mockito.mock(UserAccountRepository.class);
-    private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
     private final LiveLocationUpdateRepository liveLocations = org.mockito.Mockito.mock(LiveLocationUpdateRepository.class);
-    private final AdminDashboardService service = new AdminDashboardService(employees, users, assignments, attendanceRecords, liveLocations);
+    private final AdminDashboardService service = new AdminDashboardService(employees, users, attendanceRecords, liveLocations);
 
     @Test
     void returnsCurrentWorkforceSnapshot() {
@@ -39,7 +35,6 @@ class AdminDashboardServiceTest {
         when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(2L);
         when(users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE)).thenReturn(4L);
         when(attendanceRecords.findReportRecords(LocalDate.now(), LocalDate.now())).thenReturn(List.of());
-        when(assignments.findReportAssignments(LocalDate.now(), LocalDate.now(), WorkScheduleStatus.CANCELLED)).thenReturn(List.of());
 
         AdminDashboardResponse response = service.snapshot();
 
@@ -65,10 +60,6 @@ class AdminDashboardServiceTest {
         employee.setEmployeeCode("EMP001");
         employee.setFullName("Demo Employee");
 
-        ScheduleAssignmentEntity assignment = new ScheduleAssignmentEntity();
-        assignment.setSchedule(schedule);
-        assignment.setEmployee(employee);
-
         AttendanceRecordEntity record = new AttendanceRecordEntity();
         UUID recordId = UUID.randomUUID();
         ReflectionTestUtils.setField(record, "id", recordId);
@@ -92,7 +83,6 @@ class AdminDashboardServiceTest {
         when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(1L);
         when(users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE)).thenReturn(0L);
         when(attendanceRecords.findReportRecords(today, today)).thenReturn(List.of(record));
-        when(assignments.findReportAssignments(today, today, WorkScheduleStatus.CANCELLED)).thenReturn(List.of(assignment));
         when(liveLocations.findLatestForAttendanceRecords(java.util.Set.of(recordId))).thenReturn(List.of(location));
 
         AdminDashboardResponse response = service.snapshot();
@@ -132,7 +122,6 @@ class AdminDashboardServiceTest {
         when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(1L);
         when(users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE)).thenReturn(0L);
         when(attendanceRecords.findReportRecords(today, today)).thenReturn(List.of(record));
-        when(assignments.findReportAssignments(today, today, WorkScheduleStatus.CANCELLED)).thenReturn(List.of());
 
         AdminDashboardResponse response = service.snapshot();
 

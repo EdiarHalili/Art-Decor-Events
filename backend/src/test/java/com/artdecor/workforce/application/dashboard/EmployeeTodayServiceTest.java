@@ -49,12 +49,12 @@ class EmployeeTodayServiceTest {
         EmployeeTodayResponse response = service.today(new AuthenticatedPrincipal(employeeId, UserRole.EMPLOYEE, employeeId));
 
         assertThat(response.employeeName()).isEqualTo("Season Worker");
-        assertThat(response.assignment()).contains("Simple Open Mode");
+        assertThat(response.assignment()).contains("Hyrje");
         assertThat(response.scheduleId()).isNotNull();
         assertThat(response.checkInOpen()).isTrue();
         assertThat(response.simpleOpenMode()).isTrue();
         assertThat(response.serverNow()).isEqualTo(Instant.parse("2026-07-03T06:55:00Z"));
-        assertThat(response.announcements()).isNotEmpty();
+        assertThat(response.announcements()).isEmpty();
     }
 
     @Test

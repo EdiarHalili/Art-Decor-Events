@@ -86,7 +86,7 @@ public class EmployeeTodayService {
         return responseForAssignment(
                 employee.getFullName(),
                 simpleOpenMode.getOrCreateTodayAssignment(employee),
-                "Simple Open Mode",
+                "Hyrje e hapur",
                 true,
                 now
         );
@@ -114,6 +114,7 @@ public class EmployeeTodayService {
         String status = simpleMode
                 ? simpleStatusText(checkInOpen, checkOutAvailable, checkedOut)
                 : statusText(schedule.getStatus(), checkInOpen, checkOutAvailable, checkedOut);
+        boolean unlimited = schedule.getCheckoutMode() == CheckoutMode.UNLIMITED_24_7;
         return new EmployeeTodayResponse(
                 employeeName,
                 schedule.getId().toString(),
@@ -121,19 +122,18 @@ public class EmployeeTodayService {
                 status,
                 checkInOpen,
                 checkOutAvailable,
-                simpleMode ? null : schedule.getCheckInOpensAt(),
-                simpleMode ? null : schedule.getCheckInClosesAt(),
-                simpleMode,
+                (simpleMode || unlimited) ? null : schedule.getCheckInOpensAt(),
+                (simpleMode || unlimited) ? null : schedule.getCheckInClosesAt(),
+                simpleMode || unlimited,
                 now,
                 announcements()
         );
     }
 
     private List<String> announcements() {
-        List<String> visible = notifications.visibleAnnouncements().stream()
+        return notifications.visibleAnnouncements().stream()
                 .map(announcement -> announcement.title() + ": " + announcement.body())
                 .toList();
-        return visible.isEmpty() ? List.of("Welcome to Art Decor Events Workforce.") : visible;
     }
 
     private boolean isCheckInOpen(WorkScheduleStatus status, CheckoutMode checkoutMode, Instant opensAt, Instant closesAt, Instant now) {
@@ -144,7 +144,7 @@ public class EmployeeTodayService {
             return true;
         }
         if (checkoutMode == CheckoutMode.UNLIMITED_24_7) {
-            return !now.isBefore(opensAt);
+            return true;
         }
         return !now.isBefore(opensAt) && !now.isAfter(closesAt);
     }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, CalendarDays, Clock3, LayoutDashboard, LogOut, MapPin, RefreshCw, Settings, ShieldCheck, UserCheck, UserX, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, LayoutDashboard, LogOut, MapPin, RefreshCw, Settings, ShieldCheck, UserCheck, UsersRound } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { adminCheckout, getAdminDashboard, mapLocationUrl, type AdminDashboardSnapshot, type AppSettings, type AuthResponse, type CheckoutType } from "../../lib/api";
+import { adminCheckout, extendCheckout, getAdminDashboard, mapLocationUrl, type AdminDashboardSnapshot, type AppSettings, type AuthResponse } from "../../lib/api";
 import detailUrl from "../../assets/brand/event-detail.jpg";
 import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
@@ -25,12 +25,12 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
 
   const navItems = [
-    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
-    { id: "windows" as const, label: "Daily windows", icon: CalendarClock },
-    { id: "reports" as const, label: "Reports", icon: BarChart3 },
-    { id: "employees" as const, label: "Employees", icon: UsersRound },
-    { id: "users" as const, label: "Users & roles", icon: ShieldCheck },
-    { id: "settings" as const, label: "Settings", icon: Settings },
+    { id: "dashboard" as const, label: "Paneli", icon: LayoutDashboard },
+    { id: "windows" as const, label: "Dritaret ditore", icon: CalendarClock },
+    { id: "reports" as const, label: "Raportet", icon: BarChart3 },
+    { id: "employees" as const, label: "Punëtorët", icon: UsersRound },
+    { id: "users" as const, label: "Përdoruesit", icon: ShieldCheck },
+    { id: "settings" as const, label: "Cilësimet", icon: Settings },
   ];
 
   return (
@@ -57,15 +57,15 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8">
           <header className="sticky top-0 z-20 -mx-4 flex flex-col gap-4 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
             <div>
-              <p className="text-sm font-medium text-primary">Operations dashboard</p>
-              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Today at {settings?.companyName ?? "Art Decor Events"}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Signed in as {session.fullName}</p>
+              <p className="text-sm font-medium text-primary">Paneli operativ</p>
+              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Sot te {settings?.companyName ?? "Art Decor Events"}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">I identifikuar si {session.fullName}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <ThemeToggle />
               <Button variant="secondary" onClick={() => setActiveView("windows")}>
                 <CalendarDays size={18} />
-                New window
+                Dritare e re
               </Button>
               <Button variant="ghost" onClick={onLogout} aria-label="Dil" title="Dil">
                 <LogOut size={18} />
@@ -124,6 +124,9 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
   const [snapshot, setSnapshot] = useState<AdminDashboardSnapshot | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkoutModal, setCheckoutModal] = useState<{ attendanceRecordId: string; employeeName: string; mode: "checkout" | "extend" } | null>(null);
+  const [checkoutValue, setCheckoutValue] = useState("");
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -155,32 +158,44 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  async function checkoutFromDashboard(attendanceRecordId: string) {
-    const value = globalThis.prompt("Checkout time (YYYY-MM-DD HH:mm)");
-    if (!value) {
+  function openAttendanceModal(attendanceRecordId: string, employeeName: string, mode: "checkout" | "extend") {
+    setCheckoutModal({ attendanceRecordId, employeeName, mode });
+    setCheckoutValue(toDateTimeInput(new Date()));
+    setMessage("");
+  }
+
+  async function submitAttendanceModal() {
+    if (!checkoutModal) {
       return;
     }
     setMessage("");
+    setCheckoutSaving(true);
     try {
-      const parsed = new Date(value.replace(" ", "T"));
+      const parsed = new Date(checkoutValue);
       if (Number.isNaN(parsed.getTime())) {
-        throw new Error("Enter checkout time as YYYY-MM-DD HH:mm.");
+        throw new Error("Ju lutemi zgjidhni datën dhe orën.");
       }
-      const checkedOutAt = parsed.toISOString();
-      await adminCheckout(accessToken, attendanceRecordId, checkedOutAt);
+      if (checkoutModal.mode === "checkout") {
+        await adminCheckout(accessToken, checkoutModal.attendanceRecordId, parsed.toISOString());
+      } else {
+        await extendCheckout(accessToken, checkoutModal.attendanceRecordId, parsed.toISOString());
+      }
       const nextSnapshot = await getAdminDashboard(accessToken);
       setSnapshot(nextSnapshot);
-      setMessage("Admin checkout recorded.");
+      setMessage(checkoutModal.mode === "checkout" ? "Dalja u regjistrua nga administratori." : "Koha e daljes u vazhdua.");
+      setCheckoutModal(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Admin checkout could not be recorded.");
+      setMessage(error instanceof Error ? error.message : "Veprimi nuk mund të kryhej.");
+    } finally {
+      setCheckoutSaving(false);
     }
   }
 
   const kpis = [
-    { label: "Present", value: snapshot?.present ?? 0, icon: UserCheck },
-    { label: "Working now", value: snapshot?.currentlyWorking ?? 0, icon: UsersRound },
-    { label: "Late", value: snapshot?.late ?? 0, icon: Clock3 },
-    { label: "Absent", value: snapshot?.absent ?? 0, icon: UserX },
+    { label: "Të regjistruar sot", value: snapshot?.present ?? 0, icon: UserCheck },
+    { label: "Në punë tani", value: snapshot?.currentlyWorking ?? 0, icon: UsersRound },
+    { label: "Punëtorë aktivë", value: snapshot?.activeEmployees ?? 0, icon: UsersRound },
+    { label: "Dalje të regjistruara", value: snapshot?.liveAttendance.filter((row) => row.checkedOutAt).length ?? 0, icon: UserCheck },
   ];
 
   return (
@@ -188,12 +203,12 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
       <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-corporate">
             <div className="grid lg:grid-cols-[1fr_360px]">
               <div className="p-6">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Phase 1 foundation</p>
-                <h2 className="mt-3 text-2xl font-semibold">Ready for employee setup and daily check-in windows</h2>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Art Decor Events</p>
+                <h2 className="mt-3 text-2xl font-semibold">Gjendja e sotme e punëtorëve</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                   {snapshot
-                    ? `${snapshot.activeEmployees} active employees, ${snapshot.inactiveEmployees} inactive employees, ${snapshot.administrators} administrators, and ${snapshot.supervisors} supervisors are registered.`
-                    : "The system foundation is prepared for attendance windows, employee assignments, reports, exports, offline sync, GPS capture, and future payroll calculations."}
+                    ? `${snapshot.activeEmployees} punëtorë aktivë, ${snapshot.inactiveEmployees} joaktivë, ${snapshot.administrators} administratorë dhe ${snapshot.supervisors} mbikëqyrës janë të regjistruar.`
+                    : "Po ngarkohen të dhënat operative."}
                 </p>
                 {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
               </div>
@@ -216,13 +231,13 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
           <section className="mt-6 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
             <Card className="p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold">Live attendance</h2>
+                <h2 className="font-semibold">Prezenca live</h2>
                 {loading && <RefreshCw className="animate-spin text-muted-foreground" size={16} />}
               </div>
               <div className="mt-5 divide-y divide-border rounded-lg border border-border">
                 {!loading && (snapshot?.liveAttendance.length ?? 0) === 0 && (
                   <div className="p-6 text-center text-sm text-muted-foreground">
-                    No employees are checked in yet today.
+                    Nuk ka punëtorë të regjistruar në punë për momentin.
                   </div>
                 )}
                 {snapshot?.liveAttendance.map((row) => (
@@ -232,18 +247,23 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                       <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
-                      <span>In: {formatTime(row.checkedInAt)}</span>
-                      <span>{checkoutTypeLabel(row.checkoutType, row.status)}: {formatTime(row.checkedOutAt)}</span>
-                      <span>Worked: {formatMinutes(row.workedMinutes)}</span>
-                      <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
+                      <span>Hyrja: {formatTime(row.checkedInAt)}</span>
+                      <span>Dalja: {formatTime(row.checkedOutAt)}</span>
+                      <span>Punuar: {formatMinutes(row.workedMinutes)}</span>
+                      <span>Shtesë: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "-"}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                      <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                        {checkoutTypeLabel(row.checkoutType, row.status)}
+                      <span className="rounded-md bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
+                        {attendanceStatusLabel(row)}
                       </span>
                       {!row.checkedOutAt && (
-                        <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void checkoutFromDashboard(row.attendanceRecordId)}>
-                          Checkout
+                        <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => openAttendanceModal(row.attendanceRecordId, row.employeeName, "checkout")}>
+                          Dalje
+                        </Button>
+                      )}
+                      {!row.checkedOutAt && (
+                        <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => openAttendanceModal(row.attendanceRecordId, row.employeeName, "extend")}>
+                          Vazhdo
                         </Button>
                       )}
                     </div>
@@ -255,14 +275,14 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="text-primary" size={19} />
-                  <h2 className="font-semibold">Live locations</h2>
+                  <h2 className="font-semibold">Lokacionet live</h2>
                 </div>
-                <span className="text-xs text-muted-foreground">{snapshot?.liveLocations.length ?? 0} active</span>
+                <span className="text-xs text-muted-foreground">{snapshot?.liveLocations.length ?? 0} aktivë</span>
               </div>
               <div className="mt-5 divide-y divide-border rounded-lg border border-border">
                 {(snapshot?.liveLocations.length ?? 0) === 0 && (
                   <div className="p-5 text-sm text-muted-foreground">
-                    No live locations are available. Locations appear only while employees are checked in and tracking is enabled.
+                    Nuk ka lokacione live. Lokacionet shfaqen vetëm kur punëtori është në punë dhe gjurmimi është aktiv.
                   </div>
                 )}
                 {snapshot?.liveLocations.map((location) => (
@@ -273,7 +293,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                         {location.employeeCode} · {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                         {location.accuracyMeters != null ? ` · ±${Math.round(location.accuracyMeters)}m` : ""}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">Updated {formatDateTime(location.capturedAt)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Përditësuar {formatDateTime(location.capturedAt)}</p>
                     </div>
                     <a
                       className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-card-foreground transition hover:bg-muted"
@@ -281,16 +301,16 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View on Map
+                      Hape në hartë
                     </a>
                   </div>
                 ))}
               </div>
             </Card>
             <Card className="p-5">
-              <h2 className="font-semibold">Quick actions</h2>
+              <h2 className="font-semibold">Veprime të shpejta</h2>
               <div className="mt-5 grid gap-3">
-                {(snapshot?.quickActions ?? ["Add employee", "Create check-in window", "Post announcement"]).map((action) => (
+                {(snapshot?.quickActions ?? ["Shto punëtor", "Krijo dritare", "Publiko njoftim"]).map((action) => (
                   <Button key={action} variant="secondary">
                     {action}
                   </Button>
@@ -298,8 +318,44 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
               </div>
             </Card>
           </section>
+          {checkoutModal && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true">
+              <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+                <h2 className="text-lg font-semibold">
+                  {checkoutModal.mode === "checkout" ? "Regjistro daljen" : "Vazhdo kohën e daljes"}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">{checkoutModal.employeeName}</p>
+                <label className="mt-4 block space-y-2 text-sm font-medium">
+                  <span>Data dhe ora</span>
+                  <input
+                    type="datetime-local"
+                    className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+                    value={checkoutValue}
+                    onChange={(event) => setCheckoutValue(event.target.value)}
+                  />
+                </label>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  <Button type="button" variant="secondary" disabled={checkoutSaving} onClick={() => setCheckoutModal(null)}>
+                    Anulo
+                  </Button>
+                  <Button type="button" disabled={checkoutSaving} onClick={() => void submitAttendanceModal()}>
+                    {checkoutSaving ? "Duke ruajtur..." : "Ruaj"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
     </>
   );
+}
+
+function toDateTimeInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function formatTime(value: string | null) {
@@ -327,15 +383,6 @@ function formatMinutes(minutes: number) {
   return `${hours}h ${remainder}m`;
 }
 
-function checkoutTypeLabel(type: CheckoutType | null, status: string) {
-  if (type === "AUTO_CHECKED_OUT") {
-    return "AUTO CHECKOUT";
-  }
-  if (type === "ADMIN_CHECKED_OUT") {
-    return "ADMIN CHECKOUT";
-  }
-  if (status === "CHECKED_OUT") {
-    return "EMPLOYEE CHECKOUT";
-  }
-  return status.replaceAll("_", " ");
+function attendanceStatusLabel(row: { checkedOutAt: string | null }) {
+  return row.checkedOutAt ? "Checked Out" : "Checked In";
 }

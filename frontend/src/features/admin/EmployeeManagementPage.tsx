@@ -354,6 +354,9 @@ function EmployeeProfile({
   const [exportMessage, setExportMessage] = useState("");
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [checkoutRecord, setCheckoutRecord] = useState<AttendanceReportRow | null>(null);
+  const [checkoutValue, setCheckoutValue] = useState("");
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
   const workedMinutes = history.reduce((total, row) => total + row.workedMinutes, 0);
 
   function updateRange(preset: ExportRangePreset) {
@@ -412,20 +415,31 @@ function EmployeeProfile({
       setExportMessage("Attendance record is missing.");
       return;
     }
-    const value = globalThis.prompt("Checkout time (YYYY-MM-DD HH:mm)");
-    if (!value) {
+    setCheckoutRecord(row);
+    setCheckoutValue(toDateTimeInput(new Date()));
+  }
+
+  async function submitCheckout() {
+    if (!checkoutRecord?.attendanceRecordId || !checkoutValue) {
+      setExportMessage("Zgjidhni datën dhe orën e daljes.");
       return;
     }
+    setCheckoutSaving(true);
+    setExportMessage("");
     try {
-      const parsed = new Date(value.replace(" ", "T"));
+      const parsed = new Date(checkoutValue);
       if (Number.isNaN(parsed.getTime())) {
-        throw new Error("Enter checkout time as YYYY-MM-DD HH:mm.");
+        throw new Error("Zgjidhni një datë dhe orë të vlefshme.");
       }
-      await adminCheckout(accessToken, row.attendanceRecordId, parsed.toISOString());
-      setExportMessage("Admin checkout recorded.");
+      await adminCheckout(accessToken, checkoutRecord.attendanceRecordId, parsed.toISOString());
+      setExportMessage("Dalja u regjistrua nga administratori.");
+      setCheckoutRecord(null);
+      setCheckoutValue("");
       onAttendanceChanged();
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : "Admin checkout could not be recorded.");
+      setExportMessage(error instanceof Error ? error.message : "Dalja nuk mund të regjistrohej.");
+    } finally {
+      setCheckoutSaving(false);
     }
   }
 
@@ -440,10 +454,10 @@ function EmployeeProfile({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edit</Button>
+          <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edito</Button>
           <Button type="button" variant="secondary" disabled={resettingPassword} onClick={() => void resetPassword()}>
             <KeyRound size={17} />
-            {resettingPassword ? "Resetting..." : "Reset Password"}
+            {resettingPassword ? "Duke ruajtur..." : "Rivendos fjalëkalimin"}
           </Button>
           <Button type="button" variant="ghost" disabled={employee.status === "INACTIVE"} onClick={onDeactivate}><UserMinus size={17} /></Button>
         </div>
@@ -451,22 +465,22 @@ function EmployeeProfile({
 
       {temporaryPassword && (
         <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-semibold text-primary">Temporary password</p>
+          <p className="font-semibold text-primary">Fjalëkalim i përkohshëm</p>
           <p className="mt-2 font-mono text-base">{temporaryPassword}</p>
-          <p className="mt-2 text-muted-foreground">Give this password to the employee now. It will not be shown again.</p>
+          <p className="mt-2 text-muted-foreground">Jepjani këtë fjalëkalim punëtorit tani. Nuk do të shfaqet përsëri.</p>
         </div>
       )}
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <ProfileField label="Phone" value={employee.phone || "Not set"} />
-        <ProfileField label="Position" value={employee.positionTitle || "Not set"} />
-        <ProfileField label="Department" value={employee.departmentName || "Not set"} />
-        <ProfileField label="Team" value={employee.teamName || "Not set"} />
+        <ProfileField label="Telefoni" value={employee.phone || "Nuk është vendosur"} />
+        <ProfileField label="Pozita" value={employee.positionTitle || "Nuk është vendosur"} />
+        <ProfileField label="Departamenti" value={employee.departmentName || "Nuk është vendosur"} />
+        <ProfileField label="Ekipi" value={employee.teamName || "Nuk është vendosur"} />
       </div>
 
       <div className="mt-4 rounded-md bg-muted p-4 text-sm">
-        <p className="font-medium">Notes</p>
-        <p className="mt-2 text-muted-foreground">{employee.notes || "No notes saved for this employee."}</p>
+        <p className="font-medium">Shënime</p>
+        <p className="mt-2 text-muted-foreground">{employee.notes || "Nuk ka shënime për këtë punëtor."}</p>
       </div>
 
       <div className="mt-5 rounded-lg border border-border p-4">
@@ -541,12 +555,9 @@ function EmployeeProfile({
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.absent ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
                   Status: {checkoutTypeLabel(row.checkoutType, row.status)}
                 </span>
-                <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.late ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                  {row.late ? "Late" : "On time"}
-                </span>
                 {!row.checkedOutAt && row.attendanceRecordId && (
                   <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void checkoutFromProfile(row)}>
-                    Admin checkout
+                    Regjistro dalje
                   </Button>
                 )}
               </div>
@@ -554,6 +565,36 @@ function EmployeeProfile({
           ))}
         </div>
       </div>
+      {checkoutRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+            <h3 className="text-lg font-semibold">Regjistro daljen</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Zgjidhni datën dhe orën kur ky punëtor ka përfunduar punën.
+            </p>
+            <label className="mt-4 block space-y-1 text-sm font-medium">
+              <span>Data dhe ora</span>
+              <Input type="datetime-local" value={checkoutValue} onChange={(event) => setCheckoutValue(event.target.value)} />
+            </label>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={checkoutSaving}
+                onClick={() => {
+                  setCheckoutRecord(null);
+                  setCheckoutValue("");
+                }}
+              >
+                Anulo
+              </Button>
+              <Button type="button" disabled={checkoutSaving} onClick={() => void submitCheckout()}>
+                {checkoutSaving ? "Duke ruajtur..." : "Ruaj daljen"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -655,10 +696,6 @@ function formatMinutes(minutes: number) {
   return `${hours}h ${remainder}m`;
 }
 
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function checkoutLabel(type: CheckoutType | null, checkedOutAt: string | null) {
   const time = formatTime(checkedOutAt);
   if (type === "AUTO_CHECKED_OUT") {
@@ -671,16 +708,18 @@ function checkoutLabel(type: CheckoutType | null, checkedOutAt: string | null) {
 }
 
 function checkoutTypeLabel(type: CheckoutType | null, status: string) {
-  if (type === "AUTO_CHECKED_OUT") {
-    return "Auto Check Out";
+  if (status === "CHECKED_OUT" || type) {
+    return "Checked Out";
   }
-  if (type === "ADMIN_CHECKED_OUT") {
-    return "Admin Check Out";
+  if (status === "PRESENT" || status === "LATE") {
+    return "Checked In";
   }
-  if (status === "CHECKED_OUT") {
-    return "Manual Employee Check Out";
-  }
-  return formatStatus(status);
+  return "-";
+}
+
+function toDateTimeInput(date: Date) {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }
 
 function mapUrl(latitude: number, longitude: number) {

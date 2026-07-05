@@ -11,11 +11,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,6 +56,29 @@ public class AnnouncementController {
         AnnouncementResponse response = notifications.publish(request.toCommand());
         audit.log(principal, "ANNOUNCEMENT_PUBLISHED", "ANNOUNCEMENT", java.util.UUID.fromString(response.id()));
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/admin/announcements/{announcementId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    public ResponseEntity<AnnouncementResponse> update(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID announcementId,
+            @Valid @RequestBody AnnouncementRequest request
+    ) {
+        AnnouncementResponse response = notifications.update(announcementId, request.toCommand());
+        audit.log(principal, "ANNOUNCEMENT_UPDATED", "ANNOUNCEMENT", announcementId);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/admin/announcements/{announcementId}")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID announcementId
+    ) {
+        notifications.delete(announcementId);
+        audit.log(principal, "ANNOUNCEMENT_DELETED", "ANNOUNCEMENT", announcementId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/notifications/subscribe")

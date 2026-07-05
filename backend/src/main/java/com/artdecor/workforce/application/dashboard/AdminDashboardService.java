@@ -1,15 +1,12 @@
 package com.artdecor.workforce.application.dashboard;
 
-import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
-import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateEntity;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
-import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -24,20 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminDashboardService {
     private final EmployeeRepository employees;
     private final UserAccountRepository users;
-    private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
     private final LiveLocationUpdateRepository liveLocations;
 
     public AdminDashboardService(
             EmployeeRepository employees,
             UserAccountRepository users,
-            ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
             LiveLocationUpdateRepository liveLocations
     ) {
         this.employees = employees;
         this.users = users;
-        this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
         this.liveLocations = liveLocations;
     }
@@ -53,18 +47,12 @@ public class AdminDashboardService {
                         record -> record,
                         (first, second) -> latest(first).compareTo(latest(second)) >= 0 ? first : second
                 ));
-        var todayAssignments = assignments.findReportAssignments(today, today, WorkScheduleStatus.CANCELLED);
-
         long present = latestRecordByEmployee.size();
-        long late = latestRecordByEmployee.values().stream().filter(record -> record.getStatus() == AttendanceStatus.LATE).count();
+        long late = 0;
         long currentlyWorking = latestRecordByEmployee.values().stream()
                 .filter(record -> record.getCheckedOutAt() == null)
                 .count();
-        long absent = todayAssignments.stream()
-                .map(assignment -> assignment.getEmployee().getId())
-                .distinct()
-                .filter(employeeId -> !latestRecordByEmployee.containsKey(employeeId))
-                .count();
+        long absent = 0;
 
         return new AdminDashboardResponse(
                 today,
@@ -80,7 +68,7 @@ public class AdminDashboardService {
                 liveLocations(latestRecordByEmployee.values().stream()
                         .filter(record -> record.getCheckedOutAt() == null)
                         .toList()),
-                List.of("Create check-in window", "Add employee profiles", "Post announcement")
+                List.of("Shto punëtor", "Krijo dritare", "Publiko njoftim")
         );
     }
 
@@ -100,7 +88,7 @@ public class AdminDashboardService {
                         record.getOvertimeMinutes(),
                         record.isAutoCheckout(),
                         record.getCheckoutType().name(),
-                        record.getStatus() == AttendanceStatus.LATE
+                        false
                 ))
                 .toList();
     }
@@ -111,7 +99,7 @@ public class AdminDashboardService {
         }
         Map<UUID, AttendanceRecordEntity> activeRecordById = activeRecords.stream()
                 .collect(Collectors.toMap(AttendanceRecordEntity::getId, record -> record));
-        return liveLocations.findLatestForAttendanceRecords(activeRecordById.keySet())
+        Map<UUID, AdminLiveLocationRow> latestRows = liveLocations.findLatestForAttendanceRecords(activeRecordById.keySet())
                 .stream()
                 .sorted(Comparator.comparing(LiveLocationUpdateEntity::getCapturedAt).reversed())
                 .map(update -> new AdminLiveLocationRow(
@@ -124,6 +112,28 @@ public class AdminDashboardService {
                         update.getAccuracyMeters(),
                         update.getCapturedAt()
                 ))
+                .collect(Collectors.toMap(
+                        row -> UUID.fromString(row.attendanceRecordId()),
+                        row -> row,
+                        (first, second) -> first
+                ));
+
+        activeRecords.stream()
+                .filter(record -> !latestRows.containsKey(record.getId()))
+                .filter(record -> record.getCheckInLatitude() != null && record.getCheckInLongitude() != null)
+                .forEach(record -> latestRows.put(record.getId(), new AdminLiveLocationRow(
+                        record.getEmployee().getId().toString(),
+                        record.getEmployee().getEmployeeCode(),
+                        record.getEmployee().getFullName(),
+                        record.getId().toString(),
+                        record.getCheckInLatitude(),
+                        record.getCheckInLongitude(),
+                        null,
+                        record.getCheckedInAt()
+                )));
+
+        return latestRows.values().stream()
+                .sorted(Comparator.comparing(AdminLiveLocationRow::capturedAt).reversed())
                 .toList();
     }
 

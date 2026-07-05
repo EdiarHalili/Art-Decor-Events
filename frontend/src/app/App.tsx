@@ -33,7 +33,8 @@ export function App() {
       setLoginNotice(event instanceof CustomEvent && typeof event.detail === "string"
         ? event.detail
         : "Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri.");
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState({ view: "login" }, "", "/");
+      window.history.pushState({ view: "login" }, "", "/");
     }
 
     window.addEventListener("artdecor:session-expired", handleSessionExpired);
@@ -46,7 +47,10 @@ export function App() {
       if (!storedSession && session) {
         setSession(null);
         setLoginNotice("Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri.");
-        window.history.replaceState(null, "", window.location.pathname);
+        window.history.replaceState({ view: "login" }, "", "/");
+      }
+      if (!storedSession && event?.type === "popstate") {
+        window.history.pushState({ view: "login" }, "", "/");
       }
       if (event && "persisted" in event && event.persisted) {
         setValidatingSession(Boolean(storedSession));
@@ -114,14 +118,16 @@ export function App() {
     localStorage.setItem("artdecor.session", JSON.stringify(nextSession));
     setLoginNotice("");
     setSession(nextSession);
-    window.history.replaceState(null, "", window.location.pathname);
+    window.history.replaceState({ view: "app" }, "", "/");
+    window.history.pushState({ view: "app" }, "", "/");
   }
 
   function handleLogout() {
     localStorage.removeItem("artdecor.session");
     setSession(null);
     setLoginNotice("");
-    window.history.replaceState(null, "", window.location.pathname);
+    window.history.replaceState({ view: "login" }, "", "/");
+    window.history.pushState({ view: "login" }, "", "/");
   }
 
   if (validatingSession) {

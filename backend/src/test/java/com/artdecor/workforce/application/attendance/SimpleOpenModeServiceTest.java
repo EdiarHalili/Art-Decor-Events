@@ -49,7 +49,8 @@ class SimpleOpenModeServiceTest {
         assertThat(assignment.getEmployee()).isEqualTo(employee);
         assertThat(assignment.getSchedule().isSimpleOpenMode()).isTrue();
         assertThat(assignment.getSchedule().getCheckoutMode()).isEqualTo(CheckoutMode.UNLIMITED_24_7);
-        assertThat(assignment.getSchedule().isAutoCheckoutEnabled()).isFalse();
+        assertThat(assignment.getSchedule().isAutoCheckoutEnabled()).isTrue();
+        assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T00:00:00Z"));
         assertThat(assignment.getSchedule().getStatus()).isEqualTo(WorkScheduleStatus.CHECK_IN_OPEN);
     }
 

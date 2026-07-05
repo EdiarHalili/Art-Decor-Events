@@ -79,11 +79,11 @@ public class AttendanceService {
 
         Instant now = Instant.now(clock);
         boolean unlimited = schedule.getCheckoutMode() == CheckoutMode.UNLIMITED_24_7;
-        if (schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
+        if (!unlimited && schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
             if (now.isBefore(schedule.getCheckInOpensAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
             }
-            if (!unlimited && now.isAfter(schedule.getCheckInClosesAt())) {
+            if (now.isAfter(schedule.getCheckInClosesAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
             }
         }
@@ -109,7 +109,7 @@ public class AttendanceService {
         record.setCheckInLatitude(gpsEnabled ? command.latitude() : null);
         record.setCheckInLongitude(gpsEnabled ? command.longitude() : null);
         record.setCheckInDevice(command.device());
-        record.setStatus(isLate(schedule, now) ? AttendanceStatus.LATE : AttendanceStatus.PRESENT);
+        record.setStatus(AttendanceStatus.PRESENT);
 
         AttendanceRecordEntity saved = attendanceRecords.save(record);
         GpsDebugLogger.log(
@@ -191,11 +191,22 @@ public class AttendanceService {
         return toResponse(record);
     }
 
-    private boolean isLate(WorkScheduleEntity schedule, Instant checkedInAt) {
-        if (schedule.getPlannedStartAt() == null) {
-            return false;
+    @Transactional
+    public AttendanceResponse extendCheckout(AuthenticatedPrincipal principal, java.util.UUID attendanceRecordId, Instant extendedUntil) {
+        AttendanceRecordEntity record = attendanceRecords.findById(attendanceRecordId)
+                .orElseThrow(() -> new AttendanceException("ATTENDANCE_RECORD_NOT_FOUND", "Regjistrimi nuk u gjet."));
+        if (record.getCheckedInAt() == null || record.getCheckedOutAt() != null) {
+            throw new AttendanceException("NO_ACTIVE_ATTENDANCE", "Nuk ka një orar aktiv për ta vazhduar.");
         }
-        return checkedInAt.isAfter(schedule.getPlannedStartAt().plus(Duration.ofMinutes(settings.current().allowedLateMinutes())));
+        Instant currentAutoCheckout = record.getExtendedCheckoutUntil() == null
+                ? record.getSchedule().getCheckInClosesAt()
+                : record.getExtendedCheckoutUntil();
+        if (!extendedUntil.isAfter(currentAutoCheckout)) {
+            throw new AttendanceException("INVALID_EXTENSION_TIME", "Koha e vazhdimit duhet të jetë pas kohës aktuale të mbylljes.");
+        }
+        record.setExtendedCheckoutUntil(extendedUntil);
+        audit.log(principal, "ATTENDANCE_CHECKOUT_EXTENDED", "ATTENDANCE_RECORD", record.getId());
+        return toResponse(record);
     }
 
     private int calculateOvertimeMinutes(AttendanceRecordEntity record, Instant checkedOutAt) {

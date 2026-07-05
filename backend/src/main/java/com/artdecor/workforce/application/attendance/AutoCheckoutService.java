@@ -75,7 +75,9 @@ public class AutoCheckoutService {
     }
 
     private void autoCheckout(AttendanceRecordEntity record) {
-        Instant checkoutAt = record.getSchedule().getCheckInClosesAt();
+        Instant checkoutAt = record.getExtendedCheckoutUntil() == null
+                ? record.getSchedule().getCheckInClosesAt()
+                : record.getExtendedCheckoutUntil();
         record.setCheckedOutAt(checkoutAt);
         record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkoutAt).toMinutes()));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkoutAt));

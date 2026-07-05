@@ -4,7 +4,6 @@ import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowCommand;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowResponse;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowService;
-import com.artdecor.workforce.application.notifications.NotificationService;
 import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
@@ -34,16 +33,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminDailyCheckInWindowController {
     private final DailyCheckInWindowService service;
     private final AuditService audit;
-    private final NotificationService notifications;
 
     public AdminDailyCheckInWindowController(
             DailyCheckInWindowService service,
-            AuditService audit,
-            NotificationService notifications
+            AuditService audit
     ) {
         this.service = service;
         this.audit = audit;
-        this.notifications = notifications;
     }
 
     @GetMapping
@@ -58,7 +54,6 @@ public class AdminDailyCheckInWindowController {
     ) {
         DailyCheckInWindowResponse response = service.createWindow(request.toCommand());
         audit.log(principal, "DAILY_WINDOW_CREATED", "WORK_SCHEDULE", UUID.fromString(response.id()));
-        notifications.publishSystem("Daily check-in window published", "A daily check-in window has been scheduled.");
         return ResponseEntity.ok(response);
     }
 
@@ -97,7 +92,6 @@ public class AdminDailyCheckInWindowController {
     ) {
         DailyCheckInWindowResponse response = service.openWindow(windowId);
         audit.log(principal, "DAILY_WINDOW_OPENED", "WORK_SCHEDULE", windowId);
-        notifications.publishSystem("Check-in is open", "Today’s check-in window is now open.");
         return ResponseEntity.ok(response);
     }
 

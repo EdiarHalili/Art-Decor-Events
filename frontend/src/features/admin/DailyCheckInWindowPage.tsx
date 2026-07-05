@@ -251,7 +251,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
               />
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>Opens</span>
+              <span>Hapet</span>
               <Input
                 type="time"
                 value={form.checkInOpensAt}
@@ -260,7 +260,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
               />
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>Closes</span>
+              <span>Mbyllet</span>
               <Input
                 type="time"
                 value={form.checkInClosesAt}
@@ -277,7 +277,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-sm font-medium">
-              <span>Checkout mode</span>
+              <span>Mënyra e daljes</span>
               <select
                 className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
                 value={form.checkoutMode}
@@ -290,9 +290,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   });
                 }}
               >
-                <option value="SCHEDULED_AUTO">Scheduled auto checkout</option>
-                <option value="MANUAL_ADMIN">Manual admin checkout</option>
-                <option value="UNLIMITED_24_7">Unlimited / 24-7</option>
+                <option value="SCHEDULED_AUTO">Dalje automatike në orën e mbylljes</option>
+                <option value="MANUAL_ADMIN">Dalje vetëm nga administratori</option>
+                <option value="UNLIMITED_24_7">Pa limit / 24-7</option>
               </select>
             </label>
             <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
@@ -302,12 +302,12 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                 checked={form.autoCheckoutEnabled}
                 onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
               />
-              Auto checkout enabled
+              Dalja automatike aktive
             </label>
           </div>
           {form.checkoutMode === "UNLIMITED_24_7" && (
             <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Unlimited / 24-7 keeps check-in open until an admin closes the window. Auto checkout only runs if enabled.
+              Pa limit / 24-7 e mban hyrjen dhe daljen gjithmonë të disponueshme derisa administratori ta mbyllë manualisht.
             </p>
           )}
 
@@ -315,17 +315,17 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
             <div className="border-b border-border p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold">Allowed workers</p>
-                  <p className="text-xs text-muted-foreground">{form.employeeIds.length} selected</p>
+                  <p className="text-sm font-semibold">Punëtorët e lejuar</p>
+                  <p className="text-xs text-muted-foreground">{form.employeeIds.length} të zgjedhur</p>
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllEmployees}>
                     <Check size={16} />
-                    Select All
+                    Zgjidh të gjithë
                   </Button>
                   <Button type="button" variant="ghost" className="h-9 px-3" onClick={clearEmployees}>
                     <X size={16} />
-                    Clear
+                    Pastro
                   </Button>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                 <Search className="absolute left-3 top-3 text-muted-foreground" size={17} />
                 <Input
                   className="pl-10"
-                  placeholder="Search employees"
+                  placeholder="Kërko punëtorë"
                   value={employeeQuery}
                   onChange={(event) => setEmployeeQuery(event.target.value)}
                 />
@@ -341,7 +341,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
             </div>
             <div className="max-h-72 divide-y divide-border overflow-y-auto">
               {filteredEmployees.length === 0 && (
-                <p className="p-4 text-sm text-muted-foreground">No active employees found.</p>
+                <p className="p-4 text-sm text-muted-foreground">Nuk u gjetën punëtorë aktivë.</p>
               )}
               {filteredEmployees.map((employee) => (
                 <label
@@ -365,11 +365,11 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button className="flex-1" disabled={saving || form.employeeIds.length === 0}>
-              {saving ? "Saving..." : editingWindowId ? "Save changes" : "Create window"}
+              {saving ? "Duke ruajtur..." : editingWindowId ? "Ruaj ndryshimet" : "Krijo dritaren"}
             </Button>
             {editingWindowId && (
               <Button type="button" variant="secondary" onClick={resetForm}>
-                Cancel edit
+                Anulo editimin
               </Button>
             )}
           </div>
@@ -379,11 +379,11 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       <Card className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold">Daily check-in windows</h2>
-            <p className="text-sm text-muted-foreground">Open, close, edit, or cancel a scheduled day.</p>
+            <h2 className="font-semibold">Dritaret ditore të hyrjes</h2>
+            <p className="text-sm text-muted-foreground">Hap, mbyll, edito ose anulo një ditë të planifikuar.</p>
           </div>
           <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {windows.length} windows
+            {windows.length} dritare
           </div>
         </div>
 
@@ -393,12 +393,12 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
         </p>
 
         <div className="mt-5 space-y-3">
-          {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading windows...</p>}
+          {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Po ngarkohen dritaret...</p>}
           {!loading && windows.length === 0 && (
             <div className="rounded-lg border border-dashed border-border p-8 text-center">
               <UserRoundCheck className="mx-auto text-primary" size={30} />
-              <p className="mt-3 font-medium">No daily check-in windows yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Create tomorrow's window and assign the working team.</p>
+              <p className="mt-3 font-medium">Nuk ka dritare ditore</p>
+              <p className="mt-1 text-sm text-muted-foreground">Pa dritare manuale, hyrja është automatikisht e hapur për të gjithë punëtorët.</p>
             </div>
           )}
           {windows.map((window) => (
@@ -413,8 +413,8 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {formatWindowRange(window, settings?.timezone)} -{" "}
-                    {checkoutModeLabel(window.checkoutMode)} - {window.autoCheckoutEnabled ? "auto checkout on" : "auto checkout off"} -{" "}
-                    {window.allowedEmployeeCount} allowed workers
+                    {checkoutModeLabel(window.checkoutMode)} - {window.autoCheckoutEnabled ? "dalja automatike aktive" : "dalja automatike joaktive"} -{" "}
+                    {window.allowedEmployeeCount} punëtorë
                   </p>
                 </div>
 
@@ -426,39 +426,39 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                       onClick={() => void deleteCancelled(window.id)}
                     >
                       <Trash2 size={16} />
-                      Delete cancelled
+                      Fshi të anuluarën
                     </Button>
                   ) : (
                     <>
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void runWindowAction(window.id, openCheckInWindow, "Check-in opened manually.")}
+                        onClick={() => void runWindowAction(window.id, openCheckInWindow, "Hyrja u hap manualisht.")}
                         disabled={window.status === "CHECK_IN_OPEN"}
                       >
                         <Power size={16} />
-                        Open
+                        Hap
                       </Button>
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Check-in closed manually.")}
+                        onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Hyrja u mbyll manualisht.")}
                         disabled={window.status === "CHECK_IN_CLOSED"}
                       >
                         <PowerOff size={16} />
-                        Close
+                        Mbyll
                       </Button>
                       <Button type="button" variant="ghost" onClick={() => editWindow(window)}>
                         <Edit3 size={16} />
-                        Edit
+                        Edito
                       </Button>
                       <Button
                         type="button"
                         variant="danger"
-                        onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Daily check-in window cancelled.")}
+                        onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Dritarja ditore u anulua.")}
                       >
                         <X size={16} />
-                        Cancel
+                        Anulo
                       </Button>
                     </>
                   )}
@@ -474,13 +474,13 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
 
 function validateWindowForm(form: WindowForm) {
   if (!form.employeeIds.length) {
-    return "Please select at least one employee.";
+    return "Ju lutemi zgjidhni të paktën një punëtor.";
   }
   if (!form.workDate || !form.checkInOpensAt || !form.checkInClosesAt) {
-    return "Date, opening time, and closing time are required.";
+    return "Data, ora e hapjes dhe ora e mbylljes janë të detyrueshme.";
   }
   if (form.checkInClosesAt === form.checkInOpensAt) {
-    return "Invalid open/close time.";
+    return "Ora e hapjes dhe mbylljes nuk mund të jenë të njëjta.";
   }
   return "";
 }
@@ -491,8 +491,8 @@ function dailyModeStatus(windows: DailyCheckInWindow[]) {
     window.workDate === today && !["CANCELLED", "COMPLETED"].includes(window.status),
   );
   return scheduled
-    ? { scheduled: true, label: "Scheduled Window Active" }
-    : { scheduled: false, label: "No window today — Simple Open Mode active" };
+    ? { scheduled: true, label: "Dritarja ditore është aktive" }
+    : { scheduled: false, label: "Nuk ka dritare sot - hyrja është e hapur për të gjithë" };
 }
 
 function isOvernightWindow(form: WindowForm) {
@@ -572,17 +572,17 @@ function formatWindowRange(window: DailyCheckInWindow, timezone = "Europe/Berlin
   const range = `${formatTime(window.checkInOpensAt, timezone)} - ${formatTime(window.checkInClosesAt, timezone)}`;
   return localDateInTimezone(opensAt, timezone) === localDateInTimezone(closesAt, timezone)
     ? range
-    : `${range} (closes tomorrow)`;
+    : `${range} (mbyllet nesër)`;
 }
 
 function checkoutModeLabel(mode: CheckoutMode) {
   if (mode === "MANUAL_ADMIN") {
-    return "Manual admin checkout";
+    return "Dalje nga administratori";
   }
   if (mode === "UNLIMITED_24_7") {
-    return "Unlimited / 24-7";
+    return "Pa limit / 24-7";
   }
-  return "Scheduled auto checkout";
+  return "Dalje automatike";
 }
 
 function localDateInTimezone(date: Date, timezone: string) {

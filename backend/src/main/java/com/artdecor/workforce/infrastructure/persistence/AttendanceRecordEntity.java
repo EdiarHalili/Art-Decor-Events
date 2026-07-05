@@ -70,6 +70,7 @@ public class AttendanceRecordEntity {
     private boolean requiresApproval;
 
     private String approvalReason;
+    private Instant extendedCheckoutUntil;
     private Instant createdAt = Instant.now();
     private Instant updatedAt;
 
@@ -203,6 +204,14 @@ public class AttendanceRecordEntity {
 
     public void setApprovalReason(String approvalReason) {
         this.approvalReason = approvalReason;
+    }
+
+    public Instant getExtendedCheckoutUntil() {
+        return extendedCheckoutUntil;
+    }
+
+    public void setExtendedCheckoutUntil(Instant extendedCheckoutUntil) {
+        this.extendedCheckoutUntil = extendedCheckoutUntil;
     }
 
     @PreUpdate

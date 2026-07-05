@@ -442,6 +442,9 @@ function countdownText(today: EmployeeToday, nowMs: number) {
     }
     return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Hyrja është e disponueshme.";
   }
+  if (!today.checkInOpensAt && !today.checkInClosesAt) {
+    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Hyrja është e disponueshme.";
+  }
   if (!today.checkInOpensAt || !today.checkInClosesAt) {
     return "Nuk ka dritare hyrjeje të planifikuar.";
   }

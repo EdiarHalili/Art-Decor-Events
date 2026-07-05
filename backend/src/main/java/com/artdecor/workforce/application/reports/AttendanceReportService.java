@@ -372,8 +372,7 @@ public class AttendanceReportService {
         builder.append(csvValue("Total worked days")).append(',').append(workedDays(rows)).append('\n');
         builder.append(csvValue("Total worked hours")).append(',').append(minutesToHours(summary.workedMinutes())).append('\n');
         builder.append(csvValue("Total overtime")).append(',').append(minutesToHours(summary.overtimeMinutes())).append('\n');
-        builder.append(csvValue("Late days")).append(',').append(summary.late()).append('\n');
-        builder.append(csvValue("Absent days")).append(',').append(summary.absent()).append("\n\n");
+        builder.append('\n');
         builder.append("Date,Check In,Check Out,Worked Hours,Status\n");
         for (AttendanceReportRow row : rows) {
             builder.append(csvValue(row.workDate().toString())).append(',')
@@ -429,8 +428,6 @@ public class AttendanceReportService {
         builder.append(excelRow(List.of("Total worked days", String.valueOf(workedDays(rows)))));
         builder.append(excelRow(List.of("Total worked hours", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())))));
         builder.append(excelRow(List.of("Total overtime", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.overtimeMinutes())))));
-        builder.append(excelRow(List.of("Late days", String.valueOf(summary.late()))));
-        builder.append(excelRow(List.of("Absent days", String.valueOf(summary.absent()))));
         builder.append(excelRow(List.of()));
         builder.append(excelRow(List.of("Date", "Check In", "Check Out", "Worked Hours", "Status")));
         for (AttendanceReportRow row : rows) {
@@ -459,7 +456,7 @@ public class AttendanceReportService {
     private List<String> reportLines(List<AttendanceReportRow> rows) {
         List<String> lines = new ArrayList<>();
         AttendanceReportSummary summary = summarize(rows);
-        lines.add("Assigned: " + summary.assigned() + "  Present: " + summary.present() + "  Late: " + summary.late() + "  Absent: " + summary.absent());
+        lines.add("Employees: " + summary.assigned() + "  Checked in: " + summary.present());
         lines.add("Worked hours: " + String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())));
         lines.add("");
         lines.add("Date | Employee | Status | Check In GPS | Check Out GPS | Checkout | Worked");
@@ -575,39 +572,21 @@ public class AttendanceReportService {
     }
 
     private String statusLabel(AttendanceReportRow row) {
-        if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
-            return "Auto dalje";
-        }
-        if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
-            return "Dalje nga admin";
-        }
-        if (row.absent()) {
-            return "Mungese";
-        }
-        if (row.late()) {
-            return "Me vonese";
-        }
         if (AttendanceStatus.CHECKED_OUT.name().equals(row.status())) {
-            return "Perfunduar";
+            return "Checked Out";
         }
-        if (AttendanceStatus.PRESENT.name().equals(row.status())) {
-            return "Prezent";
+        if (AttendanceStatus.PRESENT.name().equals(row.status()) || AttendanceStatus.LATE.name().equals(row.status())) {
+            return "Checked In";
         }
-        if (AttendanceStatus.PENDING_APPROVAL.name().equals(row.status())) {
-            return "Ne pritje";
-        }
-        return row.status();
+        return "-";
     }
 
     private String checkoutTypeLabel(AttendanceReportRow row) {
         if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
-            return "Auto checkout";
+            return "Auto Check Out";
         }
         if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
-            return "Admin checkout";
-        }
-        if ("MANUAL_EMPLOYEE".equals(row.checkoutType())) {
-            return "Manual employee checkout";
+            return "Admin Check Out";
         }
         return "";
     }

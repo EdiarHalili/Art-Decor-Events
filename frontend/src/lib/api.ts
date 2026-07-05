@@ -441,6 +441,17 @@ export async function adminCheckout(
   });
 }
 
+export async function extendCheckout(
+  accessToken: string,
+  attendanceRecordId: string,
+  extendedUntil: string,
+): Promise<AttendanceResponse> {
+  return authorizedRequest<AttendanceResponse>(`/admin/attendance/${attendanceRecordId}/extend`, accessToken, {
+    method: "POST",
+    body: JSON.stringify({ extendedUntil }),
+  });
+}
+
 export async function recordLiveLocation(
   accessToken: string,
   payload: {
@@ -580,6 +591,23 @@ export async function publishAnnouncement(
   return authorizedRequest<Announcement>("/admin/announcements", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAnnouncement(
+  accessToken: string,
+  announcementId: string,
+  payload: { title: string; body: string; visibleFrom?: string; visibleUntil?: string | null },
+): Promise<Announcement> {
+  return authorizedRequest<Announcement>(`/admin/announcements/${announcementId}`, accessToken, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAnnouncement(accessToken: string, announcementId: string): Promise<void> {
+  return authorizedRequest<void>(`/admin/announcements/${announcementId}`, accessToken, {
+    method: "DELETE",
   });
 }
 
@@ -763,7 +791,7 @@ function resolveApiBaseUrl() {
     return configured.replace(/\/$/, "");
   }
   if (typeof window === "undefined") {
-    return "http://localhost:8080/api/v1";
+    return "/api/v1";
   }
   const { protocol, hostname } = window.location;
   return `${protocol}//${hostname}:8080/api/v1`;

@@ -35,6 +35,18 @@ public class AdminAttendanceController {
         return ResponseEntity.ok(attendance.adminCheckOut(principal, attendanceRecordId, request.checkedOutAt()));
     }
 
+    @PostMapping("/{attendanceRecordId}/extend")
+    public ResponseEntity<AttendanceResponse> extendCheckout(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID attendanceRecordId,
+            @Valid @RequestBody ExtendCheckoutRequest request
+    ) {
+        return ResponseEntity.ok(attendance.extendCheckout(principal, attendanceRecordId, request.extendedUntil()));
+    }
+
     public record AdminCheckoutRequest(@NotNull Instant checkedOutAt) {
+    }
+
+    public record ExtendCheckoutRequest(@NotNull Instant extendedUntil) {
     }
 }

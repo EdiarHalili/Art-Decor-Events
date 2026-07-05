@@ -59,6 +59,9 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
       [row.employeeName, row.employeeCode, row.status, row.workDate].some((value) => value.toLowerCase().includes(normalized)),
     );
   }, [history, query, report, selectedEmployee]);
+  const reportRows = report?.rows ?? [];
+  const checkedInCount = reportRows.filter((row) => row.checkedInAt && !row.checkedOutAt).length;
+  const checkedOutCount = reportRows.filter((row) => row.checkedOutAt).length;
 
   async function selectEmployee(employee: EmployeeAttendanceSummary) {
     setSelectedEmployee(employee);
@@ -122,13 +125,13 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                 value={period}
                 onChange={(event) => setPeriod(event.target.value as Period)}
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="daily">Ditore</option>
+                <option value="weekly">Javore</option>
+                <option value="monthly">Mujore</option>
               </select>
             </label>
             <Button className="self-end" onClick={() => void loadReport()} disabled={loading}>
-              {loading ? "Loading..." : "Apply"}
+              {loading ? "Duke ngarkuar..." : "Apliko"}
             </Button>
           </div>
         </div>
@@ -137,32 +140,32 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
       </Card>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Assigned" value={summary?.assigned ?? 0} />
-        <Metric label="Present" value={summary?.present ?? 0} />
-        <Metric label="Late" value={summary?.late ?? 0} />
-        <Metric label="Absent" value={summary?.absent ?? 0} />
+        <Metric label="Punëtorë" value={summary?.assigned ?? 0} />
+        <Metric label="Checked In" value={checkedInCount} />
+        <Metric label="Checked Out" value={checkedOutCount} />
+        <Metric label="Orë pune" value={Math.round((summary?.workedMinutes ?? 0) / 60)} />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Attendance trend</h2>
-              <p className="text-sm text-muted-foreground">Present, late, and absent totals grouped by {period}.</p>
+              <h2 className="font-semibold">Përmbledhje e attendance</h2>
+              <p className="text-sm text-muted-foreground">Të dhënat reale nga databaza për periudhën e zgjedhur.</p>
             </div>
             <PieChart className="text-primary" size={22} />
           </div>
           <div className="mt-5 space-y-4">
             {(report?.buckets ?? []).length === 0 && (
               <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                No report data for this range.
+                Nuk ka të dhëna për këtë periudhë.
               </p>
             )}
             {report?.buckets.map((bucket) => (
               <div key={bucket.label}>
                 <div className="mb-1 flex items-center justify-between text-sm">
                   <span className="font-medium">{bucket.label}</span>
-                  <span className="text-muted-foreground">{bucket.assigned} assigned</span>
+                  <span className="text-muted-foreground">{bucket.assigned} punëtorë</span>
                 </div>
                 <div className="grid h-3 overflow-hidden rounded-md bg-muted" style={{ gridTemplateColumns: `${Math.max(0, bucket.present) + 1}fr ${Math.max(0, bucket.late) + 1}fr ${Math.max(0, bucket.absent) + 1}fr` }}>
                   <div className="bg-accent" style={{ opacity: bucket.present ? 1 : 0 }} />
@@ -180,14 +183,14 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Employee history</h2>
-              <p className="text-sm text-muted-foreground">Select a worker to inspect their attendance history.</p>
+              <h2 className="font-semibold">Historiku i punëtorëve</h2>
+              <p className="text-sm text-muted-foreground">Zgjidhni një punëtor për historikun e attendance.</p>
             </div>
             <History className="text-primary" size={22} />
           </div>
           <div className="mt-5 max-h-80 divide-y divide-border overflow-y-auto rounded-lg border border-border">
             {(report?.employees ?? []).length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">No employee records found.</p>
+              <p className="p-4 text-sm text-muted-foreground">Nuk u gjetën punëtorë.</p>
             )}
             {report?.employees.map((employee) => (
               <button
@@ -204,7 +207,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                 <span className="text-right text-xs text-muted-foreground">
                   {hours(employee.workedMinutes)}
                   <br />
-                  {employee.absent} absent
+                  {employee.present} regjistrime
                 </span>
               </button>
             ))}
@@ -215,7 +218,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
       <Card className="p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-semibold">{selectedEmployee ? `${selectedEmployee.employeeName} history` : "Attendance records"}</h2>
+            <h2 className="font-semibold">{selectedEmployee ? `Historiku - ${selectedEmployee.employeeName}` : "Regjistrimet e attendance"}</h2>
             <p className="text-sm text-muted-foreground">
               {filteredRows.length} rows · {hours(summary?.workedMinutes ?? 0)} worked · {hours(summary?.overtimeMinutes ?? 0)} overtime
             </p>
@@ -223,7 +226,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative sm:w-64">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={18} />
-              <Input className="pl-10" placeholder="Search records" value={query} onChange={(event) => setQuery(event.target.value)} />
+              <Input className="pl-10" placeholder="Kërko regjistrime" value={query} onChange={(event) => setQuery(event.target.value)} />
             </div>
             <Button variant="secondary" onClick={() => void download("csv")}>
               <Download size={17} />
@@ -244,22 +247,22 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="bg-muted text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Employee</th>
+                <th className="px-4 py-3">Data</th>
+                <th className="px-4 py-3">Punëtori</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Check In</th>
                 <th className="px-4 py-3">Check In GPS</th>
                 <th className="px-4 py-3">Check Out</th>
                 <th className="px-4 py-3">Check Out GPS</th>
-                <th className="px-4 py-3">Worked</th>
-                <th className="px-4 py-3">Overtime</th>
+                <th className="px-4 py-3">Orët</th>
+                <th className="px-4 py-3">Shtesë</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredRows.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
-                    No records match this report.
+                    Nuk ka regjistrime për këtë raport.
                   </td>
                 </tr>
               )}
@@ -271,7 +274,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                     <span className="block text-xs text-muted-foreground">{row.employeeCode}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status, row.checkoutType)}`}>
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
                       {checkoutTypeLabel(row.checkoutType, row.status)}
                     </span>
                   </td>
@@ -281,9 +284,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {time(row.checkedOutAt)}
-                    {row.checkoutType && row.checkoutType !== "MANUAL_EMPLOYEE" && (
-                      <span className="mt-1 block text-xs text-primary">{checkoutTypeLabel(row.checkoutType, row.status)}</span>
-                    )}
+                    {row.checkoutType === "AUTO_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Auto Check Out</span>}
+                    {row.checkoutType === "ADMIN_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Admin Check Out</span>}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <GpsLink latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
@@ -358,33 +360,17 @@ function time(value: string | null) {
   return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-function label(status: AttendanceReportRow["status"]) {
-  return status.replace("_", " ").toLowerCase();
-}
-
 function checkoutTypeLabel(type: AttendanceReportRow["checkoutType"], status: AttendanceReportRow["status"]) {
-  if (type === "AUTO_CHECKED_OUT") {
-    return "Auto Check Out";
+  if (status === "CHECKED_OUT" || type) {
+    return "Checked Out";
   }
-  if (type === "ADMIN_CHECKED_OUT") {
-    return "Admin Check Out";
+  if (status === "PRESENT" || status === "LATE") {
+    return "Checked In";
   }
-  if (status === "CHECKED_OUT") {
-    return "Manual Employee Check Out";
-  }
-  return label(status);
+  return "-";
 }
 
-function statusClass(status: AttendanceReportRow["status"], checkoutType: AttendanceReportRow["checkoutType"] = null) {
-  if (checkoutType === "AUTO_CHECKED_OUT" || checkoutType === "ADMIN_CHECKED_OUT") {
-    return "bg-primary/15 text-primary";
-  }
-  if (status === "ABSENT") {
-    return "bg-destructive/15 text-destructive";
-  }
-  if (status === "LATE") {
-    return "bg-primary/15 text-primary";
-  }
+function statusClass(status: AttendanceReportRow["status"]) {
   if (status === "CHECKED_OUT") {
     return "bg-muted text-muted-foreground";
   }

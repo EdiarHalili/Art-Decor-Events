@@ -29,12 +29,18 @@ public class NotificationService {
 
     @Transactional(readOnly = true)
     public List<AnnouncementResponse> visibleAnnouncements() {
-        return announcements.findVisible(Instant.now(clock)).stream().map(this::toResponse).toList();
+        return announcements.findVisible(Instant.now(clock)).stream()
+                .filter(this::isAdminAnnouncement)
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public List<AnnouncementResponse> listAnnouncements() {
-        return announcements.findAll().stream().map(this::toResponse).toList();
+        return announcements.findAll().stream()
+                .filter(this::isAdminAnnouncement)
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional
@@ -69,6 +75,33 @@ public class NotificationService {
 
     public AnnouncementResponse publishSystem(String title, String body) {
         return publish(new AnnouncementCommand(title, body, Instant.now(clock), null));
+    }
+
+    @Transactional
+    public AnnouncementResponse update(java.util.UUID announcementId, AnnouncementCommand command) {
+        if (command.title() == null || command.title().isBlank() || command.body() == null || command.body().isBlank()) {
+            throw new IllegalArgumentException("Titulli dhe mesazhi i njoftimit janë të detyrueshëm.");
+        }
+        AnnouncementEntity announcement = announcements.findById(announcementId)
+                .orElseThrow(() -> new IllegalArgumentException("Njoftimi nuk u gjet."));
+        announcement.setTitle(command.title().trim());
+        announcement.setBody(command.body().trim());
+        announcement.setVisibleFrom(command.visibleFrom() == null ? announcement.getVisibleFrom() : command.visibleFrom());
+        announcement.setVisibleUntil(command.visibleUntil());
+        return toResponse(announcements.save(announcement));
+    }
+
+    @Transactional
+    public void delete(java.util.UUID announcementId) {
+        if (!announcements.existsById(announcementId)) {
+            throw new IllegalArgumentException("Njoftimi nuk u gjet.");
+        }
+        announcements.deleteById(announcementId);
+    }
+
+    private boolean isAdminAnnouncement(AnnouncementEntity announcement) {
+        return !java.util.Set.of("Daily check-in window published", "Check-in is open")
+                .contains(announcement.getTitle());
     }
 
     private AnnouncementResponse toResponse(AnnouncementEntity announcement) {

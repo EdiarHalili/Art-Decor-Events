@@ -115,7 +115,6 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
                       className="pl-10"
                       type="password"
                       inputMode="numeric"
-                      maxLength={8}
                       required
                     />
                   </div>
