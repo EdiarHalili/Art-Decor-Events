@@ -119,12 +119,19 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
     setMessage("");
 
+    const passwordValidation = validateEmployeePassword(form.password, Boolean(editingId));
+    if (passwordValidation) {
+      setMessage(passwordValidation);
+      return;
+    }
+
+    setSaving(true);
+
     const payload = {
-      fullName: form.fullName,
-      password: form.password || undefined,
+      fullName: form.fullName.trim(),
+      password: form.password.trim() || undefined,
       phone: form.phone,
       profilePhotoUrl: form.profilePhotoUrl,
       positionTitle: form.positionTitle,
@@ -140,9 +147,9 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       const employee = editingId
         ? await updateEmployee(accessToken, editingId, payload)
         : await createEmployee(accessToken, {
-            employeeCode: form.employeeCode,
-            fullName: form.fullName,
-            password: form.password,
+            employeeCode: form.employeeCode.trim(),
+            fullName: form.fullName.trim(),
+            password: form.password.trim(),
             phone: form.phone,
             profilePhotoUrl: form.profilePhotoUrl,
             positionTitle: form.positionTitle,
@@ -307,6 +314,17 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       </div>
     </div>
   );
+}
+
+function validateEmployeePassword(password: string, editing: boolean) {
+  const normalized = password.trim();
+  if (!editing && !normalized) {
+    return "Password is required.";
+  }
+  if (normalized && normalized.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+  return "";
 }
 
 function EmployeeProfile({

@@ -19,5 +19,15 @@ class ApiExceptionHandlerTest {
         assertThat(response.getBody().code()).isEqualTo("MANAGEMENT_ERROR");
         assertThat(response.getBody().message()).isEqualTo("Employee ID already exists.");
     }
-}
 
+    @Test
+    void doesNotExposeInternalIllegalArgumentMessages() {
+        ResponseEntity<ApiExceptionHandler.ApiError> response =
+                handler.handleIllegalArgument(new IllegalArgumentException("rawPassword cannot be null"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("INVALID_REQUEST");
+        assertThat(response.getBody().message()).isEqualTo("The request is invalid.");
+    }
+}

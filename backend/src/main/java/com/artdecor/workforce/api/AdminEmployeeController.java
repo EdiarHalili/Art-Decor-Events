@@ -85,9 +85,9 @@ public class AdminEmployeeController {
     }
 
     public record CreateEmployeeRequest(
-            @NotBlank @Size(max = 40) String employeeCode,
-            @NotBlank @Size(max = 160) String fullName,
-            @NotBlank @Size(min = 8, max = 128) String password,
+            @NotBlank(message = "Employee ID is required.") @Size(max = 40, message = "Employee ID must be 40 characters or fewer.") String employeeCode,
+            @NotBlank(message = "Full name is required.") @Size(max = 160, message = "Full name must be 160 characters or fewer.") String fullName,
+            @NotBlank(message = "Password is required.") @Size(min = 8, max = 128, message = "Password must contain at least 8 characters.") String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,
@@ -105,8 +105,8 @@ public class AdminEmployeeController {
     }
 
     public record UpdateEmployeeRequest(
-            @NotBlank @Size(max = 160) String fullName,
-            @Size(min = 8, max = 128) String password,
+            @NotBlank(message = "Full name is required.") @Size(max = 160, message = "Full name must be 160 characters or fewer.") String fullName,
+            @Size(min = 8, max = 128, message = "Password must contain at least 8 characters.") String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,

@@ -112,6 +112,7 @@ public class EmployeeManagementService {
             String password,
             boolean passwordMustChange
     ) {
+        validatePassword(password);
         String username = employeeCode.trim().toLowerCase();
         if (users.existsByEmailIgnoreCase(username)) {
             throw new ManagementException("Employee username already exists.");
@@ -127,6 +128,7 @@ public class EmployeeManagementService {
     }
 
     private UserAccountEntity ensureEmployeeUser(EmployeeEntity employee, String password, boolean passwordMustChange) {
+        validatePassword(password);
         if (employee.getUserAccount() != null) {
             employee.getUserAccount().setFullName(employee.getFullName());
             employee.getUserAccount().setEmail(employee.getEmployeeCode().trim().toLowerCase());
@@ -140,8 +142,11 @@ public class EmployeeManagementService {
     }
 
     private void validatePassword(String password) {
-        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-            throw new ManagementException("Password must be at least 8 characters.");
+        if (password == null || password.isBlank()) {
+            throw new ManagementException("Password is required.");
+        }
+        if (password.length() < MIN_PASSWORD_LENGTH) {
+            throw new ManagementException("Password must contain at least 8 characters.");
         }
     }
 

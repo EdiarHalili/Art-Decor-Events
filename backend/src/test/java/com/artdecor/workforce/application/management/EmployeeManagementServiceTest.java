@@ -109,4 +109,44 @@ class EmployeeManagementServiceTest {
                 BigDecimal.valueOf(1.5)
         ))).isInstanceOf(ManagementException.class);
     }
+
+    @Test
+    void rejectsMissingCreatePasswordBeforeEncoding() {
+        assertThatThrownBy(() -> service.createEmployee(new CreateEmployeeCommand(
+                "EMP002",
+                "New Worker",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                WageType.HOURLY,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(1.5)
+        )))
+                .isInstanceOf(ManagementException.class)
+                .hasMessage("Password is required.");
+    }
+
+    @Test
+    void rejectsShortCreatePasswordBeforeEncoding() {
+        assertThatThrownBy(() -> service.createEmployee(new CreateEmployeeCommand(
+                "EMP003",
+                "New Worker",
+                "short",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                WageType.HOURLY,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(1.5)
+        )))
+                .isInstanceOf(ManagementException.class)
+                .hasMessage("Password must contain at least 8 characters.");
+    }
 }

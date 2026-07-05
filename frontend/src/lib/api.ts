@@ -684,7 +684,7 @@ async function errorMessage(response: Response) {
     if (fieldMessages.length > 0) {
       return fieldMessages.join(" ");
     }
-    return data.message || "The request could not be completed.";
+    return safeErrorMessage(data.message, "The request could not be completed.");
   } catch {
     return "The request could not be completed.";
   }
@@ -711,6 +711,25 @@ function fieldLabel(field: string) {
     newPassword: "New password",
   };
   return labels[field] ?? field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function safeErrorMessage(message: string | undefined, fallback: string) {
+  if (!message || looksInternal(message)) {
+    return fallback;
+  }
+  return message;
+}
+
+function looksInternal(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("rawpassword") ||
+    normalized.includes("nullpointerexception") ||
+    normalized.includes("illegalargumentexception") ||
+    normalized.includes("constraintviolationexception") ||
+    normalized.includes("stack trace") ||
+    normalized.includes("cannot be null")
+  );
 }
 
 export function mapLocationUrl(latitude: number, longitude: number) {
