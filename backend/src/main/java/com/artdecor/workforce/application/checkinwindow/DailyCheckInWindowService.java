@@ -48,7 +48,7 @@ public class DailyCheckInWindowService {
 
     @Transactional(readOnly = true)
     public List<DailyCheckInWindowResponse> listWindows() {
-        return windows.findAllByOrderByWorkDateDesc().stream()
+        return windows.findAllBySimpleOpenModeFalseOrderByWorkDateDesc().stream()
                 .map(this::toResponse)
                 .toList();
     }

@@ -31,6 +31,7 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
             where record.checkedInAt is not null
               and record.checkedOutAt is null
               and schedule.status <> :excludedStatus
+              and schedule.autoCheckoutEnabled = true
               and schedule.checkInClosesAt <= :now
             """)
     java.util.List<AttendanceRecordEntity> findRecordsDueForAutoCheckout(

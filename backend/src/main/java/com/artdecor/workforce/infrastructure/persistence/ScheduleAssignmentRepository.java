@@ -44,6 +44,27 @@ public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssi
             from ScheduleAssignmentEntity assignment
             join fetch assignment.employee employee
             join fetch assignment.schedule schedule
+            where employee.id = :employeeId
+              and schedule.simpleOpenMode = false
+              and schedule.status not in :excludedStatuses
+              and (
+                    schedule.workDate = :workDate
+                    or (schedule.checkInOpensAt <= :now and schedule.checkInClosesAt >= :now)
+              )
+            order by schedule.checkInOpensAt desc, assignment.createdAt desc
+            """)
+    List<ScheduleAssignmentEntity> findCurrentScheduledAssignmentsForEmployee(
+            @Param("employeeId") UUID employeeId,
+            @Param("workDate") LocalDate workDate,
+            @Param("now") Instant now,
+            @Param("excludedStatuses") Collection<WorkScheduleStatus> excludedStatuses
+    );
+
+    @Query("""
+            select assignment
+            from ScheduleAssignmentEntity assignment
+            join fetch assignment.employee employee
+            join fetch assignment.schedule schedule
             where schedule.workDate between :from and :to
               and schedule.status <> :excludedStatus
             order by schedule.workDate asc, employee.fullName asc

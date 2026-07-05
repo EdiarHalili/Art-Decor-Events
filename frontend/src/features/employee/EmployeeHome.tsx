@@ -163,7 +163,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
   async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
     if (!today?.scheduleId || !session.employeeId) {
-      setMessage("No active daily check-in window is available for attendance.");
+      setMessage("Attendance is not available right now.");
       return;
     }
     if (navigator.onLine && !todayFresh) {
@@ -343,6 +343,9 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 }
 
 function countdownText(today: EmployeeToday, nowMs: number) {
+  if (today.simpleOpenMode) {
+    return today.checkOutAvailable ? "Check Out is available anytime." : "Check In is available.";
+  }
   if (!today.checkInOpensAt || !today.checkInClosesAt) {
     return "No check-in window scheduled.";
   }

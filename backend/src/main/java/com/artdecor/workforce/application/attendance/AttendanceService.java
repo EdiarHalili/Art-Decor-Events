@@ -62,6 +62,14 @@ public class AttendanceService {
         assignments.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId())
                 .orElseThrow(() -> new AttendanceException("EMPLOYEE_NOT_ASSIGNED", "Employee is not assigned to this schedule."));
 
+        attendanceRecords.findActiveRecordsByEmployeeId(employee.getId())
+                .stream()
+                .filter(record -> !record.getSchedule().getId().equals(schedule.getId()))
+                .findFirst()
+                .ifPresent(record -> {
+                    throw new AttendanceException("DUPLICATE_ACTIVE_CHECK_IN", "Employee already has an active check-in. Please check out before checking in again.");
+                });
+
         if (schedule.getStatus() == WorkScheduleStatus.CANCELLED) {
             throw new AttendanceException("SCHEDULE_CANCELLED", "This schedule has been cancelled.");
         }

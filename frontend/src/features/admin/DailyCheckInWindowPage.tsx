@@ -112,6 +112,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
   const overnightNotice = isOvernightWindow(form)
     ? `This window crosses midnight and will close tomorrow at ${form.checkInClosesAt}.`
     : "";
+  const todayModeStatus = useMemo(() => dailyModeStatus(windows), [windows]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -387,6 +388,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
         </div>
 
         {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
+        <p className={`mt-4 rounded-md px-3 py-2 text-sm font-medium ${todayModeStatus.scheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+          {todayModeStatus.label}
+        </p>
 
         <div className="mt-5 space-y-3">
           {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading windows...</p>}
@@ -479,6 +483,16 @@ function validateWindowForm(form: WindowForm) {
     return "Invalid open/close time.";
   }
   return "";
+}
+
+function dailyModeStatus(windows: DailyCheckInWindow[]) {
+  const today = localDateInputValue();
+  const scheduled = windows.some((window) =>
+    window.workDate === today && !["CANCELLED", "COMPLETED"].includes(window.status),
+  );
+  return scheduled
+    ? { scheduled: true, label: "Scheduled Window Active" }
+    : { scheduled: false, label: "No window today — Simple Open Mode active" };
 }
 
 function isOvernightWindow(form: WindowForm) {

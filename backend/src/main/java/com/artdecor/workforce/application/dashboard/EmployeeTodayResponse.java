@@ -12,6 +12,7 @@ public record EmployeeTodayResponse(
         boolean checkOutAvailable,
         Instant checkInOpensAt,
         Instant checkInClosesAt,
+        boolean simpleOpenMode,
         Instant serverNow,
         List<String> announcements
 ) {

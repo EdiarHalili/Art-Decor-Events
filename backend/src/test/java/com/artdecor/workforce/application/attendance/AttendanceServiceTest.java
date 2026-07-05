@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -65,6 +66,7 @@ class AttendanceServiceTest {
         when(schedules.findById(scheduleId)).thenReturn(Optional.of(schedule));
         when(assignments.findByScheduleIdAndEmployeeId(scheduleId, employeeId))
                 .thenReturn(Optional.of(assignment(employee, schedule)));
+        when(attendanceRecords.findActiveRecordsByEmployeeId(employeeId)).thenReturn(List.of());
         when(settings.current()).thenReturn(new AppSettingsResponse(
                 "Art Decor Events",
                 null,
@@ -144,6 +146,22 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> service.checkIn(principal, command()))
                 .isInstanceOf(AttendanceException.class)
                 .hasMessageContaining("already checked in");
+    }
+
+    @Test
+    void preventsCheckInWhenEmployeeAlreadyHasAnotherActiveRecord() {
+        UUID activeScheduleId = UUID.randomUUID();
+        WorkScheduleEntity activeSchedule = schedule(activeScheduleId);
+        AttendanceRecordEntity active = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(active, "id", UUID.randomUUID());
+        active.setSchedule(activeSchedule);
+        active.setEmployee(employee);
+        active.setCheckedInAt(Instant.parse("2026-07-03T06:30:00Z"));
+        when(attendanceRecords.findActiveRecordsByEmployeeId(employeeId)).thenReturn(List.of(active));
+
+        assertThatThrownBy(() -> service.checkIn(principal, command()))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessageContaining("active check-in");
     }
 
     @Test

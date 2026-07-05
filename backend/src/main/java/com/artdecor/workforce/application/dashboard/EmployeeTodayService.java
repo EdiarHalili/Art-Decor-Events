@@ -1,6 +1,7 @@
 package com.artdecor.workforce.application.dashboard;
 
 import com.artdecor.workforce.application.auth.AuthException;
+import com.artdecor.workforce.application.attendance.SimpleOpenModeService;
 import com.artdecor.workforce.application.notifications.NotificationService;
 import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
@@ -28,6 +29,7 @@ public class EmployeeTodayService {
     private final ScheduleAssignmentRepository assignments;
     private final AttendanceRecordRepository attendanceRecords;
     private final NotificationService notifications;
+    private final SimpleOpenModeService simpleOpenMode;
     private final Clock clock;
 
     public EmployeeTodayService(
@@ -35,69 +37,96 @@ public class EmployeeTodayService {
             ScheduleAssignmentRepository assignments,
             AttendanceRecordRepository attendanceRecords,
             NotificationService notifications,
+            SimpleOpenModeService simpleOpenMode,
             Clock clock
     ) {
         this.employees = employees;
         this.assignments = assignments;
         this.attendanceRecords = attendanceRecords;
         this.notifications = notifications;
+        this.simpleOpenMode = simpleOpenMode;
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public EmployeeTodayResponse today(AuthenticatedPrincipal principal) {
         var employee = employees.findById(principal.employeeId())
                 .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
 
         Instant now = Instant.now(clock);
 
-        return assignments.findCurrentAssignmentsForEmployee(
+        var scheduledAssignment = assignments.findCurrentScheduledAssignmentsForEmployee(
                         employee.getId(),
                         LocalDate.now(clock),
                         now,
                         INACTIVE_ASSIGNMENT_STATUSES
                 )
                 .stream()
-                .findFirst()
-                .map(assignment -> {
-                    var schedule = assignment.getSchedule();
-                    var attendance = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
-                    boolean checkedIn = attendance.map(record -> record.getCheckedInAt() != null).orElse(false);
-                    boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);
-                    boolean checkInOpen = !checkedIn && isCheckInOpen(
-                            schedule.getStatus(),
-                            schedule.getCheckoutMode(),
-                            schedule.getCheckInOpensAt(),
-                            schedule.getCheckInClosesAt(),
-                            now
-                    );
-                    boolean checkOutAvailable = checkedIn && !checkedOut;
-                    String status = statusText(schedule.getStatus(), checkInOpen, checkOutAvailable, checkedOut);
-                    return new EmployeeTodayResponse(
-                            employee.getFullName(),
-                            schedule.getId().toString(),
-                            "Daily check-in window",
-                            status,
-                            checkInOpen,
-                            checkOutAvailable,
-                            schedule.getCheckInOpensAt(),
-                            schedule.getCheckInClosesAt(),
-                            now,
-                            announcements()
-                    );
-                })
-                .orElseGet(() -> new EmployeeTodayResponse(
+                .findFirst();
+        if (scheduledAssignment.isPresent()) {
+            return responseForAssignment(employee.getFullName(), scheduledAssignment.get(), "Daily check-in window", false, now);
+        }
+
+        if (simpleOpenMode.hasScheduledWindowForDate(LocalDate.now(clock))) {
+            return new EmployeeTodayResponse(
                         employee.getFullName(),
                         null,
-                        "No assignment published for today.",
-                        "Check-in is not open.",
+                        "Daily check-in window",
+                        "Employee is not assigned to today's scheduled window.",
                         false,
                         false,
                         null,
                         null,
-                        Instant.now(clock),
+                        false,
+                        now,
                         announcements()
-                ));
+                );
+        }
+
+        return responseForAssignment(
+                employee.getFullName(),
+                simpleOpenMode.getOrCreateTodayAssignment(employee),
+                "Simple Open Mode",
+                true,
+                now
+        );
+    }
+
+    private EmployeeTodayResponse responseForAssignment(
+            String employeeName,
+            com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity assignment,
+            String assignmentLabel,
+            boolean simpleMode,
+            Instant now
+    ) {
+        var schedule = assignment.getSchedule();
+        var attendance = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), assignment.getEmployee().getId());
+        boolean checkedIn = attendance.map(record -> record.getCheckedInAt() != null).orElse(false);
+        boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);
+        boolean checkInOpen = !checkedIn && (simpleMode || isCheckInOpen(
+                schedule.getStatus(),
+                schedule.getCheckoutMode(),
+                schedule.getCheckInOpensAt(),
+                schedule.getCheckInClosesAt(),
+                now
+        ));
+        boolean checkOutAvailable = checkedIn && !checkedOut;
+        String status = simpleMode
+                ? simpleStatusText(checkInOpen, checkOutAvailable, checkedOut)
+                : statusText(schedule.getStatus(), checkInOpen, checkOutAvailable, checkedOut);
+        return new EmployeeTodayResponse(
+                employeeName,
+                schedule.getId().toString(),
+                assignmentLabel,
+                status,
+                checkInOpen,
+                checkOutAvailable,
+                simpleMode ? null : schedule.getCheckInOpensAt(),
+                simpleMode ? null : schedule.getCheckInClosesAt(),
+                simpleMode,
+                now,
+                announcements()
+        );
     }
 
     private List<String> announcements() {
@@ -136,5 +165,15 @@ public class EmployeeTodayService {
             return "Checked in. Check-out is available.";
         }
         return checkInOpen ? "Check-in is open." : "Check-in is closed.";
+    }
+
+    private String simpleStatusText(boolean checkInOpen, boolean checkOutAvailable, boolean checkedOut) {
+        if (checkedOut) {
+            return "Checked out.";
+        }
+        if (checkOutAvailable) {
+            return "Checked in. Check-out is available.";
+        }
+        return checkInOpen ? "Check In is available." : "Check-in is not available.";
     }
 }

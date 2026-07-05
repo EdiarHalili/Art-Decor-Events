@@ -45,6 +45,9 @@ public class WorkScheduleEntity {
     @Column(nullable = false)
     private boolean autoCheckoutEnabled = true;
 
+    @Column(nullable = false)
+    private boolean simpleOpenMode = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private WorkScheduleStatus status = WorkScheduleStatus.DRAFT;
@@ -126,6 +129,14 @@ public class WorkScheduleEntity {
 
     public void setAutoCheckoutEnabled(boolean autoCheckoutEnabled) {
         this.autoCheckoutEnabled = autoCheckoutEnabled;
+    }
+
+    public boolean isSimpleOpenMode() {
+        return simpleOpenMode;
+    }
+
+    public void setSimpleOpenMode(boolean simpleOpenMode) {
+        this.simpleOpenMode = simpleOpenMode;
     }
 
     public WorkScheduleStatus getStatus() {
