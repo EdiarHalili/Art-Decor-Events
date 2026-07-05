@@ -15,6 +15,7 @@ export function App() {
   });
   const [validatingSession, setValidatingSession] = useState(Boolean(session));
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [loginNotice, setLoginNotice] = useState("");
 
   useEffect(() => {
     getSettings()
@@ -26,14 +27,39 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    function handleSessionExpired() {
+    function handleSessionExpired(event: Event) {
       localStorage.removeItem("artdecor.session");
       setSession(null);
+      setLoginNotice(event instanceof CustomEvent && typeof event.detail === "string"
+        ? event.detail
+        : "Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri.");
+      window.history.replaceState(null, "", window.location.pathname);
     }
 
     window.addEventListener("artdecor:session-expired", handleSessionExpired);
     return () => window.removeEventListener("artdecor:session-expired", handleSessionExpired);
   }, []);
+
+  useEffect(() => {
+    function syncSessionFromStorage(event?: Event) {
+      const storedSession = localStorage.getItem("artdecor.session");
+      if (!storedSession && session) {
+        setSession(null);
+        setLoginNotice("Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri.");
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      if (event && "persisted" in event && event.persisted) {
+        setValidatingSession(Boolean(storedSession));
+      }
+    }
+
+    window.addEventListener("pageshow", syncSessionFromStorage);
+    window.addEventListener("popstate", syncSessionFromStorage);
+    return () => {
+      window.removeEventListener("pageshow", syncSessionFromStorage);
+      window.removeEventListener("popstate", syncSessionFromStorage);
+    };
+  }, [session]);
 
   useEffect(() => {
     if (!session) {
@@ -86,12 +112,16 @@ export function App() {
 
   function handleAuthenticated(nextSession: AuthResponse) {
     localStorage.setItem("artdecor.session", JSON.stringify(nextSession));
+    setLoginNotice("");
     setSession(nextSession);
+    window.history.replaceState(null, "", window.location.pathname);
   }
 
   function handleLogout() {
     localStorage.removeItem("artdecor.session");
     setSession(null);
+    setLoginNotice("");
+    window.history.replaceState(null, "", window.location.pathname);
   }
 
   if (validatingSession) {
@@ -119,7 +149,7 @@ export function App() {
     return <AdminDashboard session={session} settings={settings} onSettingsUpdated={setSettings} onLogout={handleLogout} />;
   }
 
-  return <LoginPage settings={settings} onAuthenticated={handleAuthenticated} />;
+  return <LoginPage settings={settings} notice={loginNotice} onAuthenticated={handleAuthenticated} />;
 }
 
 function ChangePasswordScreen({

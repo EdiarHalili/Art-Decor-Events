@@ -85,9 +85,9 @@ public class AdminEmployeeController {
     }
 
     public record CreateEmployeeRequest(
-            @NotBlank(message = "Employee ID is required.") @Size(max = 40, message = "Employee ID must be 40 characters or fewer.") String employeeCode,
-            @NotBlank(message = "Full name is required.") @Size(max = 160, message = "Full name must be 160 characters or fewer.") String fullName,
-            @NotBlank(message = "Password is required.") @Size(min = 8, max = 128, message = "Password must contain at least 8 characters.") String password,
+            @NotBlank(message = "ID e punëtorit është e detyrueshme.") @Size(max = 40, message = "ID e punëtorit duhet të ketë 40 karaktere ose më pak.") String employeeCode,
+            @NotBlank(message = "Emri i plotë është i detyrueshëm.") @Size(max = 160, message = "Emri i plotë duhet të ketë 160 karaktere ose më pak.") String fullName,
+            @NotBlank(message = "Fjalëkalimi është i detyrueshëm.") @Size(min = 8, max = 128, message = "Fjalëkalimi duhet të ketë të paktën 8 karaktere.") String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,
@@ -105,8 +105,8 @@ public class AdminEmployeeController {
     }
 
     public record UpdateEmployeeRequest(
-            @NotBlank(message = "Full name is required.") @Size(max = 160, message = "Full name must be 160 characters or fewer.") String fullName,
-            @Size(min = 8, max = 128, message = "Password must contain at least 8 characters.") String password,
+            @NotBlank(message = "Emri i plotë është i detyrueshëm.") @Size(max = 160, message = "Emri i plotë duhet të ketë 160 karaktere ose më pak.") String fullName,
+            @Size(min = 8, max = 128, message = "Fjalëkalimi duhet të ketë të paktën 8 karaktere.") String password,
             @Size(max = 80) String phone,
             String profilePhotoUrl,
             @Size(max = 120) String positionTitle,

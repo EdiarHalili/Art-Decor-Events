@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final String INVALID_CREDENTIALS = "Të dhënat e identifikimit nuk janë të sakta.";
 
     private final UserAccountRepository users;
     private final EmployeeRepository employees;
@@ -39,14 +40,14 @@ public class AuthService {
     @Transactional
     public AuthResponse loginAdmin(String email, String password) {
         var user = users.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new AuthException("Invalid credentials."));
+                .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS));
 
         if (user.getStatus() != UserStatus.ACTIVE || user.getRole() == UserRole.EMPLOYEE) {
-            throw new AuthException("Invalid credentials.");
+            throw new AuthException(INVALID_CREDENTIALS);
         }
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new AuthException("Invalid credentials.");
+            throw new AuthException(INVALID_CREDENTIALS);
         }
 
         audit.system("ADMIN_LOGIN", "USER", user.getId());
@@ -64,20 +65,20 @@ public class AuthService {
     @Transactional
     public AuthResponse loginEmployee(String employeeCode, String pin) {
         var employee = employees.findByEmployeeCodeIgnoreCase(employeeCode)
-                .orElseThrow(() -> new AuthException("Invalid credentials."));
+                .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS));
         UserAccountEntity user = employee.getUserAccount();
 
         if (employee.getStatus() != UserStatus.ACTIVE
                 || user == null
                 || user.getStatus() != UserStatus.ACTIVE
                 || user.getRole() != UserRole.EMPLOYEE) {
-            throw new AuthException("Invalid credentials.");
+            throw new AuthException(INVALID_CREDENTIALS);
         }
 
         boolean pinMatches = passwordEncoder.matches(pin, employee.getPinHash());
         boolean passwordMatches = passwordEncoder.matches(pin, user.getPasswordHash());
         if (!pinMatches && !passwordMatches) {
-            throw new AuthException("Invalid credentials.");
+            throw new AuthException(INVALID_CREDENTIALS);
         }
 
         audit.system("EMPLOYEE_LOGIN", "EMPLOYEE", employee.getId());

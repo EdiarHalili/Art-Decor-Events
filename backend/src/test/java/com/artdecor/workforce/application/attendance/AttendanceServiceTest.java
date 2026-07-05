@@ -145,7 +145,7 @@ class AttendanceServiceTest {
 
         assertThatThrownBy(() -> service.checkIn(principal, command()))
                 .isInstanceOf(AttendanceException.class)
-                .hasMessageContaining("already checked in");
+                .hasMessageContaining("Ju tashmë keni filluar orarin e punës.");
     }
 
     @Test
@@ -161,7 +161,7 @@ class AttendanceServiceTest {
 
         assertThatThrownBy(() -> service.checkIn(principal, command()))
                 .isInstanceOf(AttendanceException.class)
-                .hasMessageContaining("active check-in");
+                .hasMessageContaining("Ju tashmë keni filluar orarin e punës.");
     }
 
     @Test
@@ -215,7 +215,7 @@ class AttendanceServiceTest {
 
         assertThatThrownBy(() -> service.adminCheckOut(admin, recordId, Instant.parse("2026-07-03T15:00:00Z")))
                 .isInstanceOf(AttendanceException.class)
-                .hasMessageContaining("already checked out");
+                .hasMessageContaining("Nuk ka një orar aktiv për ta përfunduar.");
     }
 
     private AttendanceActionCommand command() {

@@ -67,7 +67,7 @@ public class AttendanceService {
                 .filter(record -> !record.getSchedule().getId().equals(schedule.getId()))
                 .findFirst()
                 .ifPresent(record -> {
-                    throw new AttendanceException("DUPLICATE_ACTIVE_CHECK_IN", "Employee already has an active check-in. Please check out before checking in again.");
+                    throw new AttendanceException("DUPLICATE_ACTIVE_CHECK_IN", "Ju tashmë keni filluar orarin e punës.");
                 });
 
         if (schedule.getStatus() == WorkScheduleStatus.CANCELLED) {
@@ -90,7 +90,7 @@ public class AttendanceService {
 
         var existing = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
         if (existing.isPresent() && existing.get().getCheckedInAt() != null) {
-            throw new AttendanceException("DUPLICATE_CHECK_IN", "Employee is already checked in.");
+            throw new AttendanceException("DUPLICATE_CHECK_IN", "Ju tashmë keni filluar orarin e punës.");
         }
 
         AttendanceRecordEntity record = existing.orElseGet(AttendanceRecordEntity::new);
@@ -128,10 +128,10 @@ public class AttendanceService {
                 .orElseThrow(() -> new AttendanceException("EMPLOYEE_NOT_FOUND", "Employee not found."));
 
         AttendanceRecordEntity record = attendanceRecords.findByScheduleIdAndEmployeeId(command.scheduleId(), employee.getId())
-                .orElseThrow(() -> new AttendanceException("CHECK_IN_REQUIRED", "Employee must check in before checking out."));
+                .orElseThrow(() -> new AttendanceException("CHECK_IN_REQUIRED", "Nuk ka një orar aktiv për ta përfunduar."));
 
         if (record.getCheckedOutAt() != null) {
-            throw new AttendanceException("DUPLICATE_CHECK_OUT", "Employee is already checked out.");
+            throw new AttendanceException("DUPLICATE_CHECK_OUT", "Nuk ka një orar aktiv për ta përfunduar.");
         }
 
         Instant now = Instant.now(clock);
@@ -172,10 +172,10 @@ public class AttendanceService {
         AttendanceRecordEntity record = attendanceRecords.findById(attendanceRecordId)
                 .orElseThrow(() -> new AttendanceException("ATTENDANCE_RECORD_NOT_FOUND", "Attendance record not found."));
         if (record.getCheckedInAt() == null) {
-            throw new AttendanceException("CHECK_IN_REQUIRED", "Employee must check in before checking out.");
+            throw new AttendanceException("CHECK_IN_REQUIRED", "Nuk ka një orar aktiv për ta përfunduar.");
         }
         if (record.getCheckedOutAt() != null) {
-            throw new AttendanceException("DUPLICATE_CHECK_OUT", "Employee is already checked out.");
+            throw new AttendanceException("DUPLICATE_CHECK_OUT", "Nuk ka një orar aktiv për ta përfunduar.");
         }
         if (checkedOutAt.isBefore(record.getCheckedInAt())) {
             throw new AttendanceException("INVALID_CHECKOUT_TIME", "Checkout time cannot be before check-in time.");

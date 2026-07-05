@@ -67,6 +67,26 @@ Open:
 http://localhost:5173
 ```
 
+For phone testing on the same Wi-Fi, find the laptop IPv4 address with `ipconfig`, then start Vite with the LAN API URL:
+
+```powershell
+cd "C:\Users\1\Documents\Art Decor Events\frontend"
+$env:VITE_API_BASE_URL="http://192.168.0.41:8080/api/v1"
+npm.cmd run dev -- --host 0.0.0.0
+```
+
+Open the frontend from the phone with the laptop IP and Vite port, for example:
+
+```text
+http://192.168.0.41:5173
+```
+
+The backend allows common private-network development origins by default. For a stricter custom LAN or production origin, set:
+
+```powershell
+$env:CORS_ALLOWED_ORIGIN_PATTERNS="http://192.168.0.41:*"
+```
+
 ## 4. Test admin login
 
 Use:

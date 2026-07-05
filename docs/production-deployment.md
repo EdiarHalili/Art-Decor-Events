@@ -23,10 +23,13 @@ $env:DB_USERNAME="artdecor_app"
 $env:DB_PASSWORD="replace-with-strong-password"
 $env:JWT_SECRET="replace-with-at-least-32-random-characters"
 $env:CORS_ALLOWED_ORIGINS="https://your-domain.com"
+$env:CORS_ALLOWED_ORIGIN_PATTERNS=""
 $env:APP_BUSINESS_ZONE="Europe/Berlin"
 ```
 
 Use a different database user for migrations if the hosting platform supports it. The runtime user should not own the database.
+
+For production, keep `CORS_ALLOWED_ORIGINS` restricted to the exact deployed frontend origin. Use `CORS_ALLOWED_ORIGIN_PATTERNS` only for temporary LAN or staging testing, not as a broad production wildcard.
 
 ## Frontend Environment
 
@@ -39,6 +42,8 @@ npm.cmd run build
 ```
 
 Host `frontend/dist` behind HTTPS. The PWA service worker, install prompt, geolocation, and push APIs require secure context in production.
+
+When opening the app from another device on the local network during QA, set `VITE_API_BASE_URL` to the laptop/backend LAN address before starting or building the frontend, for example `http://192.168.0.41:8080/api/v1`. In production, always point it to the public HTTPS backend API.
 
 ## PostgreSQL Setup
 

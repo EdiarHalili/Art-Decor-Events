@@ -72,7 +72,7 @@ class EmployeeTodayServiceTest {
         EmployeeTodayResponse response = service.today(new AuthenticatedPrincipal(employeeId, UserRole.EMPLOYEE, employeeId));
 
         assertThat(response.assignment()).isEqualTo("Daily check-in window");
-        assertThat(response.status()).contains("not assigned");
+        assertThat(response.status()).contains("nuk është i caktuar");
         assertThat(response.scheduleId()).isNull();
         assertThat(response.checkInOpen()).isFalse();
     }

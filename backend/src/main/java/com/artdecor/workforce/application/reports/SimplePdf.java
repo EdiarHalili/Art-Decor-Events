@@ -7,11 +7,11 @@ import java.util.List;
 final class SimplePdf {
     private static final int PAGE_WIDTH = 612;
     private static final int PAGE_HEIGHT = 792;
-    private static final int LEFT_MARGIN = 42;
-    private static final int TOP_MARGIN = 760;
-    private static final int BOTTOM_MARGIN = 42;
-    private static final int BODY_FONT_SIZE = 8;
-    private static final int BODY_LINE_HEIGHT = 11;
+    private static final int LEFT_MARGIN = 44;
+    private static final int TOP_MARGIN = 758;
+    private static final int BOTTOM_MARGIN = 44;
+    private static final int BODY_FONT_SIZE = 9;
+    private static final int BODY_LINE_HEIGHT = 12;
 
     private SimplePdf() {
     }
@@ -19,14 +19,14 @@ final class SimplePdf {
     static byte[] render(String title, List<String> lines) {
         List<String> pageStreams = new ArrayList<>();
         StringBuilder content = newPage(title);
-        int y = TOP_MARGIN - 30;
+        int y = TOP_MARGIN - 34;
 
         for (String line : lines) {
             if (y < BOTTOM_MARGIN) {
                 content.append("ET");
                 pageStreams.add(content.toString());
                 content = newPage(title);
-                y = TOP_MARGIN - 30;
+                y = TOP_MARGIN - 34;
             }
             content.append("(").append(escape(line)).append(") Tj\n0 -").append(BODY_LINE_HEIGHT).append(" Td\n");
             y -= BODY_LINE_HEIGHT;
@@ -37,7 +37,7 @@ final class SimplePdf {
         List<String> objects = new ArrayList<>();
         objects.add("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n");
         objects.add("2 0 obj << /Type /Pages /Kids " + pageKids(pageStreams.size()) + " /Count " + pageStreams.size() + " >> endobj\n");
-        objects.add("3 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n");
+        objects.add("3 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj\n");
         objects.add("4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Courier >> endobj\n");
 
         int nextObject = 5;
@@ -72,7 +72,7 @@ final class SimplePdf {
     }
 
     private static StringBuilder newPage(String title) {
-        return new StringBuilder("BT\n/F1 12 Tf\n")
+        return new StringBuilder("BT\n/F1 14 Tf\n")
                 .append(LEFT_MARGIN)
                 .append(" ")
                 .append(TOP_MARGIN)
@@ -80,7 +80,7 @@ final class SimplePdf {
                 .append(escape(title))
                 .append(") Tj\n/F2 ")
                 .append(BODY_FONT_SIZE)
-                .append(" Tf\n0 -20 Td\n");
+                .append(" Tf\n0 -24 Td\n");
     }
 
     private static String pageKids(int pageCount) {

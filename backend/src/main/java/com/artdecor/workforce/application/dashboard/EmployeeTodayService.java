@@ -72,7 +72,7 @@ public class EmployeeTodayService {
                         employee.getFullName(),
                         null,
                         "Daily check-in window",
-                        "Employee is not assigned to today's scheduled window.",
+                        "Punëtori nuk është i caktuar në dritaren e sotme.",
                         false,
                         false,
                         null,
@@ -156,24 +156,24 @@ public class EmployeeTodayService {
             boolean checkedOut
     ) {
         if (status == WorkScheduleStatus.CANCELLED) {
-            return "Today's check-in window was cancelled.";
+            return "Dritarja e hyrjes për sot është anuluar.";
         }
         if (checkedOut) {
-            return "Checked out.";
+            return "Dalja është regjistruar.";
         }
         if (checkOutAvailable) {
-            return "Checked in. Check-out is available.";
+            return "Hyrja është regjistruar. Dalja është e disponueshme.";
         }
-        return checkInOpen ? "Check-in is open." : "Check-in is closed.";
+        return checkInOpen ? "Hyrja është e hapur." : "Hyrja është e mbyllur.";
     }
 
     private String simpleStatusText(boolean checkInOpen, boolean checkOutAvailable, boolean checkedOut) {
         if (checkedOut) {
-            return "Checked out.";
+            return "Dalja është regjistruar.";
         }
         if (checkOutAvailable) {
-            return "Checked in. Check-out is available.";
+            return "Hyrja është regjistruar. Dalja është e disponueshme.";
         }
-        return checkInOpen ? "Check In is available." : "Check-in is not available.";
+        return checkInOpen ? "Hyrja është e disponueshme." : "Hyrja nuk është e disponueshme.";
     }
 }

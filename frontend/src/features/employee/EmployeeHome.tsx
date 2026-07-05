@@ -23,8 +23,9 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [todayFresh, setTodayFresh] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
+  const [checkinConfirmOpen, setCheckinConfirmOpen] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState("");
+  const [attendanceSuccess, setAttendanceSuccess] = useState("");
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -48,7 +49,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       })
       .catch(() => {
         setTodayFresh(false);
-        setMessage("Today's assignment could not be loaded. Attendance actions will be queued if needed.");
+        setMessage("Orari i sotëm nuk mund të ngarkohej. Veprimet do të ruhen pa internet nëse është e nevojshme.");
       });
 
     if (navigator.onLine) {
@@ -67,12 +68,12 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }, []);
 
   useEffect(() => {
-    if (!checkoutSuccess) {
+    if (!attendanceSuccess) {
       return;
     }
-    const timer = window.setTimeout(() => setCheckoutSuccess(""), 4500);
+    const timer = window.setTimeout(() => setAttendanceSuccess(""), 4500);
     return () => window.clearTimeout(timer);
-  }, [checkoutSuccess]);
+  }, [attendanceSuccess]);
 
   useEffect(() => {
     const trackingEnabled = Boolean(settings?.liveLocationTrackingEnabled && today?.checkOutAvailable && online);
@@ -173,19 +174,17 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
   async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
     if (!today?.scheduleId || !session.employeeId) {
-      setMessage("Attendance is not available right now.");
+      setMessage("Regjistrimi i orarit nuk është i disponueshëm për momentin.");
       return;
     }
     if (navigator.onLine && !todayFresh) {
-      setMessage("Refreshing today's check-in window. Please try again in a moment.");
+      setMessage("Po përditësohet gjendja e sotme. Ju lutemi provoni përsëri pas pak.");
       return;
     }
 
     setActionLoading(type);
     setMessage("");
-    if (type === "CHECK_OUT") {
-      setCheckoutSuccess("");
-    }
+    setAttendanceSuccess("");
     const location = settings?.gpsEnabled === false ? {} : await captureLocation();
     const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
     debugGpsLog(`${type.toLowerCase().replace("_", "-")} prepared payload`, {
@@ -205,10 +204,12 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         device: deviceMetadata(),
       });
       setQueuedCount(getQueuedAttendanceActions().length);
-      setMessage("Attendance saved offline and will sync when internet returns.");
       if (type === "CHECK_OUT") {
         setCheckoutConfirmOpen(false);
-        setMessage("Dalja u ruajt offline dhe do të sinkronizohet kur interneti të kthehet.");
+        setMessage("Dalja u ruajt pa internet dhe do të sinkronizohet kur lidhja të kthehet.");
+      } else {
+        setCheckinConfirmOpen(false);
+        setMessage("Hyrja u ruajt pa internet dhe do të sinkronizohet kur lidhja të kthehet.");
       }
       setActionLoading(null);
       return;
@@ -218,6 +219,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       const response = type === "CHECK_IN" ? await checkIn(session.accessToken, payload) : await checkOut(session.accessToken, payload);
       if (type === "CHECK_OUT") {
         setCheckoutConfirmOpen(false);
+      } else {
+        setCheckinConfirmOpen(false);
       }
       setToday({
         ...today,
@@ -232,10 +235,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         checkOutAvailable: response.status !== "CHECKED_OUT",
       });
       if (type === "CHECK_OUT") {
-        setCheckoutSuccess(checkoutSuccessMessage(response.checkedOutAt));
+        setAttendanceSuccess(checkoutSuccessMessage(response.checkedOutAt, response.workedMinutes));
         setMessage("");
       } else {
-        setMessage("Hyrja u regjistrua me sukses.");
+        setAttendanceSuccess(checkinSuccessMessage(response.checkedInAt));
+        setMessage("");
       }
     } catch (error) {
       setMessage(type === "CHECK_OUT" ? checkoutErrorMessage(error) : error instanceof Error ? error.message : "Hyrja nuk mund të regjistrohej.");
@@ -254,7 +258,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     const result = await syncQueuedAttendanceActions(session.accessToken);
     setQueuedCount(result.remaining);
     if (result.synced > 0) {
-      setMessage(result.remaining === 0 ? "Offline attendance synced." : "Some offline attendance actions still need syncing.");
+      setMessage(result.remaining === 0 ? "Regjistrimet pa internet u sinkronizuan." : "Disa regjistrime pa internet ende presin sinkronizimin.");
       getEmployeeToday(session.accessToken)
         .then((response) => {
           setToday(response);
@@ -274,18 +278,18 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {online ? <Wifi size={15} /> : <WifiOff size={15} />}
-              {online ? "Online" : "Offline"}
+              {online ? "Online" : "Pa internet"}
             </div>
             <ThemeToggle />
           </div>
         </header>
 
         <section>
-          <p className="text-sm text-muted-foreground">Welcome</p>
+          <p className="text-sm text-muted-foreground">Mirë se vini</p>
           <h1 className="mt-1 text-2xl font-semibold">{employeeName}</h1>
           {queuedCount > 0 && (
             <p className="mt-2 rounded-md bg-primary/15 px-3 py-2 text-sm text-primary">
-              {queuedCount} offline attendance action{queuedCount === 1 ? "" : "s"} pending sync.
+              {queuedCount} regjistrim{queuedCount === 1 ? "" : "e"} pa internet presin sinkronizimin.
             </p>
           )}
           <div className="mt-3">
@@ -299,9 +303,9 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
               <CalendarClock size={22} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Today's assignment</h2>
+              <h2 className="text-lg font-semibold">Orari i sotëm</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {today?.assignment ?? "Loading today's assignment..."}
+                {today?.assignment ?? "Po ngarkohet orari i sotëm..."}
               </p>
             </div>
           </div>
@@ -309,26 +313,26 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           <div className="mt-5 rounded-md bg-muted p-4 text-sm">
             <div className="flex items-center gap-2 font-medium">
               <MapPin size={17} />
-              Status
+              Gjendja
             </div>
-            <p className="mt-2 text-muted-foreground">{today?.status ?? "Checking current status..."}</p>
+            <p className="mt-2 text-muted-foreground">{today?.status ?? "Po kontrollohet gjendja aktuale..."}</p>
             {today && <p className="mt-2 font-medium text-primary">{countdownText(today, now)}</p>}
             <p className="mt-2 text-xs text-muted-foreground">
-              GPS capture is {settings?.gpsEnabled === false ? "off for this company." : "optional and will be requested only when attendance is recorded."}
+              GPS është {settings?.gpsEnabled === false ? "i çaktivizuar për kompaninë." : "opsional dhe kërkohet vetëm kur regjistrohet hyrja ose dalja."}
             </p>
             {today?.checkOutAvailable && settings?.liveLocationTrackingEnabled && (
               <p className="mt-2 text-xs font-medium text-primary">
                 {liveTrackingActive
-                  ? `Live location tracking is active every ${Math.max(5, settings.liveLocationIntervalMinutes)} minutes.`
-                  : "Live location tracking will run only while you are checked in."}
+                  ? `Gjurmimi live i lokacionit është aktiv çdo ${Math.max(5, settings.liveLocationIntervalMinutes)} minuta.`
+                  : "Gjurmimi live i lokacionit funksionon vetëm gjatë orarit aktiv."}
               </p>
             )}
           </div>
 
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
-          {checkoutSuccess && (
+          {attendanceSuccess && (
             <div className="mt-4 whitespace-pre-line rounded-md border border-primary/20 bg-primary/10 px-3 py-3 text-sm font-medium text-primary">
-              {checkoutSuccess}
+              {attendanceSuccess}
             </div>
           )}
 
@@ -336,9 +340,9 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             <Button
               className="h-14 text-base sm:h-16"
               disabled={!today?.checkInOpen || actionLoading !== null || (online && !todayFresh)}
-              onClick={() => void submitAttendance("CHECK_IN")}
+              onClick={() => setCheckinConfirmOpen(true)}
             >
-              {actionLoading === "CHECK_IN" ? "Recording..." : "Check In"}
+              {actionLoading === "CHECK_IN" ? "Duke regjistruar..." : "Hyrje"}
             </Button>
             <Button
               className="h-14 text-base sm:h-16"
@@ -350,6 +354,34 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             </Button>
           </div>
         </Card>
+
+        {checkinConfirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkin-confirm-title">
+            <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+              <h2 id="checkin-confirm-title" className="text-lg font-semibold">Konfirmo Hyrjen</h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                A jeni i sigurt që dëshironi ta filloni orarin tuaj të punës?
+              </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={actionLoading === "CHECK_IN"}
+                  onClick={() => setCheckinConfirmOpen(false)}
+                >
+                  Anulo
+                </Button>
+                <Button
+                  type="button"
+                  disabled={actionLoading === "CHECK_IN"}
+                  onClick={() => void submitAttendance("CHECK_IN")}
+                >
+                  {actionLoading === "CHECK_IN" ? "Duke regjistruar..." : "Po, filloje"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {checkoutConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
@@ -385,10 +417,10 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <Bell className="text-primary" size={21} />
-            <h2 className="font-semibold">Announcements</h2>
+            <h2 className="font-semibold">Njoftime</h2>
           </div>
           <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-            {(today?.announcements ?? ["Loading announcements..."]).map((announcement) => (
+            {(today?.announcements ?? ["Po ngarkohen njoftimet..."]).map((announcement) => (
               <p key={announcement}>{announcement}</p>
             ))}
           </div>
@@ -396,7 +428,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
         <Button variant="ghost" onClick={onLogout}>
           <LogOut size={18} />
-          Sign out
+          Dil
         </Button>
       </div>
     </main>
@@ -405,32 +437,55 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
 function countdownText(today: EmployeeToday, nowMs: number) {
   if (today.simpleOpenMode) {
-    return today.checkOutAvailable ? "Check Out is available anytime." : "Check In is available.";
+    if (!today.checkInOpen && !today.checkOutAvailable) {
+      return "Orari i sotëm është përfunduar.";
+    }
+    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Hyrja është e disponueshme.";
   }
   if (!today.checkInOpensAt || !today.checkInClosesAt) {
-    return "No check-in window scheduled.";
+    return "Nuk ka dritare hyrjeje të planifikuar.";
   }
   const opensAt = new Date(today.checkInOpensAt).getTime();
   const closesAt = new Date(today.checkInClosesAt).getTime();
   if (nowMs < opensAt) {
-    return `Check-in opens in ${formatDuration(opensAt - nowMs)}.`;
+    return `Hyrja hapet për ${formatDuration(opensAt - nowMs)}.`;
   }
   if (nowMs <= closesAt || today.checkInOpen) {
     const remaining = Math.max(closesAt - nowMs, 0);
-    return remaining > 0 ? `Check-in closes in ${formatDuration(remaining)}.` : "Check-in is open manually.";
+    return remaining > 0 ? `Hyrja mbyllet për ${formatDuration(remaining)}.` : "Hyrja është hapur manualisht.";
   }
-  return "Window closed.";
+  return "Dritarja është mbyllur.";
 }
 
-function checkoutSuccessMessage(checkedOutAt: string | null) {
-  return `✅ Dalja u regjistrua me sukses!\n\nOra e daljes: ${formatCheckoutTime(checkedOutAt)}\n\nFaleminderit për punën tuaj. Ju urojmë një ditë të mbarë!`;
+function checkinSuccessMessage(checkedInAt: string | null) {
+  return `Orari juaj i punës filloi me sukses.\n\nData: ${formatAttendanceDate(checkedInAt)}\nOra e hyrjes: ${formatAttendanceTime(checkedInAt)}\n\nJu urojmë një ditë të mbarë pune!`;
 }
 
-function formatCheckoutTime(value: string | null) {
+function checkoutSuccessMessage(checkedOutAt: string | null, workedMinutes: number) {
+  return `Orari juaj i punës përfundoi me sukses.\n\nOra e daljes: ${formatAttendanceTime(checkedOutAt)}\nKoha totale e punës: ${formatWorkedMinutes(workedMinutes)}\n\nFaleminderit për punën tuaj. Ju urojmë një ditë të mbarë!`;
+}
+
+function formatAttendanceDate(value: string | null) {
+  if (!value) {
+    return "--.--.----";
+  }
+  const date = new Date(value);
+  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
+}
+
+function formatAttendanceTime(value: string | null) {
   if (!value) {
     return "--:--";
   }
-  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  const date = new Date(value);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatWorkedMinutes(minutes: number) {
+  const safeMinutes = Math.max(0, minutes);
+  const hours = Math.floor(safeMinutes / 60);
+  const remainder = safeMinutes % 60;
+  return `${hours}h ${String(remainder).padStart(2, "0")}min`;
 }
 
 function checkoutErrorMessage(error: unknown) {

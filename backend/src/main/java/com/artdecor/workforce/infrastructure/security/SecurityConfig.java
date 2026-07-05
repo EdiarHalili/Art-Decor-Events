@@ -57,9 +57,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
-                                writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication is required."))
+                                writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri."))
                         .accessDeniedHandler((request, response, exception) ->
-                                writeError(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to perform this action."))
+                                writeError(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "Nuk keni leje për këtë veprim."))
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/admin/login", "/api/v1/auth/employee/login").permitAll()
@@ -87,6 +87,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(corsProperties.allowedOrigins() == null || corsProperties.allowedOrigins().isEmpty()
                 ? List.of("http://localhost:5173")
                 : corsProperties.allowedOrigins());
+        configuration.setAllowedOriginPatterns(corsProperties.allowedOriginPatterns() == null || corsProperties.allowedOriginPatterns().isEmpty()
+                ? List.of("http://localhost:*", "http://127.0.0.1:*", "http://192.168.*.*:*", "http://10.*.*.*:*", "http://172.16.*.*:*", "http://172.17.*.*:*", "http://172.18.*.*:*", "http://172.19.*.*:*", "http://172.20.*.*:*", "http://172.21.*.*:*", "http://172.22.*.*:*", "http://172.23.*.*:*", "http://172.24.*.*:*", "http://172.25.*.*:*", "http://172.26.*.*:*", "http://172.27.*.*:*", "http://172.28.*.*:*", "http://172.29.*.*:*", "http://172.30.*.*:*", "http://172.31.*.*:*")
+                : corsProperties.allowedOriginPatterns());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

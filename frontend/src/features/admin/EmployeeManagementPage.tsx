@@ -319,10 +319,10 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
 function validateEmployeePassword(password: string, editing: boolean) {
   const normalized = password.trim();
   if (!editing && !normalized) {
-    return "Password is required.";
+    return "Fjalëkalimi është i detyrueshëm.";
   }
   if (normalized && normalized.length < 8) {
-    return "Password must contain at least 8 characters.";
+    return "Fjalëkalimi duhet të ketë të paktën 8 karaktere.";
   }
   return "";
 }

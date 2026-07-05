@@ -50,24 +50,24 @@ public class AuthController {
     }
 
     public record AdminLoginRequest(
-            @Email(message = "Admin email must be a valid email address.") @NotBlank(message = "Admin email is required.") String email,
-            @NotBlank(message = "Admin password is required.") String password
+            @Email(message = "Email-i i administratorit duhet të jetë valid.") @NotBlank(message = "Email-i i administratorit është i detyrueshëm.") String email,
+            @NotBlank(message = "Fjalëkalimi i administratorit është i detyrueshëm.") String password
     ) {
     }
 
     public record EmployeeLoginRequest(
             @JsonAlias("username")
-            @NotBlank(message = "Employee ID is required.")
+            @NotBlank(message = "ID e punëtorit është e detyrueshme.")
             String employeeCode,
             @JsonAlias("password")
-            @NotBlank(message = "PIN is required.")
+            @NotBlank(message = "PIN është i detyrueshëm.")
             String pin
     ) {
     }
 
     public record ChangePasswordRequest(
-            @NotBlank(message = "Current password is required.") String currentPassword,
-            @NotBlank(message = "New password is required.") @Size(min = 8, max = 128, message = "New password must be at least 8 characters.") String newPassword
+            @NotBlank(message = "Fjalëkalimi aktual është i detyrueshëm.") String currentPassword,
+            @NotBlank(message = "Fjalëkalimi i ri është i detyrueshëm.") @Size(min = 8, max = 128, message = "Fjalëkalimi i ri duhet të ketë të paktën 8 karaktere.") String newPassword
     ) {
     }
 }

@@ -11,10 +11,11 @@ import venueUrl from "../../assets/brand/breta-palace-wide.jpg";
 
 type LoginPageProps = {
   settings: AppSettings | null;
+  notice?: string;
   onAuthenticated: (session: AuthResponse) => void;
 };
 
-export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
+export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<"employee" | "admin">("employee");
   const [employeeCode, setEmployeeCode] = useState("");
   const [employeePin, setEmployeePin] = useState("");
@@ -30,26 +31,26 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
 
     try {
       if (mode === "employee" && !employeeCode.trim()) {
-        setError("Employee ID is required.");
+        setError("ID e punëtorit është e detyrueshme.");
         return;
       }
       if (mode === "employee" && !employeePin.trim()) {
-        setError("PIN is required.");
+        setError("PIN është i detyrueshëm.");
         return;
       }
       if (mode === "admin" && !email.trim()) {
-        setError("Email is required.");
+        setError("Email është i detyrueshëm.");
         return;
       }
       if (mode === "admin" && !password) {
-        setError("Password is required.");
+        setError("Fjalëkalimi është i detyrueshëm.");
         return;
       }
       const session =
         mode === "employee" ? await loginEmployee(employeeCode.trim(), employeePin.trim()) : await loginAdmin(email.trim(), password);
       onAuthenticated(session);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Login failed. Please check your details and try again.");
+      setError(loginErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
               className="h-10"
             >
               <UserRound size={18} />
-              Employee
+              Punëtor
             </Button>
             <Button
               type="button"
@@ -101,7 +102,7 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
             {mode === "employee" ? (
               <>
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium">Employee ID</span>
+                  <span className="text-sm font-medium">ID e punëtorit</span>
                   <Input value={employeeCode} onChange={(event) => setEmployeeCode(event.target.value)} required />
                 </label>
                 <label className="block space-y-2">
@@ -136,7 +137,7 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
                   </div>
                 </label>
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium">Password</span>
+                  <span className="text-sm font-medium">Fjalëkalimi</span>
                   <div className="relative">
                     <LockKeyhole className="absolute left-3 top-3 text-muted-foreground" size={18} />
                     <Input
@@ -151,10 +152,11 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
               </>
             )}
 
+            {notice && !error && <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">{notice}</p>}
             {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
             <Button className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : mode === "employee" ? "Open my shift" : "Open dashboard"}
+              {loading ? "Duke u identifikuar..." : mode === "employee" ? "Hap orarin tim" : "Hap panelin"}
             </Button>
           </form>
           <div className="mt-4">
@@ -164,4 +166,14 @@ export function LoginPage({ settings, onAuthenticated }: LoginPageProps) {
       </section>
     </main>
   );
+}
+
+function loginErrorMessage(error: unknown) {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return "Identifikimi nuk u krye. Ju lutemi provoni përsëri.";
+  }
+  if (error.message.includes("Invalid credentials") || error.message.includes("Të dhënat")) {
+    return "Të dhënat e identifikimit nuk janë të sakta.";
+  }
+  return error.message;
 }

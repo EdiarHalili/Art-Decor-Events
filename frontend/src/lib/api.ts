@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE_URL = resolveApiBaseUrl();
 
 export type AuthResponse = {
   accessToken: string;
@@ -628,10 +628,16 @@ function authenticatedHeaders(accessToken: string, headers?: HeadersInit, includ
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: jsonHeaders(init.headers),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: jsonHeaders(init.headers),
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(networkErrorMessage());
+  }
 
   if (!response.ok) {
     notifySessionExpired(path, response);
@@ -647,10 +653,16 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 }
 
 async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: new Headers(init.headers),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: new Headers(init.headers),
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(networkErrorMessage());
+  }
 
   if (!response.ok) {
     notifySessionExpired(path, response);
@@ -669,12 +681,18 @@ function jsonHeaders(headers?: HeadersInit) {
 }
 
 function notifySessionExpired(path: string, response: Response) {
-  if (response.status === 401 && path === "/auth/me" && typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("artdecor:session-expired"));
+  const isLoginRequest = path === "/auth/admin/login" || path === "/auth/employee/login";
+  if (response.status === 401 && !isLoginRequest && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("artdecor:session-expired", {
+      detail: "Sesioni juaj ka skaduar. Ju lutemi identifikohuni përsëri.",
+    }));
   }
 }
 
 async function errorMessage(response: Response) {
+  if (response.status >= 500) {
+    return "Serveri ka një problem për momentin. Ju lutemi provoni përsëri.";
+  }
   try {
     const data = (await response.json()) as { message?: string; details?: Record<string, unknown> };
     const fieldMessages = data.details
@@ -685,9 +703,9 @@ async function errorMessage(response: Response) {
     if (fieldMessages.length > 0) {
       return fieldMessages.join(" ");
     }
-    return safeErrorMessage(data.message, "The request could not be completed.");
+    return safeErrorMessage(data.message, "Kërkesa nuk mund të përfundohej.");
   } catch {
-    return "The request could not be completed.";
+    return "Kërkesa nuk mund të përfundohej.";
   }
 }
 
@@ -696,20 +714,20 @@ function readableFieldMessage(field: string, message: unknown) {
     return "";
   }
   if (message.toLowerCase() === "must not be blank") {
-    return `${fieldLabel(field)} is required.`;
+    return `${fieldLabel(field)} është e detyrueshme.`;
   }
   return message;
 }
 
 function fieldLabel(field: string) {
   const labels: Record<string, string> = {
-    employeeCode: "Employee ID",
+    employeeCode: "ID e punëtorit",
     pin: "PIN",
-    username: "Employee ID",
-    password: "Password",
+    username: "ID e punëtorit",
+    password: "Fjalëkalimi",
     email: "Email",
-    currentPassword: "Current password",
-    newPassword: "New password",
+    currentPassword: "Fjalëkalimi aktual",
+    newPassword: "Fjalëkalimi i ri",
   };
   return labels[field] ?? field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -737,6 +755,22 @@ export function mapLocationUrl(latitude: number, longitude: number) {
   const url = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`;
   debugGpsLog("map URL generated", { latitude, longitude, url });
   return url;
+}
+
+function resolveApiBaseUrl() {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+  if (typeof window === "undefined") {
+    return "http://localhost:8080/api/v1";
+  }
+  const { protocol, hostname } = window.location;
+  return `${protocol}//${hostname}:8080/api/v1`;
+}
+
+function networkErrorMessage() {
+  return "Nuk mund të lidhemi me serverin. Kontrolloni internetin, adresën e backend-it ose konfigurimin CORS.";
 }
 
 export function debugGpsLog(stage: string, values: Record<string, unknown>) {

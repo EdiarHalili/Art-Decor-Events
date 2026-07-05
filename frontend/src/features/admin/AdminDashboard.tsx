@@ -67,7 +67,7 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
                 <CalendarDays size={18} />
                 New window
               </Button>
-              <Button variant="ghost" onClick={onLogout}>
+              <Button variant="ghost" onClick={onLogout} aria-label="Dil" title="Dil">
                 <LogOut size={18} />
               </Button>
             </div>
