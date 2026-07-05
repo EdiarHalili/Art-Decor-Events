@@ -23,6 +23,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [todayFresh, setTodayFresh] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState("");
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -63,6 +65,14 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     const timer = window.setInterval(() => setNow((current) => current + 1000), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!checkoutSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setCheckoutSuccess(""), 4500);
+    return () => window.clearTimeout(timer);
+  }, [checkoutSuccess]);
 
   useEffect(() => {
     const trackingEnabled = Boolean(settings?.liveLocationTrackingEnabled && today?.checkOutAvailable && online);
@@ -173,6 +183,9 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
     setActionLoading(type);
     setMessage("");
+    if (type === "CHECK_OUT") {
+      setCheckoutSuccess("");
+    }
     const location = settings?.gpsEnabled === false ? {} : await captureLocation();
     const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
     debugGpsLog(`${type.toLowerCase().replace("_", "-")} prepared payload`, {
@@ -193,27 +206,39 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       });
       setQueuedCount(getQueuedAttendanceActions().length);
       setMessage("Attendance saved offline and will sync when internet returns.");
+      if (type === "CHECK_OUT") {
+        setCheckoutConfirmOpen(false);
+        setMessage("Dalja u ruajt offline dhe do të sinkronizohet kur interneti të kthehet.");
+      }
       setActionLoading(null);
       return;
     }
 
     try {
       const response = type === "CHECK_IN" ? await checkIn(session.accessToken, payload) : await checkOut(session.accessToken, payload);
+      if (type === "CHECK_OUT") {
+        setCheckoutConfirmOpen(false);
+      }
       setToday({
         ...today,
-        status: response.status === "CHECKED_OUT" ? "Checked out." : response.status === "LATE" ? "Checked in late." : "Checked in.",
+        status: response.status === "CHECKED_OUT" ? "Dalja u regjistrua." : response.status === "LATE" ? "Hyrja u regjistrua me vonesë." : "Hyrja u regjistrua.",
         checkInOpen: false,
         checkOutAvailable: response.status !== "CHECKED_OUT",
       });
       cacheToday(session.employeeId, {
         ...today,
-        status: response.status === "CHECKED_OUT" ? "Checked out." : response.status === "LATE" ? "Checked in late." : "Checked in.",
+        status: response.status === "CHECKED_OUT" ? "Dalja u regjistrua." : response.status === "LATE" ? "Hyrja u regjistrua me vonesë." : "Hyrja u regjistrua.",
         checkInOpen: false,
         checkOutAvailable: response.status !== "CHECKED_OUT",
       });
-      setMessage(type === "CHECK_IN" ? "Check-in recorded." : "Check-out recorded.");
+      if (type === "CHECK_OUT") {
+        setCheckoutSuccess(checkoutSuccessMessage(response.checkedOutAt));
+        setMessage("");
+      } else {
+        setMessage("Hyrja u regjistrua me sukses.");
+      }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : type === "CHECK_IN" ? "Check-in could not be recorded." : "Check-out could not be recorded.");
+      setMessage(type === "CHECK_OUT" ? checkoutErrorMessage(error) : error instanceof Error ? error.message : "Hyrja nuk mund të regjistrohej.");
     } finally {
       setActionLoading(null);
     }
@@ -301,6 +326,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           </div>
 
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
+          {checkoutSuccess && (
+            <div className="mt-4 whitespace-pre-line rounded-md border border-primary/20 bg-primary/10 px-3 py-3 text-sm font-medium text-primary">
+              {checkoutSuccess}
+            </div>
+          )}
 
           <div className="mt-5 grid gap-3">
             <Button
@@ -314,12 +344,43 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
               className="h-14 text-base sm:h-16"
               variant="secondary"
               disabled={!today?.checkOutAvailable || actionLoading !== null || (online && !todayFresh)}
-              onClick={() => void submitAttendance("CHECK_OUT")}
+              onClick={() => setCheckoutConfirmOpen(true)}
             >
-              {actionLoading === "CHECK_OUT" ? "Recording..." : "Check Out"}
+              {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Dalje"}
             </Button>
           </div>
         </Card>
+
+        {checkoutConfirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
+            <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+              <h2 id="checkout-confirm-title" className="text-lg font-semibold">Konfirmo Daljen</h2>
+              <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+                <p>A jeni i sigurt që dëshironi të bëni daljen?</p>
+                <p>
+                  Pasi të kryhet dalja, nuk do të mund të bëni hyrje (Check In) përsëri, përveç nëse kjo lejohet nga rregullat e attendance.
+                </p>
+              </div>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={actionLoading === "CHECK_OUT"}
+                  onClick={() => setCheckoutConfirmOpen(false)}
+                >
+                  Anulo
+                </Button>
+                <Button
+                  type="button"
+                  disabled={actionLoading === "CHECK_OUT"}
+                  onClick={() => void submitAttendance("CHECK_OUT")}
+                >
+                  {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Po, Bëj Daljen"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card className="p-5">
           <div className="flex items-center gap-3">
@@ -359,6 +420,24 @@ function countdownText(today: EmployeeToday, nowMs: number) {
     return remaining > 0 ? `Check-in closes in ${formatDuration(remaining)}.` : "Check-in is open manually.";
   }
   return "Window closed.";
+}
+
+function checkoutSuccessMessage(checkedOutAt: string | null) {
+  return `✅ Dalja u regjistrua me sukses!\n\nOra e daljes: ${formatCheckoutTime(checkedOutAt)}\n\nFaleminderit për punën tuaj. Ju urojmë një ditë të mbarë!`;
+}
+
+function formatCheckoutTime(value: string | null) {
+  if (!value) {
+    return "--:--";
+  }
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function checkoutErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return `Dalja nuk mund të regjistrohej. ${error.message}`;
+  }
+  return "Dalja nuk mund të regjistrohej. Ju lutemi provoni përsëri.";
 }
 
 function formatDuration(ms: number) {
