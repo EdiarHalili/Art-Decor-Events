@@ -5,7 +5,9 @@ import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.application.notifications.NotificationService;
 import com.artdecor.workforce.application.attendance.SimpleOpenModeService;
+import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
@@ -76,6 +78,30 @@ class EmployeeTodayServiceTest {
         assertThat(response.checkInOpen()).isFalse();
     }
 
+    @Test
+    void activeAttendanceTakesPriorityOverNewTodaySchedule() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId);
+        ScheduleAssignmentEntity activeAssignment = simpleAssignment(employee);
+        AttendanceRecordEntity activeRecord = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(activeRecord, "id", UUID.randomUUID());
+        activeRecord.setEmployee(employee);
+        activeRecord.setSchedule(activeAssignment.getSchedule());
+        activeRecord.setStatus(AttendanceStatus.PRESENT);
+        activeRecord.setCheckedInAt(Instant.parse("2026-07-02T22:00:00Z"));
+
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(notifications.visibleAnnouncements()).thenReturn(List.of());
+        when(attendanceRecords.findActiveRecordsByEmployeeId(employeeId)).thenReturn(List.of(activeRecord));
+
+        EmployeeTodayResponse response = service.today(new AuthenticatedPrincipal(employeeId, UserRole.EMPLOYEE, employeeId));
+
+        assertThat(response.scheduleId()).isEqualTo(activeAssignment.getSchedule().getId().toString());
+        assertThat(response.checkInOpen()).isFalse();
+        assertThat(response.checkOutAvailable()).isTrue();
+        assertThat(response.status()).contains("Dalja");
+    }
+
     private ScheduleAssignmentEntity simpleAssignment(EmployeeEntity employee) {
         WorkScheduleEntity schedule = new WorkScheduleEntity();
         ReflectionTestUtils.setField(schedule, "id", UUID.randomUUID());
@@ -91,5 +117,14 @@ class EmployeeTodayServiceTest {
         assignment.setSchedule(schedule);
         assignment.setEmployee(employee);
         return assignment;
+    }
+
+    private EmployeeEntity employee(UUID employeeId) {
+        EmployeeEntity employee = new EmployeeEntity();
+        ReflectionTestUtils.setField(employee, "id", employeeId);
+        employee.setEmployeeCode("EMP001");
+        employee.setFullName("Season Worker");
+        employee.setPinHash("hashed");
+        return employee;
     }
 }

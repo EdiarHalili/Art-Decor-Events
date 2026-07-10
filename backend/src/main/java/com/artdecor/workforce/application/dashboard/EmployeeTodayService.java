@@ -53,6 +53,13 @@ public class EmployeeTodayService {
                 .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
 
         Instant now = Instant.now(clock);
+        var activeRecords = attendanceRecords.findActiveRecordsByEmployeeId(employee.getId());
+        var activeAttendance = (activeRecords == null ? List.<com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity>of() : activeRecords)
+                .stream()
+                .findFirst();
+        if (activeAttendance.isPresent()) {
+            return responseForActiveAttendance(employee.getFullName(), activeAttendance.get(), now);
+        }
 
         var scheduledAssignment = assignments.findCurrentScheduledAssignmentsForEmployee(
                         employee.getId(),
@@ -88,6 +95,28 @@ public class EmployeeTodayService {
                 "Mënyra e hapur",
                 true,
                 now
+        );
+    }
+
+    private EmployeeTodayResponse responseForActiveAttendance(
+            String employeeName,
+            com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity attendance,
+            Instant now
+    ) {
+        var schedule = attendance.getSchedule();
+        boolean simpleMode = schedule.isSimpleOpenMode();
+        return new EmployeeTodayResponse(
+                employeeName,
+                schedule.getId().toString(),
+                simpleMode ? "Mënyra e hapur" : "Dritarja ditore e hyrjes",
+                "Hyrja është regjistruar. Dalja është e disponueshme.",
+                false,
+                true,
+                simpleMode ? null : schedule.getCheckInOpensAt(),
+                simpleMode ? null : schedule.getCheckInClosesAt(),
+                simpleMode,
+                now,
+                announcements()
         );
     }
 

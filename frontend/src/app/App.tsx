@@ -179,11 +179,11 @@ function ChangePasswordScreen({
     event.preventDefault();
     setMessage("");
     if (newPassword.length < 8) {
-      setMessage("Password must be at least 8 characters.");
+      setMessage("Fjalëkalimi duhet të ketë të paktën 8 karaktere.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setMessage("New passwords do not match.");
+      setMessage("Fjalëkalimet e reja nuk përputhen.");
       return;
     }
 
@@ -192,7 +192,7 @@ function ChangePasswordScreen({
       const updated = await changePassword(session.accessToken, { currentPassword, newPassword });
       onChanged(updated);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Password could not be changed.");
+      setMessage(error instanceof Error ? error.message : "Fjalëkalimi nuk mund të ndryshohej.");
     } finally {
       setSaving(false);
     }
@@ -203,18 +203,18 @@ function ChangePasswordScreen({
       <Card className="w-full max-w-md p-6 shadow-corporate">
         <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
         <div className="mt-6">
-          <h1 className="text-xl font-semibold">Change password</h1>
+          <h1 className="text-xl font-semibold">Ndrysho fjalëkalimin</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Your account is using a temporary password. Set a new password before continuing.
+            Llogaria juaj po përdor një fjalëkalim të përkohshëm. Vendosni një fjalëkalim të ri para se të vazhdoni.
           </p>
         </div>
         <form className="mt-5 space-y-3" onSubmit={submit}>
-          <Input type="password" placeholder="Current temporary password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
-          <Input type="password" placeholder="New password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
-          <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
+          <Input type="password" placeholder="Fjalëkalimi i përkohshëm aktual" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
+          <Input type="password" placeholder="Fjalëkalimi i ri" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
+          <Input type="password" placeholder="Konfirmo fjalëkalimin e ri" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
           {message && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{message}</p>}
-          <Button className="w-full" disabled={saving}>{saving ? "Saving..." : "Save password"}</Button>
-          <Button type="button" variant="ghost" className="w-full" onClick={onLogout}>Sign out</Button>
+          <Button className="w-full" disabled={saving}>{saving ? "Duke ruajtur..." : "Ruaj fjalëkalimin"}</Button>
+          <Button type="button" variant="ghost" className="w-full" onClick={onLogout}>Dil</Button>
         </form>
       </Card>
     </main>

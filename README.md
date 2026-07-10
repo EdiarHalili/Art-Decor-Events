@@ -17,10 +17,26 @@ Production workforce and attendance management system for Art Decor Events.
 
 ## Local Development
 
+Recommended Windows startup:
+
+```powershell
+.\scripts\start-local.ps1
+```
+
+For phone testing on the same Wi-Fi, pass your laptop IPv4 address:
+
+```powershell
+.\scripts\start-local.ps1 -BackendHost "192.168.0.41"
+```
+
 Backend:
 
 ```powershell
 cd backend
+$env:SPRING_PROFILES_ACTIVE="dev"
+$env:DB_URL="jdbc:postgresql://localhost:5432/artdecor_workforce"
+$env:DB_USERNAME="artdecor"
+$env:DB_PASSWORD="artdecor_dev_password"
 mvn spring-boot:run
 ```
 

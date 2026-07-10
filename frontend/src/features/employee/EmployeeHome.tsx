@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, CalendarClock, FileSpreadsheet, FileText, History, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
@@ -27,6 +27,7 @@ type EmployeeHomeProps = {
 };
 
 type HistoryPreset = "today" | "this-week" | "this-month" | "last-month" | "custom";
+type GpsLocation = { latitude: number; longitude: number; accuracyMeters?: number; capturedAt?: string };
 
 export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps) {
   const [today, setToday] = useState<EmployeeToday | null>(() => getCachedToday(session.employeeId));
@@ -48,6 +49,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyMessage, setHistoryMessage] = useState("");
   const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
+  const liveLocationInFlight = useRef(false);
+  const lastValidLiveLocation = useRef<GpsLocation | null>(readPendingLiveLocation());
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -98,34 +101,70 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }, [attendanceSuccess]);
 
   useEffect(() => {
-    const trackingEnabled = Boolean(settings?.liveLocationTrackingEnabled && today?.checkOutAvailable && online);
+    const trackingEnabled = Boolean(settings?.liveLocationTrackingEnabled && today?.checkOutAvailable);
     if (!trackingEnabled) {
+      if (!today?.checkOutAvailable) {
+        clearPendingLiveLocation();
+      }
       setLiveTrackingActive(false);
       return;
     }
 
     let cancelled = false;
+    let watchId: number | null = null;
     const intervalMinutes = Math.max(5, settings?.liveLocationIntervalMinutes ?? 10);
 
     async function sendLiveLocation() {
-      const location = await captureLiveLocation();
+      if (liveLocationInFlight.current) {
+        return;
+      }
+      liveLocationInFlight.current = true;
+      const location = readPendingLiveLocation() ?? lastValidLiveLocation.current ?? await captureLiveLocation();
       if (cancelled || !location) {
+        liveLocationInFlight.current = false;
+        return;
+      }
+      if (!navigator.onLine) {
+        storePendingLiveLocation(location);
+        setLiveTrackingActive(true);
+        liveLocationInFlight.current = false;
         return;
       }
       try {
         await recordLiveLocation(session.accessToken, {
           ...location,
-          capturedAt: new Date().toISOString(),
+          capturedAt: location.capturedAt ?? new Date().toISOString(),
           device: deviceMetadata(),
         });
+        clearPendingLiveLocation();
         if (!cancelled) {
           setLiveTrackingActive(true);
         }
       } catch {
+        storePendingLiveLocation(location);
         if (!cancelled) {
-          setLiveTrackingActive(false);
+          setLiveTrackingActive(Boolean(lastValidLiveLocation.current));
         }
+      } finally {
+        liveLocationInFlight.current = false;
       }
+    }
+
+    if ("geolocation" in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const location = gpsFromPosition(position);
+          if (!location) {
+            return;
+          }
+          lastValidLiveLocation.current = location;
+          debugGpsLog("browser live watch geolocation", location);
+        },
+        (error) => {
+          debugGpsLog("browser live watch geolocation failed", { code: error.code, message: error.message });
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 5 * 60 * 1000 },
+      );
     }
 
     void sendLiveLocation();
@@ -133,6 +172,10 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      liveLocationInFlight.current = false;
       setLiveTrackingActive(false);
     };
   }, [online, session.accessToken, settings?.liveLocationIntervalMinutes, settings?.liveLocationTrackingEnabled, today?.checkOutAvailable]);
@@ -145,49 +188,23 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }, [session.accessToken, historyFrom, historyTo]);
 
   async function captureLocation(): Promise<{ latitude?: number; longitude?: number }> {
-    if (!("geolocation" in navigator)) {
-      return {};
-    }
-
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          debugGpsLog("browser attendance geolocation", {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            accuracyMeters: position.coords.accuracy,
-          });
-          resolve(location);
-        },
-        () => resolve({}),
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
-      );
+    const location = await captureGpsLocation({
+      attempts: 3,
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+      stage: "browser attendance geolocation",
     });
+    return location ? { latitude: location.latitude, longitude: location.longitude } : {};
   }
 
-  async function captureLiveLocation(): Promise<{ latitude: number; longitude: number; accuracyMeters?: number } | null> {
-    if (!("geolocation" in navigator)) {
-      return null;
-    }
-
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracyMeters: position.coords.accuracy,
-          };
-          debugGpsLog("browser live geolocation", location);
-          resolve(location);
-        },
-        () => resolve(null),
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
-      );
+  async function captureLiveLocation(): Promise<GpsLocation | null> {
+    return captureGpsLocation({
+      attempts: 2,
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 5 * 60 * 1000,
+      stage: "browser live geolocation",
     });
   }
 
@@ -599,6 +616,118 @@ function countdownText(today: EmployeeToday, nowMs: number) {
     return remaining > 0 ? `Hyrja mbyllet për ${formatDuration(remaining)}.` : "Hyrja është hapur manualisht.";
   }
   return "Dritarja është mbyllur.";
+}
+
+async function captureGpsLocation({
+  attempts,
+  enableHighAccuracy,
+  timeout,
+  maximumAge,
+  stage,
+}: {
+  attempts: number;
+  enableHighAccuracy: boolean;
+  timeout: number;
+  maximumAge: number;
+  stage: string;
+}): Promise<GpsLocation | null> {
+  if (!("geolocation" in navigator)) {
+    debugGpsLog(`${stage} unavailable`, { reason: "Geolocation API is not supported" });
+    return null;
+  }
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const location = await getCurrentGpsLocation({ enableHighAccuracy, timeout, maximumAge, stage, attempt });
+    if (location) {
+      return location;
+    }
+    if (attempt < attempts) {
+      await wait(700);
+    }
+  }
+  return null;
+}
+
+function getCurrentGpsLocation({
+  enableHighAccuracy,
+  timeout,
+  maximumAge,
+  stage,
+  attempt,
+}: {
+  enableHighAccuracy: boolean;
+  timeout: number;
+  maximumAge: number;
+  stage: string;
+  attempt: number;
+}): Promise<GpsLocation | null> {
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = gpsFromPosition(position);
+        debugGpsLog(stage, {
+          attempt,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          accuracyMeters: location?.accuracyMeters,
+          valid: Boolean(location),
+        });
+        resolve(location);
+      },
+      (error) => {
+        debugGpsLog(`${stage} failed`, { attempt, code: error.code, message: error.message });
+        resolve(null);
+      },
+      { enableHighAccuracy, timeout, maximumAge },
+    );
+  });
+}
+
+function gpsFromPosition(position: GeolocationPosition): GpsLocation | null {
+  const latitude = position.coords.latitude;
+  const longitude = position.coords.longitude;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    debugGpsLog("browser geolocation rejected invalid coordinates", { latitude, longitude });
+    return null;
+  }
+  return {
+    latitude,
+    longitude,
+    accuracyMeters: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : undefined,
+    capturedAt: new Date(position.timestamp || Date.now()).toISOString(),
+  };
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function storePendingLiveLocation(location: GpsLocation) {
+  try {
+    localStorage.setItem("artdecor.pendingLiveLocation", JSON.stringify(location));
+  } catch {
+    // Best effort only; the next interval can capture a fresh location.
+  }
+}
+
+function readPendingLiveLocation(): GpsLocation | null {
+  try {
+    const raw = localStorage.getItem("artdecor.pendingLiveLocation");
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as GpsLocation;
+    if (!Number.isFinite(parsed.latitude) || !Number.isFinite(parsed.longitude)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingLiveLocation() {
+  localStorage.removeItem("artdecor.pendingLiveLocation");
 }
 
 function checkinSuccessMessage(checkedInAt: string | null) {
