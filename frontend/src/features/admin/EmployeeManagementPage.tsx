@@ -66,7 +66,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
     try {
       setEmployees(await listEmployees(accessToken));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Employees could not be loaded.");
+      setMessage(error instanceof Error ? error.message : "Punëtorët nuk mund të ngarkoheshin.");
     } finally {
       setLoading(false);
     }
@@ -164,9 +164,9 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       setEmployees((current) => upsertEmployee(current, employee));
       setSelected(employee);
       resetForm();
-      setMessage(editingId ? "Employee profile updated." : "Employee created successfully.");
+      setMessage(editingId ? "Profili i punëtorit u përditësua." : "Punëtori u krijua me sukses.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Employee profile could not be saved.");
+      setMessage(error instanceof Error ? error.message : "Profili i punëtorit nuk mund të ruhej.");
     } finally {
       setSaving(false);
     }
@@ -178,9 +178,9 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
       const updated = await deactivateEmployee(accessToken, employeeId);
       setEmployees((current) => current.map((employee) => (employee.id === employeeId ? updated : employee)));
       setSelected((current) => (current?.id === employeeId ? updated : current));
-      setMessage("Employee deactivated.");
+      setMessage("Punëtori u çaktivizua.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Employee could not be deactivated.");
+      setMessage(error instanceof Error ? error.message : "Punëtori nuk mund të çaktivizohej.");
     }
   }
 
@@ -213,39 +213,39 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
             <UserPlus size={21} />
           </div>
           <div>
-            <h2 className="font-semibold">{editingId ? "Edit employee" : "Create employee"}</h2>
-            <p className="text-sm text-muted-foreground">Keep employee access, role, team, and notes in one profile.</p>
+            <h2 className="font-semibold">{editingId ? "Edito punëtorin" : "Krijo punëtor"}</h2>
+            <p className="text-sm text-muted-foreground">Menaxhoni qasjen, pozitën, ekipin dhe shënimet në një profil.</p>
           </div>
         </div>
 
         <form className="mt-5 space-y-3" onSubmit={submit}>
           <Input
-            placeholder="Employee ID"
+            placeholder="Kodi i punëtorit"
             value={form.employeeCode}
             onChange={(event) => setForm({ ...form, employeeCode: event.target.value })}
             disabled={Boolean(editingId)}
             required
           />
-          <Input placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required />
+          <Input placeholder="Emri i plotë" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required />
           <Input
-            placeholder={editingId ? "New password (optional)" : "Temporary password"}
+            placeholder={editingId ? "Fjalëkalim i ri (opsional)" : "Fjalëkalim i përkohshëm"}
             value={form.password}
             onChange={(event) => setForm({ ...form, password: event.target.value })}
             minLength={8}
             type="password"
             required={!editingId}
           />
-          <Input placeholder="Phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-          <Input placeholder="Profile photo URL" value={form.profilePhotoUrl} onChange={(event) => setForm({ ...form, profilePhotoUrl: event.target.value })} />
+          <Input placeholder="Telefoni" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+          <Input placeholder="URL e fotos së profilit" value={form.profilePhotoUrl} onChange={(event) => setForm({ ...form, profilePhotoUrl: event.target.value })} />
           <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-            <Input placeholder="Position" value={form.positionTitle} onChange={(event) => setForm({ ...form, positionTitle: event.target.value })} />
-            <Input placeholder="Department" value={form.departmentName} onChange={(event) => setForm({ ...form, departmentName: event.target.value })} />
-            <Input placeholder="Team" value={form.teamName} onChange={(event) => setForm({ ...form, teamName: event.target.value })} />
+            <Input placeholder="Pozita" value={form.positionTitle} onChange={(event) => setForm({ ...form, positionTitle: event.target.value })} />
+            <Input placeholder="Departamenti" value={form.departmentName} onChange={(event) => setForm({ ...form, departmentName: event.target.value })} />
+            <Input placeholder="Ekipi" value={form.teamName} onChange={(event) => setForm({ ...form, teamName: event.target.value })} />
           </div>
-          <textarea className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15" placeholder="Internal notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          <textarea className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15" placeholder="Shënime të brendshme" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button className="flex-1" disabled={saving}>{saving ? "Saving..." : editingId ? "Save changes" : "Create employee"}</Button>
-            {editingId && <Button type="button" variant="secondary" onClick={resetForm}>Cancel</Button>}
+            <Button className="flex-1" disabled={saving}>{saving ? "Duke ruajtur..." : editingId ? "Ruaj ndryshimet" : "Krijo punëtor"}</Button>
+            {editingId && <Button type="button" variant="secondary" onClick={resetForm}>Anulo</Button>}
           </div>
         </form>
       </Card>
@@ -254,20 +254,20 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
         <Card className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-semibold">Employees</h2>
-              <p className="text-sm text-muted-foreground">{employees.length} employee profiles</p>
+              <h2 className="font-semibold">Punëtorët</h2>
+              <p className="text-sm text-muted-foreground">{employees.length} profile punëtorësh</p>
             </div>
             <div className="relative sm:w-72">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={18} />
-              <Input className="pl-10" placeholder="Search employees" value={query} onChange={(event) => setQuery(event.target.value)} />
+              <Input className="pl-10" placeholder="Kërko punëtorë" value={query} onChange={(event) => setQuery(event.target.value)} />
             </div>
           </div>
 
           {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
           <div className="mt-5 grid gap-3">
-            {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading employees...</p>}
-            {!loading && filteredEmployees.length === 0 && <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">No employees found.</p>}
+            {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Punëtorët po ngarkohen...</p>}
+            {!loading && filteredEmployees.length === 0 && <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">Nuk u gjet asnjë punëtor.</p>}
             {filteredEmployees.map((employee) => (
               <button
                 key={employee.id}
@@ -280,7 +280,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{employee.fullName}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {employee.employeeCode} · {employee.positionTitle || "No position"} · {employee.teamName || "No team"}
+                      {employee.employeeCode} · {employee.positionTitle || "Pa pozitë"} · {employee.teamName || "Pa ekip"}
                     </p>
                   </div>
                   <span className={employee.status === "ACTIVE" ? "text-sm font-medium text-accent" : "text-sm text-muted-foreground"}>{employee.status}</span>
@@ -307,7 +307,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
             />
           ) : (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Select an employee to view profile details and attendance history.
+              Zgjidhni një punëtor për të parë profilin dhe historinë e punës.
             </div>
           )}
         </Card>
@@ -372,7 +372,7 @@ function EmployeeProfile({
   async function downloadEmployeeExport(format: "pdf" | "csv") {
     setExportMessage("");
     if (!exportFrom || !exportTo || exportTo < exportFrom) {
-      setExportMessage("Choose a valid export date range.");
+      setExportMessage("Zgjidhni një interval të vlefshëm për eksport.");
       return;
     }
 
@@ -387,9 +387,9 @@ function EmployeeProfile({
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setExportMessage("Employee attendance export downloaded.");
+      setExportMessage("Eksporti i historisë së punës u shkarkua.");
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : "Employee attendance export could not be downloaded.");
+      setExportMessage(error instanceof Error ? error.message : "Eksporti nuk mund të shkarkohej.");
     } finally {
       setExporting(null);
     }
@@ -402,9 +402,9 @@ function EmployeeProfile({
     try {
       const password = await onResetPassword();
       setTemporaryPassword(password);
-      setExportMessage("Temporary password created. It is shown here only once.");
+      setExportMessage("Fjalëkalimi i përkohshëm u krijua. Shfaqet vetëm një herë.");
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : "Password could not be reset.");
+      setExportMessage(error instanceof Error ? error.message : "Fjalëkalimi nuk mund të rivendosej.");
     } finally {
       setResettingPassword(false);
     }
@@ -412,7 +412,7 @@ function EmployeeProfile({
 
   async function checkoutFromProfile(row: AttendanceReportRow) {
     if (!row.attendanceRecordId) {
-      setExportMessage("Attendance record is missing.");
+      setExportMessage("Regjistrimi i punës mungon.");
       return;
     }
     setCheckoutRecord(row);
@@ -450,10 +450,10 @@ function EmployeeProfile({
           <Avatar employee={employee} large />
           <div>
             <h2 className="text-xl font-semibold">{employee.fullName}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{employee.employeeCode} · {employee.status}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{employee.employeeCode} · {employee.status === "ACTIVE" ? "Aktiv" : "Joaktiv"}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edito</Button>
           <Button type="button" variant="secondary" disabled={resettingPassword} onClick={() => void resetPassword()}>
             <KeyRound size={17} />
@@ -486,29 +486,29 @@ function EmployeeProfile({
       <div className="mt-5 rounded-lg border border-border p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="font-semibold">Export work progress</p>
-            <p className="mt-1 text-sm text-muted-foreground">Simple employee hours summary with attendance table.</p>
+            <p className="font-semibold">Eksporto historinë e punës</p>
+            <p className="mt-1 text-sm text-muted-foreground">Përmbledhje e thjeshtë e orëve dhe regjistrimeve të punës.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-[150px_150px_150px] xl:flex xl:items-end">
             <label className="space-y-1 text-sm font-medium">
-              <span>Range</span>
+              <span>Periudha</span>
               <select
                 className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
                 value={rangePreset}
                 onChange={(event) => updateRange(event.target.value as ExportRangePreset)}
               >
-                <option value="this-week">This week</option>
-                <option value="this-month">This month</option>
-                <option value="last-month">Last month</option>
-                <option value="custom">Custom date range</option>
+                <option value="this-week">Kjo javë</option>
+                <option value="this-month">Ky muaj</option>
+                <option value="last-month">Muaji i kaluar</option>
+                <option value="custom">Interval datash</option>
               </select>
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>From</span>
+              <span>Nga</span>
               <Input type="date" value={exportFrom} onChange={(event) => setExportFrom(event.target.value)} disabled={rangePreset !== "custom"} />
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>To</span>
+              <span>Deri</span>
               <Input type="date" value={exportTo} onChange={(event) => setExportTo(event.target.value)} disabled={rangePreset !== "custom"} />
             </label>
           </div>
@@ -516,11 +516,11 @@ function EmployeeProfile({
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadEmployeeExport("pdf")}>
             <FileText size={17} />
-            {exporting === "pdf" ? "Exporting..." : "Export PDF"}
+            {exporting === "pdf" ? "Duke eksportuar..." : "Eksporto PDF"}
           </Button>
           <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadEmployeeExport("csv")}>
             <FileSpreadsheet size={17} />
-            {exporting === "csv" ? "Exporting..." : "Export Excel/CSV"}
+            {exporting === "csv" ? "Duke eksportuar..." : "Eksporto Excel/CSV"}
           </Button>
         </div>
         {exportMessage && <p className="mt-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{exportMessage}</p>}
@@ -528,15 +528,15 @@ function EmployeeProfile({
 
       <div className="mt-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold">This month</h3>
+          <h3 className="font-semibold">Ky muaj</h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock3 size={16} />
-            {formatMinutes(workedMinutes)} worked
+            {formatMinutes(workedMinutes)} punuar
           </div>
         </div>
         <div className="mt-3 divide-y divide-border rounded-lg border border-border">
-          {historyLoading && <p className="p-4 text-sm text-muted-foreground">Loading attendance history...</p>}
-          {!historyLoading && history.length === 0 && <p className="p-4 text-sm text-muted-foreground">No attendance records for this month.</p>}
+          {historyLoading && <p className="p-4 text-sm text-muted-foreground">Historia po ngarkohet...</p>}
+          {!historyLoading && history.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nuk ka regjistrime për këtë muaj.</p>}
           {history.slice(0, 12).map((row) => (
             <div key={`${row.scheduleId}-${row.workDate}`} className="grid gap-3 p-4 text-sm lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
               <div>
@@ -544,16 +544,16 @@ function EmployeeProfile({
                 <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
               </div>
               <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
-                <span>Check In: {formatTime(row.checkedInAt)}</span>
-                <span>Check Out: {checkoutLabel(row.checkoutType, row.checkedOutAt)}</span>
-                <GpsCell label="Check In GPS" latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
-                <GpsCell label="Check Out GPS" latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
-                <span>Worked: {formatMinutes(row.workedMinutes)}</span>
-                <span>Overtime: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "None"}</span>
+                <span>Hyrja: {formatTime(row.checkedInAt)}</span>
+                <span>Dalja: {checkoutLabel(row.checkoutType, row.checkedOutAt)}</span>
+                <GpsCell label="GPS hyrje" latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
+                <GpsCell label="GPS dalje" latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
+                <span>Orët: {formatMinutes(row.workedMinutes)}</span>
+                <span>Shtesë: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "-"}</span>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${row.absent ? "bg-destructive/10 text-destructive" : "bg-accent/10 text-accent"}`}>
-                  Status: {checkoutTypeLabel(row.checkoutType, row.status)}
+                  Statusi: {checkoutTypeLabel(row.checkoutType, row.status)}
                 </span>
                 {!row.checkedOutAt && row.attendanceRecordId && (
                   <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void checkoutFromProfile(row)}>
@@ -632,14 +632,14 @@ function GpsCell({
   distanceMeters: number | null;
 }) {
   if (latitude == null || longitude == null) {
-    return <span>{label}: Not captured</span>;
+    return <span>{label}: -</span>;
   }
   return (
     <span>
       {label}: {latitude.toFixed(5)}, {longitude.toFixed(5)}
-      {distanceMeters != null ? ` (${formatDistance(distanceMeters)} from workplace)` : ""}
+      {distanceMeters != null ? ` (${formatDistance(distanceMeters)} nga vendi i punës)` : ""}
       <a className="ml-2 font-medium text-primary" href={mapUrl(latitude, longitude)} target="_blank" rel="noreferrer">
-        View on Map
+        Hape në hartë
       </a>
     </span>
   );
@@ -699,20 +699,20 @@ function formatMinutes(minutes: number) {
 function checkoutLabel(type: CheckoutType | null, checkedOutAt: string | null) {
   const time = formatTime(checkedOutAt);
   if (type === "AUTO_CHECKED_OUT") {
-    return `Auto Check Out: ${time}`;
+    return `Dalje automatike: ${time}`;
   }
   if (type === "ADMIN_CHECKED_OUT") {
-    return `Admin Check Out: ${time}`;
+    return `Dalje nga administratori: ${time}`;
   }
   return time;
 }
 
 function checkoutTypeLabel(type: CheckoutType | null, status: string) {
   if (status === "CHECKED_OUT" || type) {
-    return "Checked Out";
+    return "Dalë";
   }
   if (status === "PRESENT" || status === "LATE") {
-    return "Checked In";
+    return "Në punë";
   }
   return "-";
 }

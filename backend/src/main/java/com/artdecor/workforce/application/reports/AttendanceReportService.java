@@ -366,14 +366,14 @@ public class AttendanceReportService {
     private String employeeCsv(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
         AttendanceReportSummary summary = summarize(rows);
         StringBuilder builder = new StringBuilder();
-        builder.append(csvValue("Employee name")).append(',').append(csvValue(employee.getFullName())).append('\n');
-        builder.append(csvValue("Employee code")).append(',').append(csvValue(employee.getEmployeeCode())).append('\n');
-        builder.append(csvValue("Date range")).append(',').append(csvValue(from + " to " + to)).append('\n');
-        builder.append(csvValue("Total worked days")).append(',').append(workedDays(rows)).append('\n');
-        builder.append(csvValue("Total worked hours")).append(',').append(minutesToHours(summary.workedMinutes())).append('\n');
-        builder.append(csvValue("Total overtime")).append(',').append(minutesToHours(summary.overtimeMinutes())).append('\n');
+        builder.append(csvValue("Punetori")).append(',').append(csvValue(employee.getFullName())).append('\n');
+        builder.append(csvValue("Kodi")).append(',').append(csvValue(employee.getEmployeeCode())).append('\n');
+        builder.append(csvValue("Periudha")).append(',').append(csvValue(from + " deri " + to)).append('\n');
+        builder.append(csvValue("Totali i diteve")).append(',').append(workedDays(rows)).append('\n');
+        builder.append(csvValue("Totali i oreve")).append(',').append(minutesToHours(summary.workedMinutes())).append('\n');
+        builder.append(csvValue("Oret shtese")).append(',').append(minutesToHours(summary.overtimeMinutes())).append('\n');
         builder.append('\n');
-        builder.append("Date,Check In,Check Out,Worked Hours,Status\n");
+        builder.append("Data,Hyrja,Dalja,Oret,Statusi\n");
         for (AttendanceReportRow row : rows) {
             builder.append(csvValue(row.workDate().toString())).append(',')
                     .append(csvValue(time(row.checkedInAt()))).append(',')
@@ -420,16 +420,16 @@ public class AttendanceReportService {
                 <?xml version="1.0"?>
                 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
                  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-                <Worksheet ss:Name="Employee Attendance"><Table>
+                <Worksheet ss:Name="Historia e punes"><Table>
                 """);
-        builder.append(excelRow(List.of("Employee name", employee.getFullName())));
-        builder.append(excelRow(List.of("Employee code", employee.getEmployeeCode())));
-        builder.append(excelRow(List.of("Date range", from + " to " + to)));
-        builder.append(excelRow(List.of("Total worked days", String.valueOf(workedDays(rows)))));
-        builder.append(excelRow(List.of("Total worked hours", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())))));
-        builder.append(excelRow(List.of("Total overtime", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.overtimeMinutes())))));
+        builder.append(excelRow(List.of("Punetori", employee.getFullName())));
+        builder.append(excelRow(List.of("Kodi", employee.getEmployeeCode())));
+        builder.append(excelRow(List.of("Periudha", from + " deri " + to)));
+        builder.append(excelRow(List.of("Totali i diteve", String.valueOf(workedDays(rows)))));
+        builder.append(excelRow(List.of("Totali i oreve", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.workedMinutes())))));
+        builder.append(excelRow(List.of("Oret shtese", String.format(Locale.ROOT, "%.2f", minutesToHours(summary.overtimeMinutes())))));
         builder.append(excelRow(List.of()));
-        builder.append(excelRow(List.of("Date", "Check In", "Check Out", "Worked Hours", "Status")));
+        builder.append(excelRow(List.of("Data", "Hyrja", "Dalja", "Oret", "Statusi")));
         for (AttendanceReportRow row : rows) {
             builder.append(excelRow(List.of(
                     row.workDate().toString(),
@@ -480,7 +480,7 @@ public class AttendanceReportService {
         lines.add("Periudha : " + PDF_DATE.format(from) + " - " + PDF_DATE.format(to));
         lines.add("");
         lines.add(String.format("%-10s %-17s %-22s %-13s %s",
-                "Data", "Check In", "Check Out", "Oret e punes", "Statusi"));
+                "Data", "Hyrja", "Dalja", "Oret e punes", "Statusi"));
         lines.add("---------- ----------------- ---------------------- ------------- ----------------");
         for (AttendanceReportRow row : rows) {
             lines.add(String.format(
@@ -504,14 +504,14 @@ public class AttendanceReportService {
         if (!gpsLines.isEmpty()) {
             lines.add("");
             if (hasSystemCheckout) {
-                lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi. Admin Check Out = dalje e regjistruar nga administratori.");
+                lines.add("Shenim: Dalje automatike = dalje nga sistemi. Dalje nga administratori = dalje e regjistruar nga administratori.");
                 lines.add("");
             }
             lines.add("GPS");
             lines.addAll(gpsLines);
         } else if (hasSystemCheckout) {
             lines.add("");
-            lines.add("Shenim: Auto Check Out = dalje automatike nga sistemi. Admin Check Out = dalje e regjistruar nga administratori.");
+            lines.add("Shenim: Dalje automatike = dalje nga sistemi. Dalje nga administratori = dalje e regjistruar nga administratori.");
         }
         lines.add("");
         lines.add("Totali i diteve te punuara : " + totals.workedDays());
@@ -553,10 +553,10 @@ public class AttendanceReportService {
             return "-";
         }
         if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
-            return "Auto Check Out " + time(row.checkedOutAt(), zone);
+            return "Dalje automatike " + time(row.checkedOutAt(), zone);
         }
         if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
-            return "Admin Check Out " + time(row.checkedOutAt(), zone);
+            return "Dalje nga administratori " + time(row.checkedOutAt(), zone);
         }
         return dateTime(row.checkedOutAt(), zone);
     }
@@ -573,20 +573,20 @@ public class AttendanceReportService {
 
     private String statusLabel(AttendanceReportRow row) {
         if (AttendanceStatus.CHECKED_OUT.name().equals(row.status())) {
-            return "Checked Out";
+            return "Dale";
         }
         if (AttendanceStatus.PRESENT.name().equals(row.status()) || AttendanceStatus.LATE.name().equals(row.status())) {
-            return "Checked In";
+            return "Ne pune";
         }
         return "-";
     }
 
     private String checkoutTypeLabel(AttendanceReportRow row) {
         if ("AUTO_CHECKED_OUT".equals(row.checkoutType()) || row.autoCheckout()) {
-            return "Auto Check Out";
+            return "Dalje automatike";
         }
         if ("ADMIN_CHECKED_OUT".equals(row.checkoutType())) {
-            return "Admin Check Out";
+            return "Dalje nga administratori";
         }
         return "";
     }
@@ -639,12 +639,12 @@ public class AttendanceReportService {
     private List<String> gpsLines(AttendanceReportRow row) {
         List<String> lines = new ArrayList<>();
         lines.add(PDF_DATE.format(row.workDate()));
-        lines.add("  Check In GPS : " + gpsWithDistance(row.checkInLatitude(), row.checkInLongitude(), row.checkInDistanceMeters()));
-        lines.add("  Check Out GPS: " + gpsWithDistance(row.checkOutLatitude(), row.checkOutLongitude(), row.checkOutDistanceMeters()));
+        lines.add("  GPS hyrje : " + gpsWithDistance(row.checkInLatitude(), row.checkInLongitude(), row.checkInDistanceMeters()));
+        lines.add("  GPS dalje : " + gpsWithDistance(row.checkOutLatitude(), row.checkOutLongitude(), row.checkOutDistanceMeters()));
         if (hasGps(row.checkInLatitude(), row.checkInLongitude())) {
-            lines.add("  View on Map  : " + mapUrl(row.checkInLatitude(), row.checkInLongitude()));
+            lines.add("  Hape ne harte: " + mapUrl(row.checkInLatitude(), row.checkInLongitude()));
         } else if (hasGps(row.checkOutLatitude(), row.checkOutLongitude())) {
-            lines.add("  View on Map  : " + mapUrl(row.checkOutLatitude(), row.checkOutLongitude()));
+            lines.add("  Hape ne harte: " + mapUrl(row.checkOutLatitude(), row.checkOutLongitude()));
         }
         return lines;
     }

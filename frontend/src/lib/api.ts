@@ -427,6 +427,28 @@ export async function checkOut(
   });
 }
 
+export async function getMyAttendanceHistory(
+  accessToken: string,
+  params: { from: string; to: string },
+): Promise<AttendanceReportRow[]> {
+  const response = await authorizedRequest<AttendanceReportRow[]>(
+    `/employee/attendance/history?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}`,
+    accessToken,
+  );
+  logAttendanceRows("api returned employee own history", response);
+  return response;
+}
+
+export async function exportMyAttendance(
+  accessToken: string,
+  params: { from: string; to: string; format: "csv" | "pdf" },
+): Promise<Blob> {
+  return authorizedBlobRequest(
+    `/employee/attendance/export?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&format=${params.format}`,
+    accessToken,
+  );
+}
+
 export async function adminCheckout(
   accessToken: string,
   attendanceRecordId: string,

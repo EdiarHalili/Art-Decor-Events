@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarClock, CalendarDays, LayoutDashboard, LogOut, MapPin, RefreshCw, Settings, ShieldCheck, UserCheck, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, LayoutDashboard, LogOut, MapPin, Menu, RefreshCw, Settings, ShieldCheck, UserCheck, UsersRound, X } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
@@ -23,6 +23,7 @@ type AdminView = "dashboard" | "windows" | "reports" | "employees" | "users" | "
 
 export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout }: AdminDashboardProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const navItems = [
     { id: "dashboard" as const, label: "Paneli", icon: LayoutDashboard },
@@ -34,8 +35,8 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
   ];
 
   return (
-    <main className="min-h-screen bg-background pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
+    <main className="min-h-screen overflow-x-hidden bg-background pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+      <div className="grid min-h-screen min-w-0 lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-border bg-card p-5 lg:block">
           <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
           <nav className="mt-8 space-y-2 text-sm">
@@ -54,14 +55,18 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
           </nav>
         </aside>
 
-        <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8">
+        <section className="min-w-0 max-w-full px-3 py-4 sm:px-6 lg:px-8">
           <header className="sticky top-0 z-20 -mx-4 flex flex-col gap-4 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
             <div>
               <p className="text-sm font-medium text-primary">Paneli operativ</p>
-              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Sot te {settings?.companyName ?? "Art Decor Events"}</h1>
+              <h1 className="mt-1 break-words text-xl font-semibold sm:text-3xl">Sot te {settings?.companyName ?? "Art Decor Events"}</h1>
               <p className="mt-1 text-sm text-muted-foreground">I identifikuar si {session.fullName}</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Hap menynë">
+                <Menu size={18} />
+                Meny
+              </Button>
               <ThemeToggle />
               <Button variant="secondary" onClick={() => setActiveView("windows")}>
                 <CalendarDays size={18} />
@@ -73,20 +78,37 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
             </div>
           </header>
 
-          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {navItems.map((item) => (
-              <Button
-                key={item.id}
-                type="button"
-                variant={activeView === item.id ? "primary" : "secondary"}
-                onClick={() => setActiveView(item.id)}
-                className="shrink-0"
-              >
-                <item.icon size={17} />
-                {item.label}
-              </Button>
-            ))}
-          </nav>
+          {menuOpen && (
+            <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+              <button className="absolute inset-0 bg-black/45" aria-label="Mbyll menynë" onClick={() => setMenuOpen(false)} />
+              <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-lg border border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl">
+                <div className="flex items-center justify-between">
+                  <BrandMark compact logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
+                  <Button variant="ghost" onClick={() => setMenuOpen(false)} aria-label="Mbyll">
+                    <X size={18} />
+                  </Button>
+                </div>
+                <nav className="mt-5 grid gap-2">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveView(item.id);
+                        setMenuOpen(false);
+                      }}
+                      className={`flex min-h-12 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition ${
+                        activeView === item.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <item.icon size={17} />
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          )}
 
           {activeView === "dashboard" && <DashboardOverview accessToken={session.accessToken} />}
           {activeView === "windows" && (
@@ -384,5 +406,5 @@ function formatMinutes(minutes: number) {
 }
 
 function attendanceStatusLabel(row: { checkedOutAt: string | null }) {
-  return row.checkedOutAt ? "Checked Out" : "Checked In";
+  return row.checkedOutAt ? "Dalë" : "Në punë";
 }

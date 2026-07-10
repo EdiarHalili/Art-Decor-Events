@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
-import { Bell, CalendarClock, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
+import { Bell, CalendarClock, FileSpreadsheet, FileText, History, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { checkIn, checkOut, debugGpsLog, getEmployeeToday, recordLiveLocation, type AppSettings, type AuthResponse, type EmployeeToday } from "../../lib/api";
+import {
+  checkIn,
+  checkOut,
+  debugGpsLog,
+  exportMyAttendance,
+  getEmployeeToday,
+  getMyAttendanceHistory,
+  recordLiveLocation,
+  type AppSettings,
+  type AttendanceReportRow,
+  type AuthResponse,
+  type EmployeeToday,
+} from "../../lib/api";
 import { getQueuedAttendanceActions, queueAttendanceAction, syncQueuedAttendanceActions } from "../../lib/offlineQueue";
 
 type EmployeeHomeProps = {
@@ -13,6 +25,8 @@ type EmployeeHomeProps = {
   settings: AppSettings | null;
   onLogout: () => void;
 };
+
+type HistoryPreset = "today" | "this-week" | "this-month" | "last-month" | "custom";
 
 export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps) {
   const [today, setToday] = useState<EmployeeToday | null>(() => getCachedToday(session.employeeId));
@@ -26,6 +40,14 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [checkinConfirmOpen, setCheckinConfirmOpen] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [attendanceSuccess, setAttendanceSuccess] = useState("");
+  const defaultRange = rangeForPreset("this-month");
+  const [historyPreset, setHistoryPreset] = useState<HistoryPreset>("this-month");
+  const [historyFrom, setHistoryFrom] = useState(defaultRange.from);
+  const [historyTo, setHistoryTo] = useState(defaultRange.to);
+  const [historyRows, setHistoryRows] = useState<AttendanceReportRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyMessage, setHistoryMessage] = useState("");
+  const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
 
   useEffect(() => {
     async function syncOnlineState() {
@@ -116,6 +138,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }, [online, session.accessToken, settings?.liveLocationIntervalMinutes, settings?.liveLocationTrackingEnabled, today?.checkOutAvailable]);
 
   const employeeName = today?.employeeName ?? session.fullName;
+  const historyTotals = summarizeHistory(historyRows);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [session.accessToken, historyFrom, historyTo]);
 
   async function captureLocation(): Promise<{ latitude?: number; longitude?: number }> {
     if (!("geolocation" in navigator)) {
@@ -270,9 +297,56 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     }
   }
 
+  function updateHistoryPreset(preset: HistoryPreset) {
+    setHistoryPreset(preset);
+    if (preset === "custom") {
+      return;
+    }
+    const next = rangeForPreset(preset);
+    setHistoryFrom(next.from);
+    setHistoryTo(next.to);
+  }
+
+  async function loadHistory() {
+    if (!historyFrom || !historyTo || historyTo < historyFrom) {
+      setHistoryMessage("Zgjidhni një interval të vlefshëm.");
+      return;
+    }
+    setHistoryLoading(true);
+    setHistoryMessage("");
+    try {
+      setHistoryRows(await getMyAttendanceHistory(session.accessToken, { from: historyFrom, to: historyTo }));
+    } catch (error) {
+      setHistoryMessage(error instanceof Error ? error.message : "Historia e punës nuk mund të ngarkohej.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function downloadHistory(format: "pdf" | "csv") {
+    setExporting(format);
+    setHistoryMessage("");
+    try {
+      const blob = await exportMyAttendance(session.accessToken, { from: historyFrom, to: historyTo, format });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `historia-e-punes-${historyFrom}-${historyTo}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setHistoryMessage("Eksporti u shkarkua me sukses.");
+    } catch (error) {
+      setHistoryMessage(error instanceof Error ? error.message : "Eksporti nuk mund të shkarkohej.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
-    <main className="brand-surface min-h-screen px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
-      <div className="mx-auto flex max-w-md flex-col gap-5">
+    <main className="brand-surface min-h-screen overflow-x-hidden px-3 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-4 sm:py-5">
+      <div className="mx-auto flex w-full max-w-md flex-col gap-4 sm:gap-5">
         <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-background/80 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
           <BrandMark compact logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
           <div className="flex items-center gap-2">
@@ -352,6 +426,78 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             >
               {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Dalje"}
             </Button>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <History className="text-primary" size={21} />
+            <h2 className="font-semibold">Historia e punës</h2>
+          </div>
+
+          <div className="mt-4 grid gap-2">
+            <select
+              className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+              value={historyPreset}
+              onChange={(event) => updateHistoryPreset(event.target.value as HistoryPreset)}
+            >
+              <option value="today">Sot</option>
+              <option value="this-week">Kjo javë</option>
+              <option value="this-month">Ky muaj</option>
+              <option value="last-month">Muaji i kaluar</option>
+              <option value="custom">Interval datash</option>
+            </select>
+            {historyPreset === "custom" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="space-y-1 text-sm font-medium">
+                  <span>Nga</span>
+                  <input className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} />
+                </label>
+                <label className="space-y-1 text-sm font-medium">
+                  <span>Deri</span>
+                  <input className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" type="date" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+            <SummaryCell label="Totali i ditëve" value={String(historyTotals.days)} />
+            <SummaryCell label="Orë normale" value={formatWorkedMinutes(historyTotals.normalMinutes)} />
+            <SummaryCell label="Orë shtesë" value={formatWorkedMinutes(historyTotals.overtimeMinutes)} />
+            <SummaryCell label="Totali" value={formatWorkedMinutes(historyTotals.totalMinutes)} />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadHistory("pdf")}>
+              <FileText size={17} />
+              {exporting === "pdf" ? "Duke shkarkuar..." : "PDF"}
+            </Button>
+            <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadHistory("csv")}>
+              <FileSpreadsheet size={17} />
+              {exporting === "csv" ? "Duke shkarkuar..." : "Excel/CSV"}
+            </Button>
+          </div>
+
+          {historyMessage && <p className="mt-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{historyMessage}</p>}
+          <div className="mt-4 divide-y divide-border rounded-lg border border-border">
+            {historyLoading && <p className="p-4 text-sm text-muted-foreground">Historia po ngarkohet...</p>}
+            {!historyLoading && historyRows.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nuk ka regjistrime për këtë periudhë.</p>}
+            {!historyLoading && historyRows.map((row) => (
+              <div key={`${row.workDate}-${row.attendanceRecordId ?? row.scheduleId}`} className="grid gap-2 p-3 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold">{formatDateSq(row.workDate)}</p>
+                  <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{historyStatus(row)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                  <span>Hyrja: {formatAttendanceTime(row.checkedInAt)}</span>
+                  <span>Dalja: {formatAttendanceTime(row.checkedOutAt)}</span>
+                  <span>Orët: {formatWorkedMinutes(row.workedMinutes)}</span>
+                  <span>Shtesë: {formatWorkedMinutes(row.overtimeMinutes)}</span>
+                </div>
+                {row.autoCheckout && <p className="text-xs font-medium text-primary">Dalje automatike</p>}
+              </div>
+            ))}
           </div>
         </Card>
 
@@ -461,6 +607,72 @@ function checkinSuccessMessage(checkedInAt: string | null) {
 
 function checkoutSuccessMessage(checkedOutAt: string | null, _workedMinutes: number) {
   return `Dalja u regjistrua me sukses!\nOra e daljes: ${formatAttendanceTime(checkedOutAt)}`;
+}
+
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-muted p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function summarizeHistory(rows: AttendanceReportRow[]) {
+  return rows.reduce(
+    (totals, row) => {
+      if (row.checkedInAt || row.workedMinutes > 0) {
+        totals.days += 1;
+      }
+      const normalMinutes = Math.min(row.workedMinutes, 8 * 60);
+      const overtimeMinutes = Math.max(row.workedMinutes - 8 * 60, row.overtimeMinutes, 0);
+      totals.normalMinutes += normalMinutes;
+      totals.overtimeMinutes += overtimeMinutes;
+      totals.totalMinutes += normalMinutes + overtimeMinutes;
+      return totals;
+    },
+    { days: 0, normalMinutes: 0, overtimeMinutes: 0, totalMinutes: 0 },
+  );
+}
+
+function rangeForPreset(preset: HistoryPreset) {
+  const now = new Date();
+  if (preset === "today") {
+    const today = dateOnly(now);
+    return { from: today, to: today };
+  }
+  if (preset === "this-week") {
+    const day = now.getDay() || 7;
+    const from = new Date(now);
+    from.setDate(now.getDate() - day + 1);
+    return { from: dateOnly(from), to: dateOnly(now) };
+  }
+  if (preset === "last-month") {
+    return {
+      from: dateOnly(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      to: dateOnly(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+  return {
+    from: dateOnly(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: dateOnly(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+function dateOnly(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateSq(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${day}.${month}.${year}`;
+}
+
+function historyStatus(row: AttendanceReportRow) {
+  if (!row.checkedInAt) {
+    return "-";
+  }
+  return row.checkedOutAt ? "Dalë" : "Në punë";
 }
 
 function formatAttendanceDate(value: string | null) {

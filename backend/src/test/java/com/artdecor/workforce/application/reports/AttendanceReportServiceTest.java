@@ -105,18 +105,18 @@ class AttendanceReportServiceTest {
 
         ExportFile csv = service.exportEmployee(employee.getId(), date, date, "csv");
         assertThat(csv.filename()).contains("EMP001").endsWith(".csv");
-        assertThat(new String(csv.content())).contains("Total worked hours").contains("Present Worker");
+        assertThat(new String(csv.content())).contains("Totali i oreve").contains("Present Worker");
 
         ExportFile pdf = service.exportEmployee(employee.getId(), date, date, "pdf");
         assertThat(pdf.content()).startsWith("%PDF".getBytes());
         assertThat(new String(pdf.content(), StandardCharsets.ISO_8859_1))
                 .contains("Permbledhje mujore e punes")
                 .contains("Punetori : Present Worker")
-                .contains("Data       Check In")
+                .contains("Data       Hyrja")
                 .contains("03.07.2026 06:55")
-                .contains("Auto Check Out")
+                .contains("Dalje automatike")
                 .contains("GPS")
-                .contains("View on Map")
+                .contains("Hape ne harte")
                 .contains("https://maps.google.com/?q=42.30413,21.64894")
                 .contains("Totali i diteve te punuara : 1")
                 .contains("Totali i oreve normale    : 8h")

@@ -39,7 +39,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
       setSelectedEmployee(null);
       setHistory([]);
     } catch {
-      setMessage("Reports could not be loaded.");
+      setMessage("Raportet nuk mund të ngarkoheshin.");
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
     try {
       setHistory(await getEmployeeHistory(accessToken, employee.employeeId, { from, to }));
     } catch {
-      setMessage("Employee history could not be loaded.");
+      setMessage("Historia e punëtorit nuk mund të ngarkohej.");
     }
   }
 
@@ -86,7 +86,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
       link.remove();
       URL.revokeObjectURL(url);
     } catch {
-      setMessage("Export could not be downloaded.");
+      setMessage("Eksporti nuk mund të shkarkohej.");
     }
   }
 
@@ -103,23 +103,23 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                 <BarChart3 size={22} />
               </div>
               <div>
-                <h2 className="font-semibold">Attendance reports</h2>
-                <p className="text-sm text-muted-foreground">Daily, weekly, and monthly attendance with export-ready data.</p>
+                <h2 className="font-semibold">Raportet e punës</h2>
+                <p className="text-sm text-muted-foreground">Raporte ditore, javore dhe mujore me eksport të gatshëm.</p>
               </div>
             </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[150px_150px_150px_auto]">
             <label className="space-y-1 text-sm font-medium">
-              <span>From</span>
+              <span>Nga</span>
               <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>To</span>
+              <span>Deri</span>
               <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
             </label>
             <label className="space-y-1 text-sm font-medium">
-              <span>Period</span>
+              <span>Periudha</span>
               <select
                 className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
                 value={period}
@@ -141,8 +141,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Punëtorë" value={summary?.assigned ?? 0} />
-        <Metric label="Checked In" value={checkedInCount} />
-        <Metric label="Checked Out" value={checkedOutCount} />
+        <Metric label="Në punë" value={checkedInCount} />
+        <Metric label="Dalë" value={checkedOutCount} />
         <Metric label="Orë pune" value={Math.round((summary?.workedMinutes ?? 0) / 60)} />
       </section>
 
@@ -184,7 +184,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Historiku i punëtorëve</h2>
-              <p className="text-sm text-muted-foreground">Zgjidhni një punëtor për historikun e attendance.</p>
+              <p className="text-sm text-muted-foreground">Zgjidhni një punëtor për historinë e punës.</p>
             </div>
             <History className="text-primary" size={22} />
           </div>
@@ -220,7 +220,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           <div>
             <h2 className="font-semibold">{selectedEmployee ? `Historiku - ${selectedEmployee.employeeName}` : "Regjistrimet e attendance"}</h2>
             <p className="text-sm text-muted-foreground">
-              {filteredRows.length} rows · {hours(summary?.workedMinutes ?? 0)} worked · {hours(summary?.overtimeMinutes ?? 0)} overtime
+              {filteredRows.length} regjistrime · {hours(summary?.workedMinutes ?? 0)} punuar · {hours(summary?.overtimeMinutes ?? 0)} shtesë
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -249,11 +249,11 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
               <tr>
                 <th className="px-4 py-3">Data</th>
                 <th className="px-4 py-3">Punëtori</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Check In</th>
-                <th className="px-4 py-3">Check In GPS</th>
-                <th className="px-4 py-3">Check Out</th>
-                <th className="px-4 py-3">Check Out GPS</th>
+                <th className="px-4 py-3">Statusi</th>
+                <th className="px-4 py-3">Hyrja</th>
+                <th className="px-4 py-3">GPS hyrje</th>
+                <th className="px-4 py-3">Dalja</th>
+                <th className="px-4 py-3">GPS dalje</th>
                 <th className="px-4 py-3">Orët</th>
                 <th className="px-4 py-3">Shtesë</th>
               </tr>
@@ -284,8 +284,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {time(row.checkedOutAt)}
-                    {row.checkoutType === "AUTO_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Auto Check Out</span>}
-                    {row.checkoutType === "ADMIN_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Admin Check Out</span>}
+                    {row.checkoutType === "AUTO_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Dalje automatike</span>}
+                    {row.checkoutType === "ADMIN_CHECKED_OUT" && <span className="mt-1 block text-xs text-primary">Dalje nga administratori</span>}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <GpsLink latitude={row.checkOutLatitude} longitude={row.checkOutLongitude} distanceMeters={row.checkOutDistanceMeters} />
@@ -326,9 +326,9 @@ function GpsLink({
   return (
     <span>
       <span className="block">{latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
-      {distanceMeters != null && <span className="block text-xs">{formatDistance(distanceMeters)} from workplace</span>}
+      {distanceMeters != null && <span className="block text-xs">{formatDistance(distanceMeters)} nga vendi i punës</span>}
       <a className="font-medium text-primary" href={mapUrl(latitude, longitude)} target="_blank" rel="noreferrer">
-        View on Map
+        Hape në hartë
       </a>
     </span>
   );
@@ -362,10 +362,10 @@ function time(value: string | null) {
 
 function checkoutTypeLabel(type: AttendanceReportRow["checkoutType"], status: AttendanceReportRow["status"]) {
   if (status === "CHECKED_OUT" || type) {
-    return "Checked Out";
+    return "Dalë";
   }
   if (status === "PRESENT" || status === "LATE") {
-    return "Checked In";
+    return "Në punë";
   }
   return "-";
 }
