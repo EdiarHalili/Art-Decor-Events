@@ -4,7 +4,6 @@ import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.location.GpsDebugLogger;
 import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.AttendanceStatus;
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
@@ -78,8 +77,7 @@ public class AttendanceService {
         }
 
         Instant now = Instant.now(clock);
-        boolean unlimited = schedule.getCheckoutMode() == CheckoutMode.UNLIMITED_24_7;
-        if (!unlimited && schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
+        if (!schedule.isSimpleOpenMode() && schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
             if (now.isBefore(schedule.getCheckInOpensAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
             }

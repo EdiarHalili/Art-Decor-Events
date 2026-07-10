@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -48,9 +47,8 @@ class SimpleOpenModeServiceTest {
 
         assertThat(assignment.getEmployee()).isEqualTo(employee);
         assertThat(assignment.getSchedule().isSimpleOpenMode()).isTrue();
-        assertThat(assignment.getSchedule().getCheckoutMode()).isEqualTo(CheckoutMode.UNLIMITED_24_7);
         assertThat(assignment.getSchedule().isAutoCheckoutEnabled()).isTrue();
-        assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T00:00:00Z"));
+        assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-03T23:59:00Z"));
         assertThat(assignment.getSchedule().getStatus()).isEqualTo(WorkScheduleStatus.CHECK_IN_OPEN);
     }
 

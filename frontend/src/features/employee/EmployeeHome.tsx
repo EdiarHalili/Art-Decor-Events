@@ -386,13 +386,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         {checkoutConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
             <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
-              <h2 id="checkout-confirm-title" className="text-lg font-semibold">Konfirmo Daljen</h2>
-              <div className="mt-3 space-y-3 text-sm text-muted-foreground">
-                <p>A jeni i sigurt që dëshironi të bëni daljen?</p>
-                <p>
-                  Pasi të kryhet dalja, nuk do të mund të bëni hyrje (Check In) përsëri, përveç nëse kjo lejohet nga rregullat e attendance.
-                </p>
-              </div>
+              <h2 id="checkout-confirm-title" className="text-lg font-semibold">Konfirmo daljen</h2>
+              <p className="mt-3 text-sm text-muted-foreground">A jeni i sigurt që dëshironi të bëni daljen?</p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
@@ -407,7 +402,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
                   disabled={actionLoading === "CHECK_OUT"}
                   onClick={() => void submitAttendance("CHECK_OUT")}
                 >
-                  {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Po, Bëj Daljen"}
+                  {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Po, bëj daljen"}
                 </Button>
               </div>
             </div>
@@ -440,10 +435,10 @@ function countdownText(today: EmployeeToday, nowMs: number) {
     if (!today.checkInOpen && !today.checkOutAvailable) {
       return "Orari i sotëm është përfunduar.";
     }
-    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Hyrja është e disponueshme.";
+    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Mënyra e hapur është aktive.";
   }
   if (!today.checkInOpensAt && !today.checkInClosesAt) {
-    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Hyrja është e disponueshme.";
+    return today.checkOutAvailable ? "Dalja është e disponueshme në çdo kohë." : "Mënyra e hapur është aktive.";
   }
   if (!today.checkInOpensAt || !today.checkInClosesAt) {
     return "Nuk ka dritare hyrjeje të planifikuar.";
@@ -464,8 +459,8 @@ function checkinSuccessMessage(checkedInAt: string | null) {
   return `Orari juaj i punës filloi me sukses.\n\nData: ${formatAttendanceDate(checkedInAt)}\nOra e hyrjes: ${formatAttendanceTime(checkedInAt)}\n\nJu urojmë një ditë të mbarë pune!`;
 }
 
-function checkoutSuccessMessage(checkedOutAt: string | null, workedMinutes: number) {
-  return `Orari juaj i punës përfundoi me sukses.\n\nOra e daljes: ${formatAttendanceTime(checkedOutAt)}\nKoha totale e punës: ${formatWorkedMinutes(workedMinutes)}\n\nFaleminderit për punën tuaj. Ju urojmë një ditë të mbarë!`;
+function checkoutSuccessMessage(checkedOutAt: string | null, _workedMinutes: number) {
+  return `Dalja u regjistrua me sukses!\nOra e daljes: ${formatAttendanceTime(checkedOutAt)}`;
 }
 
 function formatAttendanceDate(value: string | null) {

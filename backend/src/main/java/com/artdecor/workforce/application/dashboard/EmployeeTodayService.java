@@ -3,7 +3,6 @@ package com.artdecor.workforce.application.dashboard;
 import com.artdecor.workforce.application.auth.AuthException;
 import com.artdecor.workforce.application.attendance.SimpleOpenModeService;
 import com.artdecor.workforce.application.notifications.NotificationService;
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -67,7 +66,7 @@ public class EmployeeTodayService {
             return responseForAssignment(employee.getFullName(), scheduledAssignment.get(), "Daily check-in window", false, now);
         }
 
-        if (simpleOpenMode.hasScheduledWindowForDate(LocalDate.now(clock))) {
+        if (simpleOpenMode.hasScheduledWindowForDate(LocalDate.now(clock)) || simpleOpenMode.hasActiveScheduledWindowAt(now)) {
             return new EmployeeTodayResponse(
                         employee.getFullName(),
                         null,
@@ -86,7 +85,7 @@ public class EmployeeTodayService {
         return responseForAssignment(
                 employee.getFullName(),
                 simpleOpenMode.getOrCreateTodayAssignment(employee),
-                "Hyrje e hapur",
+                "Mënyra e hapur",
                 true,
                 now
         );
@@ -105,7 +104,6 @@ public class EmployeeTodayService {
         boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);
         boolean checkInOpen = !checkedIn && (simpleMode || isCheckInOpen(
                 schedule.getStatus(),
-                schedule.getCheckoutMode(),
                 schedule.getCheckInOpensAt(),
                 schedule.getCheckInClosesAt(),
                 now
@@ -114,7 +112,6 @@ public class EmployeeTodayService {
         String status = simpleMode
                 ? simpleStatusText(checkInOpen, checkOutAvailable, checkedOut)
                 : statusText(schedule.getStatus(), checkInOpen, checkOutAvailable, checkedOut);
-        boolean unlimited = schedule.getCheckoutMode() == CheckoutMode.UNLIMITED_24_7;
         return new EmployeeTodayResponse(
                 employeeName,
                 schedule.getId().toString(),
@@ -122,9 +119,9 @@ public class EmployeeTodayService {
                 status,
                 checkInOpen,
                 checkOutAvailable,
-                (simpleMode || unlimited) ? null : schedule.getCheckInOpensAt(),
-                (simpleMode || unlimited) ? null : schedule.getCheckInClosesAt(),
-                simpleMode || unlimited,
+                simpleMode ? null : schedule.getCheckInOpensAt(),
+                simpleMode ? null : schedule.getCheckInClosesAt(),
+                simpleMode,
                 now,
                 announcements()
         );
@@ -136,14 +133,11 @@ public class EmployeeTodayService {
                 .toList();
     }
 
-    private boolean isCheckInOpen(WorkScheduleStatus status, CheckoutMode checkoutMode, Instant opensAt, Instant closesAt, Instant now) {
+    private boolean isCheckInOpen(WorkScheduleStatus status, Instant opensAt, Instant closesAt, Instant now) {
         if (status == WorkScheduleStatus.CANCELLED || status == WorkScheduleStatus.CHECK_IN_CLOSED) {
             return false;
         }
         if (status == WorkScheduleStatus.CHECK_IN_OPEN) {
-            return true;
-        }
-        if (checkoutMode == CheckoutMode.UNLIMITED_24_7) {
             return true;
         }
         return !now.isBefore(opensAt) && !now.isAfter(closesAt);
@@ -174,6 +168,6 @@ public class EmployeeTodayService {
         if (checkOutAvailable) {
             return "Hyrja është regjistruar. Dalja është e disponueshme.";
         }
-        return checkInOpen ? "Hyrja është e disponueshme." : "Hyrja nuk është e disponueshme.";
+        return checkInOpen ? "Mënyra e hapur është aktive." : "Hyrja nuk është e disponueshme.";
     }
 }

@@ -4,7 +4,6 @@ import com.artdecor.workforce.application.audit.AuditService;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowCommand;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowResponse;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowService;
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -140,7 +139,6 @@ public class AdminDailyCheckInWindowController {
             @NotNull LocalDate workDate,
             @NotNull Instant checkInOpensAt,
             @NotNull Instant checkInClosesAt,
-            CheckoutMode checkoutMode,
             Boolean autoCheckoutEnabled,
             @NotEmpty Set<UUID> employeeIds
     ) {
@@ -149,7 +147,6 @@ public class AdminDailyCheckInWindowController {
                     workDate,
                     checkInOpensAt,
                     checkInClosesAt,
-                    checkoutMode == null ? CheckoutMode.SCHEDULED_AUTO : checkoutMode,
                     autoCheckoutEnabled == null || autoCheckoutEnabled,
                     employeeIds
             );

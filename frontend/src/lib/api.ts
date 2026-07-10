@@ -121,7 +121,6 @@ export type DailyCheckInWindow = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
-  checkoutMode: CheckoutMode;
   autoCheckoutEnabled: boolean;
   status: "DRAFT" | "PUBLISHED" | "CHECK_IN_OPEN" | "CHECK_IN_CLOSED" | "CANCELLED" | "COMPLETED";
   employeeIds: string[];
@@ -251,12 +250,10 @@ type DailyCheckInWindowPayload = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
-  checkoutMode: CheckoutMode;
   autoCheckoutEnabled: boolean;
   employeeIds: string[];
 };
 
-export type CheckoutMode = "SCHEDULED_AUTO" | "MANUAL_ADMIN" | "UNLIMITED_24_7";
 export type CheckoutType = "MANUAL_EMPLOYEE" | "AUTO_CHECKED_OUT" | "ADMIN_CHECKED_OUT";
 
 export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {

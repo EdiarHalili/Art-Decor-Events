@@ -15,7 +15,6 @@ import {
   type DailyCheckInWindow,
   type Employee,
   type AppSettings,
-  type CheckoutMode,
 } from "../../lib/api";
 
 type DailyCheckInWindowPageProps = {
@@ -27,7 +26,6 @@ type WindowForm = {
   workDate: string;
   checkInOpensAt: string;
   checkInClosesAt: string;
-  checkoutMode: CheckoutMode;
   autoCheckoutEnabled: boolean;
   employeeIds: string[];
 };
@@ -36,18 +34,17 @@ const emptyForm: WindowForm = {
   workDate: localDateInputValue(),
   checkInOpensAt: "06:50",
   checkInClosesAt: "07:10",
-  checkoutMode: "SCHEDULED_AUTO",
   autoCheckoutEnabled: true,
   employeeIds: [],
 };
 
 const statusLabels: Record<DailyCheckInWindow["status"], string> = {
   DRAFT: "Draft",
-  PUBLISHED: "Scheduled",
-  CHECK_IN_OPEN: "Open",
-  CHECK_IN_CLOSED: "Closed",
-  CANCELLED: "Cancelled",
-  COMPLETED: "Completed",
+  PUBLISHED: "Planifikuar",
+  CHECK_IN_OPEN: "Hapur",
+  CHECK_IN_CLOSED: "Mbyllur",
+  CANCELLED: "Anuluar",
+  COMPLETED: "Përfunduar",
 };
 
 export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWindowPageProps) {
@@ -110,7 +107,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
     [form.employeeIds],
   );
   const overnightNotice = isOvernightWindow(form)
-    ? `This window crosses midnight and will close tomorrow at ${form.checkInClosesAt}.`
+    ? `Kjo dritare kalon mesnatën dhe mbyllet nesër në ${form.checkInClosesAt}.`
     : "";
   const todayModeStatus = useMemo(() => dailyModeStatus(windows), [windows]);
 
@@ -130,8 +127,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
         workDate: form.workDate,
         checkInOpensAt: localDateTimeToIso(form.workDate, form.checkInOpensAt, settings?.timezone),
         checkInClosesAt: localDateTimeToIso(windowCloseDate(form), form.checkInClosesAt, settings?.timezone),
-        checkoutMode: form.checkoutMode,
-        autoCheckoutEnabled: form.checkoutMode === "SCHEDULED_AUTO" ? form.autoCheckoutEnabled : form.autoCheckoutEnabled,
+        autoCheckoutEnabled: form.autoCheckoutEnabled,
         employeeIds: form.employeeIds,
       };
 
@@ -147,9 +143,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       setForm(emptyForm);
       setEditingWindowId(null);
       setEmployeeQuery("");
-      setMessage(overnightNotice || (editingWindowId ? "Daily check-in window updated." : "Daily check-in window scheduled."));
+      setMessage(overnightNotice || (editingWindowId ? "Dritarja ditore u përditësua." : "Dritarja ditore u krijua."));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The window could not be saved.");
+      setMessage(error instanceof Error ? error.message : "Dritarja nuk mund të ruhej.");
     } finally {
       setSaving(false);
     }
@@ -171,7 +167,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
   }
 
   async function deleteCancelled(windowId: string) {
-    const confirmed = globalThis.confirm("Delete this cancelled daily check-in window permanently?");
+    const confirmed = globalThis.confirm("A dëshironi ta fshini përgjithmonë këtë dritare të anuluar?");
     if (!confirmed) {
       return;
     }
@@ -183,9 +179,9 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       if (editingWindowId === windowId) {
         resetForm();
       }
-      setMessage("Cancelled daily check-in window deleted.");
+      setMessage("Dritarja e anuluar u fshi.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The cancelled window could not be deleted.");
+      setMessage(error instanceof Error ? error.message : "Dritarja e anuluar nuk mund të fshihej.");
     }
   }
 
@@ -213,7 +209,6 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       workDate: window.workDate,
       checkInOpensAt: isoToLocalTime(window.checkInOpensAt),
       checkInClosesAt: isoToLocalTime(window.checkInClosesAt),
-      checkoutMode: window.checkoutMode,
       autoCheckoutEnabled: window.autoCheckoutEnabled,
       employeeIds: window.employeeIds,
     });
@@ -234,15 +229,15 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
             <CalendarClock size={22} />
           </div>
           <div>
-            <h2 className="font-semibold">{editingWindowId ? "Edit daily window" : "Schedule daily window"}</h2>
-            <p className="text-sm text-muted-foreground">Set the date, check-in times, and allowed workers.</p>
+            <h2 className="font-semibold">{editingWindowId ? "Edito dritaren ditore" : "Krijo dritare ditore"}</h2>
+            <p className="text-sm text-muted-foreground">Vendos dat?n, koh?n e hyrjes dhe pun?tor?t e lejuar.</p>
           </div>
         </div>
 
         <form className="mt-5 space-y-4" onSubmit={submit}>
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
             <label className="space-y-1 text-sm font-medium">
-              <span>Date</span>
+              <span>Data</span>
               <Input
                 type="date"
                 value={form.workDate}
@@ -275,41 +270,15 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
             </p>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-sm font-medium">
-              <span>Mënyra e daljes</span>
-              <select
-                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
-                value={form.checkoutMode}
-                onChange={(event) => {
-                  const checkoutMode = event.target.value as CheckoutMode;
-                  setForm({
-                    ...form,
-                    checkoutMode,
-                    autoCheckoutEnabled: checkoutMode === "SCHEDULED_AUTO" ? true : false,
-                  });
-                }}
-              >
-                <option value="SCHEDULED_AUTO">Dalje automatike në orën e mbylljes</option>
-                <option value="MANUAL_ADMIN">Dalje vetëm nga administratori</option>
-                <option value="UNLIMITED_24_7">Pa limit / 24-7</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-primary"
-                checked={form.autoCheckoutEnabled}
-                onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
-              />
-              Dalja automatike aktive
-            </label>
-          </div>
-          {form.checkoutMode === "UNLIMITED_24_7" && (
-            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Pa limit / 24-7 e mban hyrjen dhe daljen gjithmonë të disponueshme derisa administratori ta mbyllë manualisht.
-            </p>
-          )}
+          <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={form.autoCheckoutEnabled}
+              onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
+            />
+            B?j dalje automatike n? fund t? turnit
+          </label>
 
           <div className="rounded-lg border border-border">
             <div className="border-b border-border p-3">
@@ -413,7 +382,7 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {formatWindowRange(window, settings?.timezone)} -{" "}
-                    {checkoutModeLabel(window.checkoutMode)} - {window.autoCheckoutEnabled ? "dalja automatike aktive" : "dalja automatike joaktive"} -{" "}
+                    {window.autoCheckoutEnabled ? "dalja automatike në fund të turnit" : "dalje manuale nga punëtori"} -{" "}
                     {window.allowedEmployeeCount} punëtorë
                   </p>
                 </div>
@@ -573,16 +542,6 @@ function formatWindowRange(window: DailyCheckInWindow, timezone = "Europe/Berlin
   return localDateInTimezone(opensAt, timezone) === localDateInTimezone(closesAt, timezone)
     ? range
     : `${range} (mbyllet nesër)`;
-}
-
-function checkoutModeLabel(mode: CheckoutMode) {
-  if (mode === "MANUAL_ADMIN") {
-    return "Dalje nga administratori";
-  }
-  if (mode === "UNLIMITED_24_7") {
-    return "Pa limit / 24-7";
-  }
-  return "Dalje automatike";
 }
 
 function localDateInTimezone(date: Date, timezone: string) {

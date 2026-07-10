@@ -1,6 +1,5 @@
 package com.artdecor.workforce.application.attendance;
 
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -9,6 +8,7 @@ import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.Set;
@@ -49,10 +49,15 @@ public class SimpleOpenModeService {
         return schedules.existsByWorkDateAndSimpleOpenModeFalseAndStatusIn(workDate, SCHEDULED_WINDOW_STATUSES);
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasActiveScheduledWindowAt(java.time.Instant now) {
+        return schedules.existsActiveScheduledWindowAt(now, SCHEDULED_WINDOW_STATUSES);
+    }
+
     @Transactional
     public ScheduleAssignmentEntity getOrCreateTodayAssignment(EmployeeEntity employee) {
         LocalDate today = LocalDate.now(clock);
-        if (hasScheduledWindowForDate(today)) {
+        if (hasScheduledWindowForDate(today) || hasActiveScheduledWindowAt(java.time.Instant.now(clock))) {
             throw new AttendanceException("SCHEDULED_WINDOW_ACTIVE", "A scheduled daily check-in window is active today.");
         }
 
@@ -75,10 +80,9 @@ public class SimpleOpenModeService {
         schedule.setDescription("Automatically created because no daily check-in window was scheduled.");
         schedule.setWorkDate(workDate);
         schedule.setCheckInOpensAt(workDate.atStartOfDay(zone).toInstant());
-        schedule.setCheckInClosesAt(workDate.plusDays(1).atStartOfDay(zone).toInstant());
+        schedule.setCheckInClosesAt(workDate.atTime(LocalTime.of(23, 59)).atZone(zone).toInstant());
         schedule.setPlannedStartAt(null);
-        schedule.setPlannedEndAt(null);
-        schedule.setCheckoutMode(CheckoutMode.UNLIMITED_24_7);
+        schedule.setPlannedEndAt(schedule.getCheckInClosesAt());
         schedule.setAutoCheckoutEnabled(true);
         schedule.setSimpleOpenMode(true);
         schedule.setStatus(WorkScheduleStatus.CHECK_IN_OPEN);

@@ -135,7 +135,7 @@ public class DailyCheckInWindowService {
         window.setWorkDate(command.workDate());
         window.setCheckInOpensAt(command.checkInOpensAt());
         window.setCheckInClosesAt(command.checkInClosesAt());
-        window.setCheckoutMode(command.checkoutMode() == null ? CheckoutMode.SCHEDULED_AUTO : command.checkoutMode());
+        window.setCheckoutMode(CheckoutMode.SCHEDULED_AUTO);
         window.setAutoCheckoutEnabled(command.autoCheckoutEnabled());
         window.setPlannedStartAt(command.checkInOpensAt());
         window.setPlannedEndAt(command.autoCheckoutEnabled() ? command.checkInClosesAt() : null);
@@ -160,10 +160,6 @@ public class DailyCheckInWindowService {
         }
         if (!command.checkInClosesAt().isAfter(command.checkInOpensAt())) {
             throw new DailyCheckInWindowException("Invalid open/close time.");
-        }
-        if (command.checkoutMode() == CheckoutMode.UNLIMITED_24_7 && command.autoCheckoutEnabled()
-                && !command.checkInClosesAt().isAfter(command.checkInOpensAt())) {
-            throw new DailyCheckInWindowException("Optional auto checkout time must be after the opening time.");
         }
     }
 

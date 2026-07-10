@@ -21,6 +21,19 @@ public interface WorkScheduleRepository extends JpaRepository<WorkScheduleEntity
     boolean existsByWorkDateAndSimpleOpenModeFalseAndStatusIn(LocalDate workDate, Collection<WorkScheduleStatus> statuses);
 
     @Query("""
+            select count(schedule) > 0
+            from WorkScheduleEntity schedule
+            where schedule.simpleOpenMode = false
+              and schedule.status in :statuses
+              and schedule.checkInOpensAt <= :now
+              and schedule.checkInClosesAt >= :now
+            """)
+    boolean existsActiveScheduledWindowAt(
+            @Param("now") Instant now,
+            @Param("statuses") Collection<WorkScheduleStatus> statuses
+    );
+
+    @Query("""
             select schedule
             from WorkScheduleEntity schedule
             where schedule.status in :statuses

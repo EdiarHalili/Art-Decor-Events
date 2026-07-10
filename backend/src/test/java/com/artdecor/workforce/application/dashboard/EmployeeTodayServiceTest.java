@@ -5,7 +5,6 @@ import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.application.notifications.NotificationService;
 import com.artdecor.workforce.application.attendance.SimpleOpenModeService;
-import com.artdecor.workforce.domain.CheckoutMode;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -49,7 +48,7 @@ class EmployeeTodayServiceTest {
         EmployeeTodayResponse response = service.today(new AuthenticatedPrincipal(employeeId, UserRole.EMPLOYEE, employeeId));
 
         assertThat(response.employeeName()).isEqualTo("Season Worker");
-        assertThat(response.assignment()).contains("Hyrje");
+        assertThat(response.assignment()).contains("Mënyra e hapur");
         assertThat(response.scheduleId()).isNotNull();
         assertThat(response.checkInOpen()).isTrue();
         assertThat(response.simpleOpenMode()).isTrue();
@@ -84,7 +83,6 @@ class EmployeeTodayServiceTest {
         schedule.setWorkDate(java.time.LocalDate.of(2026, 7, 3));
         schedule.setCheckInOpensAt(Instant.parse("2026-07-03T00:00:00Z"));
         schedule.setCheckInClosesAt(Instant.parse("2026-07-03T23:59:59Z"));
-        schedule.setCheckoutMode(CheckoutMode.UNLIMITED_24_7);
         schedule.setAutoCheckoutEnabled(false);
         schedule.setSimpleOpenMode(true);
         schedule.setStatus(WorkScheduleStatus.CHECK_IN_OPEN);
