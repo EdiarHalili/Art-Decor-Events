@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,6 +83,17 @@ public class AdminEmployeeController {
         PasswordResetResponse response = employees.resetEmployeePassword(employeeId);
         audit.log(principal, "EMPLOYEE_PASSWORD_RESET", "EMPLOYEE", employeeId);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{employeeId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<Void> deleteEmployee(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID employeeId
+    ) {
+        employees.deleteEmployee(employeeId, principal);
+        audit.log(principal, "EMPLOYEE_DELETED", "EMPLOYEE", employeeId);
+        return ResponseEntity.noContent().build();
     }
 
     public record CreateEmployeeRequest(

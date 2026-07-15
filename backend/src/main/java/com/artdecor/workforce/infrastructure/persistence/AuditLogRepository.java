@@ -6,4 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> {
     List<AuditLogEntity> findTop100ByOrderByCreatedAtDesc();
+
+    boolean existsByActorEmployeeId(UUID employeeId);
+
+    boolean existsByActorUserId(UUID userId);
 }

@@ -3,7 +3,9 @@ package com.artdecor.workforce.api;
 import com.artdecor.workforce.application.auth.AuthException;
 import com.artdecor.workforce.application.attendance.AttendanceException;
 import com.artdecor.workforce.application.checkinwindow.DailyCheckInWindowException;
+import com.artdecor.workforce.application.management.ManagementConflictException;
 import com.artdecor.workforce.application.management.ManagementException;
+import com.artdecor.workforce.application.management.ManagementNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,6 +31,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleAuth(AuthException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiError("INVALID_CREDENTIALS", exception.getMessage(), Map.of()));
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiError> handleAuthorizationDenied(AuthorizationDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiError("FORBIDDEN", "Nuk keni leje për këtë veprim.", Map.of()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -50,6 +59,18 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleManagement(ManagementException exception) {
         return ResponseEntity.badRequest()
                 .body(new ApiError("MANAGEMENT_ERROR", safeClientMessage(exception.getMessage(), "The employee request could not be completed."), Map.of()));
+    }
+
+    @ExceptionHandler(ManagementNotFoundException.class)
+    public ResponseEntity<ApiError> handleManagementNotFound(ManagementNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiError("NOT_FOUND", safeClientMessage(exception.getMessage(), "Record not found."), Map.of()));
+    }
+
+    @ExceptionHandler(ManagementConflictException.class)
+    public ResponseEntity<ApiError> handleManagementConflict(ManagementConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError("DATA_CONFLICT", safeClientMessage(exception.getMessage(), "The request conflicts with existing data."), Map.of()));
     }
 
     @ExceptionHandler(AttendanceException.class)

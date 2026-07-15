@@ -6,10 +6,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.artdecor.workforce.domain.WageType;
+import com.artdecor.workforce.domain.UserRole;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
+import com.artdecor.workforce.infrastructure.persistence.PayrollEmployeeSummaryRepository;
+import com.artdecor.workforce.infrastructure.persistence.PushSubscriptionRepository;
+import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,12 +31,28 @@ import org.springframework.test.util.ReflectionTestUtils;
 class EmployeeManagementServiceTest {
     private final EmployeeRepository employees = org.mockito.Mockito.mock(EmployeeRepository.class);
     private final UserAccountRepository users = org.mockito.Mockito.mock(UserAccountRepository.class);
+    private final AttendanceRecordRepository attendanceRecords = org.mockito.Mockito.mock(AttendanceRecordRepository.class);
+    private final LiveLocationUpdateRepository liveLocations = org.mockito.Mockito.mock(LiveLocationUpdateRepository.class);
+    private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
+    private final AuditLogRepository auditLogs = org.mockito.Mockito.mock(AuditLogRepository.class);
+    private final PushSubscriptionRepository pushSubscriptions = org.mockito.Mockito.mock(PushSubscriptionRepository.class);
+    private final PayrollEmployeeSummaryRepository payrollSummaries = org.mockito.Mockito.mock(PayrollEmployeeSummaryRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private EmployeeManagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new EmployeeManagementService(employees, users, passwordEncoder);
+        service = new EmployeeManagementService(
+                employees,
+                users,
+                attendanceRecords,
+                liveLocations,
+                assignments,
+                auditLogs,
+                pushSubscriptions,
+                payrollSummaries,
+                passwordEncoder
+        );
         when(employees.save(any(EmployeeEntity.class))).thenAnswer(invocation -> {
             EmployeeEntity employee = invocation.getArgument(0);
             ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
@@ -200,5 +224,106 @@ class EmployeeManagementServiceTest {
         )))
                 .isInstanceOf(ManagementException.class)
                 .hasMessage("Password must contain at least 8 characters.");
+    }
+
+    @Test
+    void deletesEmployeeAndLoginUserWhenNoHistoryExists() {
+        UUID employeeId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, userId);
+        UserAccountEntity user = employee.getUserAccount();
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null));
+
+        org.mockito.Mockito.verify(employees).delete(employee);
+        org.mockito.Mockito.verify(employees).flush();
+        org.mockito.Mockito.verify(users).delete(user);
+        assertThat(employee.getUserAccount()).isNull();
+    }
+
+    @Test
+    void rejectsPermanentDeletionWhenEmployeeHasAttendanceHistory() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(attendanceRecords.existsByEmployeeId(employeeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class)
+                .hasMessageContaining("histori pune");
+
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).delete(any(UserAccountEntity.class));
+        org.mockito.Mockito.verify(liveLocations, org.mockito.Mockito.never()).deleteAll();
+    }
+
+    @Test
+    void rejectsPermanentDeletionWhenEmployeeHasLiveLocationHistory() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(liveLocations.existsByEmployeeId(employeeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class);
+
+        org.mockito.Mockito.verify(liveLocations, org.mockito.Mockito.never()).deleteAll();
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+    }
+
+    @Test
+    void rejectsPermanentDeletionWhenEmployeeHasAssignmentsPayrollAuditOrPushReferences() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(assignments.existsByEmployeeId(employeeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class);
+
+        org.mockito.Mockito.verify(payrollSummaries, org.mockito.Mockito.never()).deleteAll();
+        org.mockito.Mockito.verify(auditLogs, org.mockito.Mockito.never()).deleteAll();
+        org.mockito.Mockito.verify(pushSubscriptions, org.mockito.Mockito.never()).deleteAll();
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+    }
+
+    @Test
+    void rejectsUnknownEmployeeDeletion() {
+        UUID employeeId = UUID.randomUUID();
+        when(employees.findById(employeeId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementNotFoundException.class)
+                .hasMessage("Punëtori nuk u gjet.");
+    }
+
+    @Test
+    void rejectsDeletingOwnEmployeeLoginAccount() {
+        UUID userId = UUID.randomUUID();
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, userId);
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(userId, UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class)
+                .hasMessageContaining("llogarinë tuaj");
+    }
+
+    private EmployeeEntity employee(UUID employeeId, UUID userId) {
+        UserAccountEntity user = new UserAccountEntity();
+        ReflectionTestUtils.setField(user, "id", userId);
+        user.setFullName("Worker");
+        user.setEmail("emp001");
+        user.setPasswordHash("hash");
+        user.setRole(UserRole.EMPLOYEE);
+
+        EmployeeEntity employee = new EmployeeEntity();
+        ReflectionTestUtils.setField(employee, "id", employeeId);
+        employee.setEmployeeCode("EMP001");
+        employee.setFullName("Worker");
+        employee.setPinHash("pin");
+        employee.setUserAccount(user);
+        return employee;
     }
 }

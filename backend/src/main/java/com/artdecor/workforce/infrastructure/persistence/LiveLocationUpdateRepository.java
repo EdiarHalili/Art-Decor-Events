@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 public interface LiveLocationUpdateRepository extends JpaRepository<LiveLocationUpdateEntity, UUID> {
     boolean existsByAttendanceRecordId(UUID attendanceRecordId);
 
+    boolean existsByEmployeeId(UUID employeeId);
+
     Optional<LiveLocationUpdateEntity> findTopByAttendanceRecordIdOrderByCapturedAtDesc(UUID attendanceRecordId);
 
     @Query("""

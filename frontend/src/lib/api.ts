@@ -347,6 +347,12 @@ export async function deactivateEmployee(accessToken: string, employeeId: string
   });
 }
 
+export async function deleteEmployee(accessToken: string, employeeId: string): Promise<void> {
+  return authorizedRequest<void>(`/admin/employees/${employeeId}`, accessToken, {
+    method: "DELETE",
+  });
+}
+
 export async function listAdminUsers(accessToken: string): Promise<AdminUser[]> {
   return authorizedRequest<AdminUser[]>("/admin/users", accessToken);
 }

@@ -5,8 +5,15 @@ import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
+import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
+import com.artdecor.workforce.infrastructure.persistence.PayrollEmployeeSummaryRepository;
+import com.artdecor.workforce.infrastructure.persistence.PushSubscriptionRepository;
+import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
@@ -23,16 +30,34 @@ public class EmployeeManagementService {
 
     private final EmployeeRepository employees;
     private final UserAccountRepository users;
+    private final AttendanceRecordRepository attendanceRecords;
+    private final LiveLocationUpdateRepository liveLocations;
+    private final ScheduleAssignmentRepository assignments;
+    private final AuditLogRepository auditLogs;
+    private final PushSubscriptionRepository pushSubscriptions;
+    private final PayrollEmployeeSummaryRepository payrollSummaries;
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EmployeeManagementService(
             EmployeeRepository employees,
             UserAccountRepository users,
+            AttendanceRecordRepository attendanceRecords,
+            LiveLocationUpdateRepository liveLocations,
+            ScheduleAssignmentRepository assignments,
+            AuditLogRepository auditLogs,
+            PushSubscriptionRepository pushSubscriptions,
+            PayrollEmployeeSummaryRepository payrollSummaries,
             PasswordEncoder passwordEncoder
     ) {
         this.employees = employees;
         this.users = users;
+        this.attendanceRecords = attendanceRecords;
+        this.liveLocations = liveLocations;
+        this.assignments = assignments;
+        this.auditLogs = auditLogs;
+        this.pushSubscriptions = pushSubscriptions;
+        this.payrollSummaries = payrollSummaries;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -98,13 +123,46 @@ public class EmployeeManagementService {
     @Transactional
     public PasswordResetResponse resetEmployeePassword(UUID employeeId) {
         EmployeeEntity employee = employees.findById(employeeId)
-                .orElseThrow(() -> new ManagementException("Employee not found."));
+                .orElseThrow(() -> new ManagementNotFoundException("Punëtori nuk u gjet."));
         String temporaryPassword = generateTemporaryPassword();
         UserAccountEntity user = ensureEmployeeUser(employee, temporaryPassword, true);
         user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
         user.setPasswordMustChange(true);
         employee.setUserAccount(user);
         return new PasswordResetResponse(temporaryPassword, true);
+    }
+
+    @Transactional
+    public void deleteEmployee(UUID employeeId, AuthenticatedPrincipal principal) {
+        EmployeeEntity employee = employees.findById(employeeId)
+                .orElseThrow(() -> new ManagementNotFoundException("Punëtori nuk u gjet."));
+        UserAccountEntity user = employee.getUserAccount();
+        if (user != null && principal != null && user.getId().equals(principal.userId())) {
+            throw new ManagementConflictException("Nuk mund ta fshini llogarinë tuaj.");
+        }
+        if (hasHistoricalDependencies(employee, user)) {
+            throw new ManagementConflictException("Ky punëtor ka histori pune dhe nuk mund të fshihet përgjithmonë. Çaktivizojeni për të ruajtur raportet dhe të dhënat historike.");
+        }
+
+        employee.setUserAccount(null);
+        employees.delete(employee);
+        if (user != null) {
+            employees.flush();
+            users.delete(user);
+        }
+    }
+
+    private boolean hasHistoricalDependencies(EmployeeEntity employee, UserAccountEntity user) {
+        UUID employeeId = employee.getId();
+        if (attendanceRecords.existsByEmployeeId(employeeId)
+                || liveLocations.existsByEmployeeId(employeeId)
+                || assignments.existsByEmployeeId(employeeId)
+                || auditLogs.existsByActorEmployeeId(employeeId)
+                || pushSubscriptions.existsByEmployeeId(employeeId)
+                || payrollSummaries.existsByEmployeeId(employeeId)) {
+            return true;
+        }
+        return user != null && (auditLogs.existsByActorUserId(user.getId()) || pushSubscriptions.existsByUserId(user.getId()));
     }
 
     private UserAccountEntity createEmployeeUser(

@@ -14,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssignmentEntity, UUID> {
     Optional<ScheduleAssignmentEntity> findByScheduleIdAndEmployeeId(UUID scheduleId, UUID employeeId);
 
+    boolean existsByEmployeeId(UUID employeeId);
+
     Optional<ScheduleAssignmentEntity> findFirstByEmployeeIdAndScheduleWorkDateOrderByCreatedAtAsc(
             UUID employeeId,
             LocalDate workDate

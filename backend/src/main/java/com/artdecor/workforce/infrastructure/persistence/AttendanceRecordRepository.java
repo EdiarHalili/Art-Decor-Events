@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AttendanceRecordRepository extends JpaRepository<AttendanceRecordEntity, UUID> {
+    boolean existsByEmployeeId(UUID employeeId);
+
     boolean existsByScheduleIdAndEmployeeIdAndCheckedInAtIsNotNull(UUID scheduleId, UUID employeeId);
 
     @Query("""

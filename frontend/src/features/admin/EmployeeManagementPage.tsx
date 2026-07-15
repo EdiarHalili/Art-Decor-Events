@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Camera, Clock3, Edit3, FileSpreadsheet, FileText, KeyRound, Search, UserMinus, UserPlus } from "lucide-react";
+import { Camera, Clock3, Edit3, FileSpreadsheet, FileText, KeyRound, Search, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import {
   adminCheckout,
   createEmployee,
+  deleteEmployee,
   deactivateEmployee,
   exportEmployeeAttendance,
   getEmployeeHistory,
@@ -184,6 +185,18 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
     }
   }
 
+  async function deleteSelectedEmployee(employeeId: string) {
+    setMessage("");
+    await deleteEmployee(accessToken, employeeId);
+    setEmployees((current) => current.filter((employee) => employee.id !== employeeId));
+    setSelected(null);
+    setHistory([]);
+    if (editingId === employeeId) {
+      resetForm();
+    }
+    setMessage("Punëtori u fshi me sukses.");
+  }
+
   function startEdit(employee: Employee) {
     setEditingId(employee.id);
     setSelected(employee);
@@ -300,6 +313,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
               historyLoading={historyLoading}
               onEdit={() => startEdit(selected)}
               onDeactivate={() => void deactivate(selected.id)}
+              onDelete={() => deleteSelectedEmployee(selected.id)}
               onResetPassword={async () => {
                 const response = await resetEmployeePassword(accessToken, selected.id);
                 return response.temporaryPassword;
@@ -338,6 +352,7 @@ function EmployeeProfile({
   historyLoading,
   onEdit,
   onDeactivate,
+  onDelete,
   onResetPassword,
   onAttendanceChanged,
 }: {
@@ -347,6 +362,7 @@ function EmployeeProfile({
   historyLoading: boolean;
   onEdit: () => void;
   onDeactivate: () => void;
+  onDelete: () => Promise<void>;
   onResetPassword: () => Promise<string>;
   onAttendanceChanged: () => void;
 }) {
@@ -361,6 +377,9 @@ function EmployeeProfile({
   const [checkoutRecord, setCheckoutRecord] = useState<AttendanceReportRow | null>(null);
   const [checkoutValue, setCheckoutValue] = useState("");
   const [checkoutSaving, setCheckoutSaving] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteSaving, setDeleteSaving] = useState(false);
   const workedMinutes = history.reduce((total, row) => total + row.workedMinutes, 0);
 
   function updateRange(preset: ExportRangePreset) {
@@ -449,6 +468,23 @@ function EmployeeProfile({
     }
   }
 
+  async function confirmDelete() {
+    if (deleteConfirmation.trim() !== employee.employeeCode || deleteSaving) {
+      return;
+    }
+    setDeleteSaving(true);
+    setExportMessage("");
+    try {
+      await onDelete();
+      setDeleteModalOpen(false);
+      setDeleteConfirmation("");
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Punëtori nuk mund të fshihej.");
+    } finally {
+      setDeleteSaving(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -459,11 +495,15 @@ function EmployeeProfile({
             <p className="mt-1 text-sm text-muted-foreground">{employee.employeeCode} · {employee.status === "ACTIVE" ? "Aktiv" : "Joaktiv"}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edito</Button>
           <Button type="button" variant="secondary" disabled={resettingPassword} onClick={() => void resetPassword()}>
             <KeyRound size={17} />
             {resettingPassword ? "Duke ruajtur..." : "Rivendos fjalëkalimin"}
+          </Button>
+          <Button type="button" variant="danger" disabled={deleteSaving} onClick={() => setDeleteModalOpen(true)}>
+            <Trash2 size={17} />
+            Fshi punëtorin
           </Button>
           <Button type="button" variant="ghost" disabled={employee.status === "INACTIVE"} onClick={onDeactivate}><UserMinus size={17} /></Button>
         </div>
@@ -596,6 +636,53 @@ function EmployeeProfile({
               </Button>
               <Button type="button" disabled={checkoutSaving} onClick={() => void submitCheckout()}>
                 {checkoutSaving ? "Duke ruajtur..." : "Ruaj daljen"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="rounded-md bg-destructive/10 p-2">
+                <Trash2 size={20} />
+              </div>
+              <h3 className="text-lg font-semibold">Fshi punëtorin</h3>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              A jeni të sigurt që dëshironi ta fshini këtë punëtor?
+              <br />
+              Ky veprim nuk mund të zhbëhet.
+            </p>
+            <label className="mt-4 block space-y-1 text-sm font-medium">
+              <span>Shkruani kodin {employee.employeeCode} për të konfirmuar.</span>
+              <Input
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                disabled={deleteSaving}
+                autoFocus
+              />
+            </label>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={deleteSaving}
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setDeleteConfirmation("");
+                }}
+              >
+                Anulo
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={deleteSaving || deleteConfirmation.trim() !== employee.employeeCode}
+                onClick={() => void confirmDelete()}
+              >
+                {deleteSaving ? "Duke fshirë..." : "Fshi përgjithmonë"}
               </Button>
             </div>
           </div>
