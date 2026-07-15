@@ -89,6 +89,35 @@ class AttendanceReportServiceTest {
     }
 
     @Test
+    void reportKeepsMultipleAttendanceSessionsForSameEmployeeAndSchedule() {
+        LocalDate date = LocalDate.of(2026, 7, 3);
+        EmployeeEntity employee = employee("EMP001", "Present Worker");
+        WorkScheduleEntity schedule = schedule(date);
+        schedule.setSimpleOpenMode(true);
+        ScheduleAssignmentEntity assignment = assignment(schedule, employee);
+        AttendanceRecordEntity first = record(schedule, employee);
+        first.setCheckedInAt(Instant.parse("2026-07-03T06:00:00Z"));
+        first.setCheckedOutAt(Instant.parse("2026-07-03T10:00:00Z"));
+        first.setWorkedMinutes(240);
+        AttendanceRecordEntity second = record(schedule, employee);
+        second.setCheckedInAt(Instant.parse("2026-07-03T15:00:00Z"));
+        second.setCheckedOutAt(Instant.parse("2026-07-03T21:00:00Z"));
+        second.setWorkedMinutes(360);
+
+        when(assignments.findReportAssignments(date, date, WorkScheduleStatus.CANCELLED))
+                .thenReturn(List.of(assignment));
+        when(attendanceRecords.findReportRecords(date, date)).thenReturn(List.of(first, second));
+
+        AttendanceReportResponse response = service.report(date, date, "daily");
+
+        assertThat(response.rows()).hasSize(2);
+        assertThat(response.rows()).extracting(AttendanceReportRow::checkedInAt)
+                .containsExactly(Instant.parse("2026-07-03T06:00:00Z"), Instant.parse("2026-07-03T15:00:00Z"));
+        assertThat(response.summary().present()).isEqualTo(2);
+        assertThat(response.summary().workedMinutes()).isEqualTo(600);
+    }
+
+    @Test
     void exportsEmployeeAttendance() {
         LocalDate date = LocalDate.of(2026, 7, 3);
         EmployeeEntity employee = employee("EMP001", "Present Worker");

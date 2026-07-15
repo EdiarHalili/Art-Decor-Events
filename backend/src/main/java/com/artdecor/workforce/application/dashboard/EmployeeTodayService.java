@@ -128,15 +128,17 @@ public class EmployeeTodayService {
             Instant now
     ) {
         var schedule = assignment.getSchedule();
-        var attendance = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), assignment.getEmployee().getId());
-        boolean checkedIn = attendance.map(record -> record.getCheckedInAt() != null).orElse(false);
-        boolean checkedOut = attendance.map(record -> record.getCheckedOutAt() != null).orElse(false);
+        var activeAttendance = attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(schedule.getId(), assignment.getEmployee().getId());
+        boolean checkedIn = activeAttendance.isPresent();
+        boolean completedScheduledAttendance = !simpleMode
+                && attendanceRecords.existsByScheduleIdAndEmployeeIdAndCheckedInAtIsNotNull(schedule.getId(), assignment.getEmployee().getId());
+        boolean checkedOut = completedScheduledAttendance && activeAttendance.isEmpty();
         boolean checkInOpen = !checkedIn && (simpleMode || isCheckInOpen(
                 schedule.getStatus(),
                 schedule.getCheckInOpensAt(),
                 schedule.getCheckInClosesAt(),
                 now
-        ));
+        )) && !completedScheduledAttendance;
         boolean checkOutAvailable = checkedIn && !checkedOut;
         String status = simpleMode
                 ? simpleStatusText(checkInOpen, checkOutAvailable, checkedOut)

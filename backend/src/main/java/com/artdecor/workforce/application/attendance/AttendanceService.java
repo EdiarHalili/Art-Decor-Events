@@ -63,7 +63,6 @@ public class AttendanceService {
 
         attendanceRecords.findActiveRecordsByEmployeeId(employee.getId())
                 .stream()
-                .filter(record -> !record.getSchedule().getId().equals(schedule.getId()))
                 .findFirst()
                 .ifPresent(record -> {
                     throw new AttendanceException("DUPLICATE_ACTIVE_CHECK_IN", "Ju tashmë keni filluar orarin e punës.");
@@ -85,12 +84,12 @@ public class AttendanceService {
             }
         }
 
-        var existing = attendanceRecords.findByScheduleIdAndEmployeeId(schedule.getId(), employee.getId());
-        if (existing.isPresent() && existing.get().getCheckedInAt() != null) {
-            throw new AttendanceException("DUPLICATE_CHECK_IN", "Ju tashmë keni filluar orarin e punës.");
+        if (!schedule.isSimpleOpenMode()
+                && attendanceRecords.existsByScheduleIdAndEmployeeIdAndCheckedInAtIsNotNull(schedule.getId(), employee.getId())) {
+            throw new AttendanceException("DUPLICATE_CHECK_IN", "Ju tashmë keni bërë hyrje për këtë orar. Hyrja e dytë nuk lejohet.");
         }
 
-        AttendanceRecordEntity record = existing.orElseGet(AttendanceRecordEntity::new);
+        AttendanceRecordEntity record = new AttendanceRecordEntity();
         boolean gpsEnabled = settings.current().gpsEnabled();
         GpsDebugLogger.log(
                 "check-in request",
@@ -124,7 +123,7 @@ public class AttendanceService {
         var employee = employees.findById(principal.employeeId())
                 .orElseThrow(() -> new AttendanceException("EMPLOYEE_NOT_FOUND", "Employee not found."));
 
-        AttendanceRecordEntity record = attendanceRecords.findByScheduleIdAndEmployeeId(command.scheduleId(), employee.getId())
+        AttendanceRecordEntity record = attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(command.scheduleId(), employee.getId())
                 .orElseThrow(() -> new AttendanceException("CHECK_IN_REQUIRED", "Nuk ka një orar aktiv për ta përfunduar."));
 
         if (record.getCheckedOutAt() != null) {

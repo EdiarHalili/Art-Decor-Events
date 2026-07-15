@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -74,20 +75,29 @@ public class AttendanceReportService {
         List<AttendanceReportRow> assignmentRows = rows(from, to).stream()
                 .filter(row -> row.employeeId().equals(employeeId.toString()))
                 .toList();
-        List<AttendanceReportRow> actualAttendanceRows = attendanceRecords.findReportRecords(from, to).stream()
+        Set<String> assignmentRecordIds = assignmentRows.stream()
+                .map(AttendanceReportRow::attendanceRecordId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        List<AttendanceReportRow> orphanAttendanceRows = attendanceRecords.findReportRecords(from, to).stream()
                 .filter(record -> record.getEmployee().getId().equals(employeeId))
+                .filter(record -> record.getId() != null && !assignmentRecordIds.contains(record.getId().toString()))
                 .map(record -> attendanceRow(record, workplace))
                 .toList();
+        Set<LocalDate> datesWithAttendance = java.util.stream.Stream.concat(
+                        assignmentRows.stream().filter(row -> !row.absent()),
+                        orphanAttendanceRows.stream()
+                )
+                .map(AttendanceReportRow::workDate)
+                .collect(Collectors.toSet());
 
-        return java.util.stream.Stream.concat(assignmentRows.stream(), actualAttendanceRows.stream())
-                .collect(Collectors.toMap(
-                        AttendanceReportRow::workDate,
-                        row -> row,
-                        this::preferredHistoryRow,
-                        LinkedHashMap::new
-                ))
-                .values()
-                .stream()
+        return java.util.stream.Stream.concat(
+                        assignmentRows.stream().filter(row -> !row.absent() || !datesWithAttendance.contains(row.workDate())),
+                        orphanAttendanceRows.stream()
+                )
+                .sorted(Comparator
+                        .comparing(AttendanceReportRow::workDate)
+                        .thenComparing(row -> row.checkedInAt() == null ? Instant.EPOCH : row.checkedInAt()))
                 .toList();
     }
 
@@ -144,20 +154,32 @@ public class AttendanceReportService {
 
     private List<AttendanceReportRow> rows(LocalDate from, LocalDate to) {
         WorkplaceCoordinates workplace = workplaceCoordinates();
-        Map<String, AttendanceRecordEntity> records = new LinkedHashMap<>();
+        Map<String, List<AttendanceRecordEntity>> records = new LinkedHashMap<>();
         for (AttendanceRecordEntity record : attendanceRecords.findReportRecords(from, to)) {
-            records.put(key(record.getSchedule().getId(), record.getEmployee().getId()), record);
+            records.computeIfAbsent(key(record.getSchedule().getId(), record.getEmployee().getId()), ignored -> new ArrayList<>())
+                    .add(record);
         }
 
         List<AttendanceReportRow> rows = new ArrayList<>();
         for (ScheduleAssignmentEntity assignment : assignments.findReportAssignments(from, to, WorkScheduleStatus.CANCELLED)) {
-            AttendanceRecordEntity record = records.get(key(assignment.getSchedule().getId(), assignment.getEmployee().getId()));
-            rows.add(record == null ? absentRow(assignment) : attendanceRow(record, workplace));
+            List<AttendanceRecordEntity> assignmentRecords = records.getOrDefault(
+                    key(assignment.getSchedule().getId(), assignment.getEmployee().getId()),
+                    List.of()
+            );
+            if (assignmentRecords.isEmpty()) {
+                rows.add(absentRow(assignment));
+                continue;
+            }
+            assignmentRecords.stream()
+                    .sorted(Comparator.comparing(record -> record.getCheckedInAt() == null ? Instant.EPOCH : record.getCheckedInAt()))
+                    .map(record -> attendanceRow(record, workplace))
+                    .forEach(rows::add);
         }
 
         rows.sort(Comparator
                 .comparing(AttendanceReportRow::workDate)
-                .thenComparing(AttendanceReportRow::employeeName));
+                .thenComparing(AttendanceReportRow::employeeName)
+                .thenComparing(row -> row.checkedInAt() == null ? Instant.EPOCH : row.checkedInAt()));
         return rows;
     }
 

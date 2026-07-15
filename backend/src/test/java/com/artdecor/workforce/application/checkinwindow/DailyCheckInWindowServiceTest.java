@@ -97,6 +97,20 @@ class DailyCheckInWindowServiceTest {
     }
 
     @Test
+    void normalizesOvernightWindowWhenCloseInstantIsNotAfterOpenInstant() {
+        DailyCheckInWindowResponse response = service.createWindow(new DailyCheckInWindowCommand(
+                LocalDate.of(2026, 7, 4),
+                Instant.parse("2026-07-04T18:00:00Z"),
+                Instant.parse("2026-07-04T02:00:00Z"),
+                true,
+                Set.of(employeeId)
+        ));
+
+        assertThat(response.checkInOpensAt()).isEqualTo(Instant.parse("2026-07-04T18:00:00Z"));
+        assertThat(response.checkInClosesAt()).isEqualTo(Instant.parse("2026-07-05T02:00:00Z"));
+    }
+
+    @Test
     void rejectsEmptyEmployeeSelectionWithClearMessage() {
         assertThatThrownBy(() -> service.createWindow(command(Set.of())))
                 .isInstanceOf(DailyCheckInWindowException.class)

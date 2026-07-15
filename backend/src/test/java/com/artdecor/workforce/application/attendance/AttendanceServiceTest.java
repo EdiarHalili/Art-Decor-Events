@@ -143,11 +143,57 @@ class AttendanceServiceTest {
         existing.setSchedule(schedule);
         existing.setEmployee(employee);
         existing.setCheckedInAt(Instant.parse("2026-07-03T06:54:00Z"));
-        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+        when(attendanceRecords.existsByScheduleIdAndEmployeeIdAndCheckedInAtIsNotNull(scheduleId, employeeId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.checkIn(principal, command()))
                 .isInstanceOf(AttendanceException.class)
-                .hasMessageContaining("Ju tashmë keni filluar orarin e punës.");
+                .hasMessageContaining("Hyrja e dytë nuk lejohet.");
+    }
+
+    @Test
+    void allowsMultipleCompletedOpenModeSessionsOnSameDay() {
+        schedule.setSimpleOpenMode(true);
+        AttendanceRecordEntity completed = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(completed, "id", UUID.randomUUID());
+        completed.setSchedule(schedule);
+        completed.setEmployee(employee);
+        completed.setCheckedInAt(Instant.parse("2026-07-03T04:00:00Z"));
+        completed.setCheckedOutAt(Instant.parse("2026-07-03T08:00:00Z"));
+
+        AttendanceResponse response = service.checkIn(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.0,
+                21.0,
+                Map.of("platform", "test"),
+                Instant.parse("2026-07-03T09:00:00Z")
+        ));
+
+        assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
+        ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
+        verify(attendanceRecords).save(captor.capture());
+        assertThat(captor.getValue()).isNotSameAs(completed);
+        assertThat(captor.getValue().getCheckedInAt()).isEqualTo(Instant.parse("2026-07-03T09:00:00Z"));
+    }
+
+    @Test
+    void allowsOpenModeCheckInAfterOvernightCheckoutOnSameCalendarDay() {
+        schedule.setSimpleOpenMode(true);
+        AttendanceRecordEntity overnight = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(overnight, "id", UUID.randomUUID());
+        overnight.setSchedule(schedule);
+        overnight.setEmployee(employee);
+        overnight.setCheckedInAt(Instant.parse("2026-07-15T18:00:00Z"));
+        overnight.setCheckedOutAt(Instant.parse("2026-07-16T01:30:00Z"));
+
+        AttendanceResponse response = service.checkIn(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.0,
+                21.0,
+                Map.of("platform", "test"),
+                Instant.parse("2026-07-16T09:00:00Z")
+        ));
+
+        assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-16T09:00:00Z"));
     }
 
     @Test
@@ -173,7 +219,7 @@ class AttendanceServiceTest {
         existing.setSchedule(schedule);
         existing.setEmployee(employee);
         existing.setCheckedInAt(Instant.parse("2026-07-03T06:00:00Z"));
-        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
 
         AttendanceResponse response = service.checkOut(principal, command());
 
@@ -224,7 +270,7 @@ class AttendanceServiceTest {
         existing.setSchedule(schedule);
         existing.setEmployee(employee);
         existing.setCheckedInAt(Instant.parse("2026-07-03T06:52:00Z"));
-        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
 
         AttendanceResponse response = service.checkOut(principal, new AttendanceActionCommand(
                 scheduleId,
@@ -247,7 +293,7 @@ class AttendanceServiceTest {
         existing.setSchedule(schedule);
         existing.setEmployee(employee);
         existing.setCheckedInAt(Instant.parse("2026-07-03T06:00:00Z"));
-        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
         when(liveLocations.existsByAttendanceRecordId(recordId)).thenReturn(true);
 
         service.checkOut(principal, command());
