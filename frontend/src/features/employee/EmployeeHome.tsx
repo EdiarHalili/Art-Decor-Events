@@ -372,7 +372,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Historia_Punes_${safeFilenamePart(session.employeeCode ?? "Punetori")}_${historyFrom.slice(0, 7)}.pdf`;
+      link.download = employeePdfFilename(session.employeeCode ?? "Punetori", historyFrom, historyTo);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -761,6 +761,14 @@ function dateOnly(date: Date) {
 
 function safeFilenamePart(value: string) {
   return value.trim().replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "Punetori";
+}
+
+function employeePdfFilename(employeeCode: string, from: string, to: string) {
+  const fromDate = new Date(`${from}T12:00:00`);
+  const toDate = new Date(`${to}T12:00:00`);
+  const sameMonth = fromDate.getFullYear() === toDate.getFullYear() && fromDate.getMonth() === toDate.getMonth();
+  const period = sameMonth ? from.slice(0, 7) : `${formatDateSq(from)}-${formatDateSq(to)}`;
+  return `Historia_Punes_${safeFilenamePart(employeeCode)}_${period}.pdf`;
 }
 
 function formatDateSq(value: string) {

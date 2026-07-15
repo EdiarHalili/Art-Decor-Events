@@ -386,7 +386,9 @@ function EmployeeProfile({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${employee.employeeCode}-attendance-${exportFrom}-to-${exportTo}.${format}`;
+      link.download = format === "pdf"
+        ? employeePdfFilename(employee.employeeCode, exportFrom, exportTo)
+        : `${employee.employeeCode}-attendance-${exportFrom}-to-${exportTo}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -685,6 +687,23 @@ function exportRange(preset: Exclude<ExportRangePreset, "custom">) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function employeePdfFilename(employeeCode: string, from: string, to: string) {
+  const fromDate = new Date(`${from}T12:00:00`);
+  const toDate = new Date(`${to}T12:00:00`);
+  const sameMonth = fromDate.getFullYear() === toDate.getFullYear() && fromDate.getMonth() === toDate.getMonth();
+  const period = sameMonth ? from.slice(0, 7) : `${formatFilenameDate(from)}-${formatFilenameDate(to)}`;
+  return `Historia_Punes_${safeFilenamePart(employeeCode)}_${period}.pdf`;
+}
+
+function formatFilenameDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${day}.${month}.${year}`;
+}
+
+function safeFilenamePart(value: string) {
+  return value.trim().replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "Punetori";
 }
 
 function formatTime(value: string | null) {

@@ -127,7 +127,7 @@ public class AttendanceReportService {
             case "pdf" -> new ExportFile(
                     baseName + ".pdf",
                     "application/pdf",
-                    SimplePdf.render("Përmbledhje mujore e punës", employeeReportLines(employee, from, to, rows))
+                    EmployeeWorkProgressPdf.render(employeePdfReport(employee, from, to, rows))
             );
             case "xlsx", "xls", "excel" -> new ExportFile(
                     baseName + ".xls",
@@ -388,7 +388,7 @@ public class AttendanceReportService {
     private String employeeExportBaseName(EmployeeEntity employee, LocalDate from, LocalDate to) {
         String period = from.getYear() == to.getYear() && from.getMonth() == to.getMonth()
                 ? from.getYear() + "-" + String.format(Locale.ROOT, "%02d", from.getMonthValue())
-                : from + "_deri_" + to;
+                : PDF_DATE.format(from) + "-" + PDF_DATE.format(to);
         return "Historia_Punes_" + safeFilenamePart(employee.getEmployeeCode()) + "_" + period;
     }
 
@@ -480,6 +480,52 @@ public class AttendanceReportService {
                     + String.format(Locale.ROOT, "%.2f", minutesToHours(row.workedMinutes())));
         }
         return lines;
+    }
+
+    private EmployeeWorkProgressPdf.Report employeePdfReport(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
+        ZoneId zone = businessZone();
+        List<AttendanceReportRow> attendanceRows = rows.stream()
+                .filter(row -> row.attendanceRecordId() != null)
+                .filter(row -> row.checkedInAt() != null)
+                .sorted(Comparator.comparing(AttendanceReportRow::workDate).thenComparing(row -> row.checkedInAt() == null ? Instant.EPOCH : row.checkedInAt()))
+                .toList();
+
+        List<EmployeeWorkProgressPdf.AttendanceLine> lines = attendanceRows.stream()
+                .map(row -> new EmployeeWorkProgressPdf.AttendanceLine(
+                        EmployeeWorkProgressPdf.date(row.workDate()),
+                        EmployeeWorkProgressPdf.time(row.checkedInAt(), zone),
+                        EmployeeWorkProgressPdf.checkOut(row, zone),
+                        minutesLabel(row.workedMinutes()),
+                        statusLabel(row)
+                ))
+                .toList();
+
+        List<EmployeeWorkProgressPdf.GpsLine> gpsLines = attendanceRows.stream()
+                .filter(row -> hasGps(row.checkInLatitude(), row.checkInLongitude())
+                        || hasGps(row.checkOutLatitude(), row.checkOutLongitude()))
+                .map(row -> new EmployeeWorkProgressPdf.GpsLine(
+                        EmployeeWorkProgressPdf.date(row.workDate()),
+                        hasGps(row.checkInLatitude(), row.checkInLongitude()) ? mapUrl(row.checkInLatitude(), row.checkInLongitude()) : null,
+                        hasGps(row.checkOutLatitude(), row.checkOutLongitude()) ? mapUrl(row.checkOutLatitude(), row.checkOutLongitude()) : null
+                ))
+                .toList();
+
+        EmployeePdfTotals totals = employeePdfTotals(attendanceRows);
+        return new EmployeeWorkProgressPdf.Report(
+                companyName(),
+                employee.getFullName(),
+                employee.getEmployeeCode(),
+                PDF_DATE.format(from) + " - " + PDF_DATE.format(to),
+                EmployeeWorkProgressPdf.generatedAtLabel(Instant.now(), zone),
+                lines,
+                gpsLines,
+                new EmployeeWorkProgressPdf.Totals(
+                        totals.workedDays(),
+                        totals.normalMinutes(),
+                        totals.overtimeMinutes(),
+                        totals.totalMinutes()
+                )
+        );
     }
 
     private List<String> employeeReportLines(EmployeeEntity employee, LocalDate from, LocalDate to, List<AttendanceReportRow> rows) {
@@ -585,10 +631,10 @@ public class AttendanceReportService {
 
     private String statusLabel(AttendanceReportRow row) {
         if (AttendanceStatus.CHECKED_OUT.name().equals(row.status())) {
-            return "Dale";
+            return "Dalë";
         }
         if (AttendanceStatus.PRESENT.name().equals(row.status()) || AttendanceStatus.LATE.name().equals(row.status())) {
-            return "Ne pune";
+            return "Në punë";
         }
         return "-";
     }

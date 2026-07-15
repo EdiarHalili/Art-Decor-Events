@@ -112,17 +112,26 @@ class AttendanceReportServiceTest {
         assertThat(pdf.content()).startsWith("%PDF".getBytes());
         assertThat(new String(pdf.content(), StandardCharsets.ISO_8859_1))
                 .contains("Përmbledhje mujore e punës")
-                .contains("Punëtori : Present Worker")
-                .contains("Data       Hyrja")
-                .contains("03.07.2026 06:55")
+                .contains("Punëtori: Present Worker")
+                .contains("Data")
+                .contains("Hyrja")
+                .contains("Orët e punës")
+                .contains("03.07.2026")
+                .contains("06:55")
                 .contains("Dalje automatike")
                 .contains("GPS")
-                .contains("Hape ne harte")
-                .contains("https://maps.google.com/?q=42.30413,21.64894")
-                .contains("Totali i ditëve të punuara : 1")
-                .contains("Totali i orëve normale     : 8h")
-                .contains("Totali i orëve shtesë      : 1h 05min")
-                .contains("Totali i përgjithshëm      : 9h 05min");
+                .contains("Vendndodhja e hyrjes: Shiko në hartë")
+                .contains("/URI (https://maps.google.com/?q=42.30413,21.64894)")
+                .doesNotContain("42.30413, 21.64894")
+                .contains("Totali i ditëve të punuara")
+                .contains("(1)")
+                .contains("Totali i orëve normale")
+                .contains("(8h)")
+                .contains("Totali i orëve shtesë")
+                .contains("(1h 5min)")
+                .contains("Totali i përgjithshëm i orëve")
+                .contains("(9h 5min)")
+                .contains("Raporti u gjenerua automatikisht nga Art Decor Events Workforce");
     }
 
     private WorkScheduleEntity schedule(LocalDate date) {
@@ -154,6 +163,7 @@ class AttendanceReportServiceTest {
 
     private AttendanceRecordEntity record(WorkScheduleEntity schedule, EmployeeEntity employee) {
         AttendanceRecordEntity record = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(record, "id", UUID.randomUUID());
         record.setSchedule(schedule);
         record.setEmployee(employee);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
