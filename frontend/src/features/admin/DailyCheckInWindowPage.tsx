@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Check, Edit3, Power, PowerOff, Search, Trash2, UserRoundCheck, X } from "lucide-react";
+import { CalendarClock, Check, Edit3, Power, PowerOff, Search, Trash2, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -12,14 +12,16 @@ import {
   listEmployees,
   openCheckInWindow,
   updateCheckInWindow,
+  updateSettings,
+  type AppSettings,
   type DailyCheckInWindow,
   type Employee,
-  type AppSettings,
 } from "../../lib/api";
 
 type DailyCheckInWindowPageProps = {
   accessToken: string;
   settings: AppSettings | null;
+  onSettingsUpdated: (settings: AppSettings) => void;
 };
 
 type WindowForm = {
@@ -30,16 +32,8 @@ type WindowForm = {
   employeeIds: string[];
 };
 
-const emptyForm: WindowForm = {
-  workDate: localDateInputValue(),
-  checkInOpensAt: "06:50",
-  checkInClosesAt: "07:10",
-  autoCheckoutEnabled: true,
-  employeeIds: [],
-};
-
 const statusLabels: Record<DailyCheckInWindow["status"], string> = {
-  DRAFT: "Draft",
+  DRAFT: "Në përgatitje",
   PUBLISHED: "Planifikuar",
   CHECK_IN_OPEN: "Hapur",
   CHECK_IN_CLOSED: "Mbyllur",
@@ -47,15 +41,33 @@ const statusLabels: Record<DailyCheckInWindow["status"], string> = {
   COMPLETED: "Përfunduar",
 };
 
-export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWindowPageProps) {
+export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdated }: DailyCheckInWindowPageProps) {
   const [windows, setWindows] = useState<DailyCheckInWindow[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [form, setForm] = useState<WindowForm>(emptyForm);
+  const [form, setForm] = useState<WindowForm>(() => defaultForm(settings));
+  const [formOpen, setFormOpen] = useState(false);
   const [editingWindowId, setEditingWindowId] = useState<string | null>(null);
   const [employeeQuery, setEmployeeQuery] = useState("");
+  const [openModeCloseTime, setOpenModeCloseTime] = useState(toTimeInput(settings?.defaultCheckInCloseTime ?? "23:59:00"));
+  const [editingOpenModeTime, setEditingOpenModeTime] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingOpenModeTime, setSavingOpenModeTime] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    void loadData();
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!settings) {
+      return;
+    }
+    setOpenModeCloseTime(toTimeInput(settings.defaultCheckInCloseTime));
+    if (!formOpen) {
+      setForm(defaultForm(settings));
+    }
+  }, [settings, formOpen]);
 
   async function loadData() {
     setLoading(true);
@@ -67,49 +79,28 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       ]);
       setWindows(windowData);
       setEmployees(employeeData);
-    } catch {
-      setMessage("Daily check-in windows could not be loaded.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Oraret nuk mund të ngarkoheshin.");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    void loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!settings || editingWindowId) {
-      return;
-    }
-    setForm((current) => ({
-      ...current,
-      checkInOpensAt: settings.defaultCheckInOpenTime.slice(0, 5),
-      checkInClosesAt: settings.defaultCheckInCloseTime.slice(0, 5),
-    }));
-  }, [settings, editingWindowId]);
-
   const activeEmployees = useMemo(() => employees.filter((employee) => employee.status === "ACTIVE"), [employees]);
-
   const filteredEmployees = useMemo(() => {
     const normalized = employeeQuery.trim().toLowerCase();
     if (!normalized) {
       return activeEmployees;
     }
-
     return activeEmployees.filter((employee) =>
       [employee.fullName, employee.employeeCode].some((value) => value.toLowerCase().includes(normalized)),
     );
   }, [activeEmployees, employeeQuery]);
-
-  const selectedEmployees = useMemo(
-    () => new Set(form.employeeIds),
-    [form.employeeIds],
-  );
-  const overnightNotice = isOvernightWindow(form)
-    ? `Kjo dritare kalon mesnatën dhe mbyllet nesër në ${form.checkInClosesAt}.`
-    : "";
+  const selectedEmployees = useMemo(() => new Set(form.employeeIds), [form.employeeIds]);
   const todayModeStatus = useMemo(() => dailyModeStatus(windows), [windows]);
+  const overnightNotice = isOvernightWindow(form)
+    ? `Ky orar kalon mesnatën dhe mbyllet nesër në ${form.checkInClosesAt}.`
+    : "";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,14 +131,35 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       } catch {
         setWindows((current) => upsertWindow(current, saved));
       }
-      setForm(emptyForm);
-      setEditingWindowId(null);
-      setEmployeeQuery("");
-      setMessage(overnightNotice || (editingWindowId ? "Dritarja ditore u përditësua." : "Dritarja ditore u krijua."));
+      closeForm();
+      setMessage(overnightNotice || (editingWindowId ? "Orari u përditësua." : "Orari u krijua."));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Dritarja nuk mund të ruhej.");
+      setMessage(error instanceof Error ? error.message : "Orari nuk mund të ruhej.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveOpenModeCloseTime(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settings) {
+      setMessage("Cilësimet nuk janë ngarkuar ende.");
+      return;
+    }
+    setSavingOpenModeTime(true);
+    setMessage("");
+    try {
+      const updated = await updateSettings(accessToken, {
+        ...settings,
+        defaultCheckInCloseTime: normalizeTime(openModeCloseTime),
+      });
+      onSettingsUpdated(updated);
+      setEditingOpenModeTime(false);
+      setMessage("Koha e mbylljes u përditësua.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Koha e mbylljes nuk mund të ruhej.");
+    } finally {
+      setSavingOpenModeTime(false);
     }
   }
 
@@ -162,12 +174,12 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       setWindows((current) => upsertWindow(current, updated));
       setMessage(successMessage);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The window action could not be completed.");
+      setMessage(error instanceof Error ? error.message : "Veprimi nuk mund të kryhej.");
     }
   }
 
   async function deleteCancelled(windowId: string) {
-    const confirmed = globalThis.confirm("A dëshironi ta fshini përgjithmonë këtë dritare të anuluar?");
+    const confirmed = globalThis.confirm("A dëshironi ta fshini përgjithmonë këtë orar të anuluar?");
     if (!confirmed) {
       return;
     }
@@ -177,12 +189,41 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       await deleteCheckInWindow(accessToken, windowId);
       setWindows((current) => current.filter((window) => window.id !== windowId));
       if (editingWindowId === windowId) {
-        resetForm();
+        closeForm();
       }
-      setMessage("Dritarja e anuluar u fshi.");
+      setMessage("Orari i anuluar u fshi.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Dritarja e anuluar nuk mund të fshihej.");
+      setMessage(error instanceof Error ? error.message : "Orari i anuluar nuk mund të fshihej.");
     }
+  }
+
+  function openCreateForm() {
+    setForm(defaultForm(settings));
+    setEditingWindowId(null);
+    setEmployeeQuery("");
+    setFormOpen(true);
+    setMessage("");
+  }
+
+  function editWindow(window: DailyCheckInWindow) {
+    setEditingWindowId(window.id);
+    setForm({
+      workDate: window.workDate,
+      checkInOpensAt: isoToLocalTime(window.checkInOpensAt),
+      checkInClosesAt: isoToLocalTime(window.checkInClosesAt),
+      autoCheckoutEnabled: window.autoCheckoutEnabled,
+      employeeIds: window.employeeIds,
+    });
+    setEmployeeQuery("");
+    setFormOpen(true);
+    setMessage("");
+  }
+
+  function closeForm() {
+    setForm(defaultForm(settings));
+    setEditingWindowId(null);
+    setEmployeeQuery("");
+    setFormOpen(false);
   }
 
   function toggleEmployee(employeeId: string) {
@@ -195,237 +236,209 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
   }
 
   function selectAllEmployees() {
-    const ids = activeEmployees.map((employee) => employee.id);
-    setForm((current) => ({ ...current, employeeIds: ids }));
+    setForm((current) => ({ ...current, employeeIds: activeEmployees.map((employee) => employee.id) }));
   }
 
   function clearEmployees() {
     setForm((current) => ({ ...current, employeeIds: [] }));
   }
 
-  function editWindow(window: DailyCheckInWindow) {
-    setEditingWindowId(window.id);
-    setForm({
-      workDate: window.workDate,
-      checkInOpensAt: isoToLocalTime(window.checkInOpensAt),
-      checkInClosesAt: isoToLocalTime(window.checkInClosesAt),
-      autoCheckoutEnabled: window.autoCheckoutEnabled,
-      employeeIds: window.employeeIds,
-    });
-    setMessage("");
-  }
-
-  function resetForm() {
-    setForm(emptyForm);
-    setEditingWindowId(null);
-    setEmployeeQuery("");
-  }
-
   return (
-    <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
+    <div className="grid gap-5">
       <Card className="p-5">
-        <div className="flex items-center gap-3">
-          <div className="rounded-md bg-primary/15 p-2 text-primary">
-            <CalendarClock size={22} />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-md px-2 py-1 text-xs font-semibold ${todayModeStatus.scheduled ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent"}`}>
+                {todayModeStatus.scheduled ? "Orari i planifikuar" : "Mënyra e hapur është aktive"}
+              </span>
+            </div>
+            <h2 className="mt-3 text-xl font-semibold">{todayModeStatus.scheduled ? "Sot përdoret orari i planifikuar" : "Mënyra e hapur është aktive"}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {todayModeStatus.scheduled
+                ? "Punëtorët kontrollohen sipas orarit dhe listës së zgjedhur."
+                : "Pa orar të planifikuar, punëtorët mund të regjistrojnë hyrje dhe dalje."}
+            </p>
           </div>
-          <div>
-            <h2 className="font-semibold">{editingWindowId ? "Edito dritaren ditore" : "Krijo dritare ditore"}</h2>
-            <p className="text-sm text-muted-foreground">Vendos dat?n, koh?n e hyrjes dhe pun?tor?t e lejuar.</p>
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[360px]">
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Koha e mbylljes</p>
+              <p className="mt-1 font-semibold">{openModeCloseTime}</p>
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setEditingOpenModeTime((current) => !current)}>
+              Ndrysho kohën e mbylljes
+            </Button>
           </div>
         </div>
 
-        <form className="mt-5 space-y-4" onSubmit={submit}>
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-            <label className="space-y-1 text-sm font-medium">
-              <span>Data</span>
-              <Input
-                type="date"
-                value={form.workDate}
-                onChange={(event) => setForm({ ...form, workDate: event.target.value })}
-                required
-              />
-            </label>
-            <label className="space-y-1 text-sm font-medium">
-              <span>Hapet</span>
-              <Input
-                type="time"
-                value={form.checkInOpensAt}
-                onChange={(event) => setForm({ ...form, checkInOpensAt: event.target.value })}
-                required
-              />
-            </label>
-            <label className="space-y-1 text-sm font-medium">
-              <span>Mbyllet</span>
-              <Input
-                type="time"
-                value={form.checkInClosesAt}
-                onChange={(event) => setForm({ ...form, checkInClosesAt: event.target.value })}
-                required
-              />
-            </label>
-          </div>
-          {overnightNotice && (
-            <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
-              {overnightNotice}
-            </p>
-          )}
-
-          <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-primary"
-              checked={form.autoCheckoutEnabled}
-              onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
-            />
-            B?j dalje automatike n? fund t? turnit
-          </label>
-
-          <div className="rounded-lg border border-border">
-            <div className="border-b border-border p-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Punëtorët e lejuar</p>
-                  <p className="text-xs text-muted-foreground">{form.employeeIds.length} të zgjedhur</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllEmployees}>
-                    <Check size={16} />
-                    Zgjidh të gjithë
-                  </Button>
-                  <Button type="button" variant="ghost" className="h-9 px-3" onClick={clearEmployees}>
-                    <X size={16} />
-                    Pastro
-                  </Button>
-                </div>
-              </div>
-              <div className="relative mt-3">
-                <Search className="absolute left-3 top-3 text-muted-foreground" size={17} />
-                <Input
-                  className="pl-10"
-                  placeholder="Kërko punëtorë"
-                  value={employeeQuery}
-                  onChange={(event) => setEmployeeQuery(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="max-h-72 divide-y divide-border overflow-y-auto">
-              {filteredEmployees.length === 0 && (
-                <p className="p-4 text-sm text-muted-foreground">Nuk u gjetën punëtorë aktivë.</p>
-              )}
-              {filteredEmployees.map((employee) => (
-                <label
-                  key={employee.id}
-                  className="flex cursor-pointer items-center gap-3 px-3 py-3 text-sm transition hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-primary"
-                    checked={selectedEmployees.has(employee.id)}
-                    onChange={() => toggleEmployee(employee.id)}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{employee.fullName}</span>
-                    <span className="text-xs text-muted-foreground">{employee.employeeCode}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button className="flex-1" disabled={saving || form.employeeIds.length === 0}>
-              {saving ? "Duke ruajtur..." : editingWindowId ? "Ruaj ndryshimet" : "Krijo dritaren"}
+        {editingOpenModeTime && (
+          <form className="mt-4 grid gap-2 sm:max-w-md sm:grid-cols-[1fr_auto_auto]" onSubmit={saveOpenModeCloseTime}>
+            <Input type="time" value={openModeCloseTime} onChange={(event) => setOpenModeCloseTime(event.target.value)} required />
+            <Button disabled={savingOpenModeTime}>{savingOpenModeTime ? "Duke ruajtur..." : "Ruaj"}</Button>
+            <Button type="button" variant="ghost" onClick={() => setEditingOpenModeTime(false)}>
+              Anulo
             </Button>
-            {editingWindowId && (
-              <Button type="button" variant="secondary" onClick={resetForm}>
-                Anulo editimin
-              </Button>
-            )}
-          </div>
-        </form>
+          </form>
+        )}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Button type="button" onClick={openCreateForm}>
+            <CalendarClock size={18} />
+            Krijo orar të planifikuar
+          </Button>
+        </div>
       </Card>
+
+      {message && <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
+
+      {formOpen && (
+        <Card className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="font-semibold">{editingWindowId ? "Ndrysho orarin" : "Krijo orar"}</h2>
+              <p className="text-sm text-muted-foreground">Zgjidh datën, kohën dhe punëtorët e lejuar.</p>
+            </div>
+            <Button type="button" variant="ghost" onClick={closeForm}>
+              <X size={17} />
+              Mbyll
+            </Button>
+          </div>
+
+          <form className="mt-5 space-y-4" onSubmit={submit}>
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="space-y-1 text-sm font-medium">
+                <span>Data</span>
+                <Input type="date" value={form.workDate} onChange={(event) => setForm({ ...form, workDate: event.target.value })} required />
+              </label>
+              <label className="space-y-1 text-sm font-medium">
+                <span>Ora e hapjes</span>
+                <Input type="time" value={form.checkInOpensAt} onChange={(event) => setForm({ ...form, checkInOpensAt: event.target.value })} required />
+              </label>
+              <label className="space-y-1 text-sm font-medium">
+                <span>Ora e mbylljes</span>
+                <Input type="time" value={form.checkInClosesAt} onChange={(event) => setForm({ ...form, checkInClosesAt: event.target.value })} required />
+              </label>
+            </div>
+
+            {overnightNotice && <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">{overnightNotice}</p>}
+
+            <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={form.autoCheckoutEnabled}
+                onChange={(event) => setForm({ ...form, autoCheckoutEnabled: event.target.checked })}
+              />
+              Bëj dalje automatike në fund të turnit
+            </label>
+
+            <div className="rounded-lg border border-border">
+              <div className="border-b border-border p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Punëtorët e lejuar</p>
+                    <p className="text-xs text-muted-foreground">{form.employeeIds.length} të zgjedhur</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllEmployees}>
+                      <Check size={16} />
+                      Zgjidhi të gjithë
+                    </Button>
+                    <Button type="button" variant="ghost" className="h-9 px-3" onClick={clearEmployees}>
+                      <X size={16} />
+                      Pastro
+                    </Button>
+                  </div>
+                </div>
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-3 text-muted-foreground" size={17} />
+                  <Input className="pl-10" placeholder="Kërko punëtorë" value={employeeQuery} onChange={(event) => setEmployeeQuery(event.target.value)} />
+                </div>
+              </div>
+              <div className="max-h-72 divide-y divide-border overflow-y-auto">
+                {filteredEmployees.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nuk u gjetën punëtorë aktivë.</p>}
+                {filteredEmployees.map((employee) => (
+                  <label key={employee.id} className="flex cursor-pointer items-center gap-3 px-3 py-3 text-sm transition hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={selectedEmployees.has(employee.id)}
+                      onChange={() => toggleEmployee(employee.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{employee.fullName}</span>
+                      <span className="text-xs text-muted-foreground">{employee.employeeCode}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button disabled={saving || form.employeeIds.length === 0}>
+                {saving ? "Duke ruajtur..." : editingWindowId ? "Ruaj ndryshimet" : "Krijo orar"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={closeForm}>
+                Anulo
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold">Dritaret ditore të hyrjes</h2>
-            <p className="text-sm text-muted-foreground">Hap, mbyll, edito ose anulo një ditë të planifikuar.</p>
+            <h2 className="font-semibold">Oraret e planifikuara</h2>
+            <p className="text-sm text-muted-foreground">Hap, mbyll, ndrysho ose anulo një orar.</p>
           </div>
-          <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {windows.length} dritare
-          </div>
+          <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{windows.length} orare</div>
         </div>
 
-        {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
-        <p className={`mt-4 rounded-md px-3 py-2 text-sm font-medium ${todayModeStatus.scheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-          {todayModeStatus.label}
-        </p>
-
         <div className="mt-5 space-y-3">
-          {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Po ngarkohen dritaret...</p>}
+          {loading && <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">Po ngarkohen oraret...</p>}
           {!loading && windows.length === 0 && (
             <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <UserRoundCheck className="mx-auto text-primary" size={30} />
-              <p className="mt-3 font-medium">Nuk ka dritare ditore</p>
-              <p className="mt-1 text-sm text-muted-foreground">Pa dritare manuale, hyrja është automatikisht e hapur për të gjithë punëtorët.</p>
+              <CalendarClock className="mx-auto text-primary" size={30} />
+              <p className="mt-3 font-medium">Nuk ka orare të planifikuara</p>
+              <p className="mt-1 text-sm text-muted-foreground">Mënyra e hapur mbetet aktive automatikisht.</p>
             </div>
           )}
           {windows.map((window) => (
             <div key={window.id} className="rounded-lg border border-border p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{formatDate(window.workDate)}</p>
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(window.status)}`}>
-                      {statusLabels[window.status]}
-                    </span>
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${statusClass(window.status)}`}>{statusLabels[window.status]}</span>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {formatWindowRange(window, settings?.timezone)} -{" "}
-                    {window.autoCheckoutEnabled ? "dalja automatike në fund të turnit" : "dalje manuale nga punëtori"} -{" "}
-                    {window.allowedEmployeeCount} punëtorë
+                    {formatWindowRange(window, settings?.timezone)} · {window.autoCheckoutEnabled ? "dalje automatike" : "pa dalje automatike"} · {window.allowedEmployeeCount} punëtorë
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                   {window.status === "CANCELLED" ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={() => void deleteCancelled(window.id)}
-                    >
+                    <Button type="button" variant="danger" onClick={() => void deleteCancelled(window.id)}>
                       <Trash2 size={16} />
-                      Fshi të anuluarën
+                      Fshi të anuluarin
                     </Button>
                   ) : (
                     <>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => void runWindowAction(window.id, openCheckInWindow, "Hyrja u hap manualisht.")}
-                        disabled={window.status === "CHECK_IN_OPEN"}
-                      >
+                      <Button type="button" variant="secondary" onClick={() => void runWindowAction(window.id, openCheckInWindow, "Hyrja u hap manualisht.")} disabled={window.status === "CHECK_IN_OPEN"}>
                         <Power size={16} />
                         Hap
                       </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Hyrja u mbyll manualisht.")}
-                        disabled={window.status === "CHECK_IN_CLOSED"}
-                      >
+                      <Button type="button" variant="secondary" onClick={() => void runWindowAction(window.id, closeCheckInWindow, "Hyrja u mbyll manualisht.")} disabled={window.status === "CHECK_IN_CLOSED"}>
                         <PowerOff size={16} />
                         Mbyll
                       </Button>
                       <Button type="button" variant="ghost" onClick={() => editWindow(window)}>
                         <Edit3 size={16} />
-                        Edito
+                        Ndrysho
                       </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Dritarja ditore u anulua.")}
-                      >
+                      <Button type="button" variant="danger" onClick={() => void runWindowAction(window.id, cancelCheckInWindow, "Orari u anulua.")}>
                         <X size={16} />
                         Anulo
                       </Button>
@@ -439,6 +452,16 @@ export function DailyCheckInWindowPage({ accessToken, settings }: DailyCheckInWi
       </Card>
     </div>
   );
+}
+
+function defaultForm(settings: AppSettings | null): WindowForm {
+  return {
+    workDate: localDateInputValue(),
+    checkInOpensAt: toTimeInput(settings?.defaultCheckInOpenTime ?? "06:50:00"),
+    checkInClosesAt: toTimeInput(settings?.defaultCheckInCloseTime ?? "07:10:00"),
+    autoCheckoutEnabled: true,
+    employeeIds: [],
+  };
 }
 
 function validateWindowForm(form: WindowForm) {
@@ -459,9 +482,7 @@ function dailyModeStatus(windows: DailyCheckInWindow[]) {
   const scheduled = windows.some((window) =>
     window.workDate === today && !["CANCELLED", "COMPLETED"].includes(window.status),
   );
-  return scheduled
-    ? { scheduled: true, label: "Dritarja ditore është aktive" }
-    : { scheduled: false, label: "Nuk ka dritare sot - hyrja është e hapur për të gjithë" };
+  return { scheduled };
 }
 
 function isOvernightWindow(form: WindowForm) {
@@ -517,6 +538,14 @@ function isoToLocalTime(value: string) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function toTimeInput(value: string) {
+  return value.slice(0, 5);
+}
+
+function normalizeTime(value: string) {
+  return value.length === 5 ? `${value}:00` : value;
+}
+
 function upsertWindow(windows: DailyCheckInWindow[], updated: DailyCheckInWindow) {
   const next = windows.some((window) => window.id === updated.id)
     ? windows.map((window) => (window.id === updated.id ? updated : window))
@@ -526,7 +555,7 @@ function upsertWindow(windows: DailyCheckInWindow[], updated: DailyCheckInWindow
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }).format(
     new Date(`${value}T12:00:00`),
   );
 }
@@ -559,14 +588,11 @@ function statusClass(status: DailyCheckInWindow["status"]) {
   if (status === "CHECK_IN_OPEN") {
     return "bg-accent/15 text-accent";
   }
-
   if (status === "CANCELLED") {
     return "bg-destructive/15 text-destructive";
   }
-
   if (status === "CHECK_IN_CLOSED" || status === "COMPLETED") {
     return "bg-muted text-muted-foreground";
   }
-
   return "bg-primary/15 text-primary";
 }
