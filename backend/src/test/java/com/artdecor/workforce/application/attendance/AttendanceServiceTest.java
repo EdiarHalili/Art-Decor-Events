@@ -83,6 +83,7 @@ class AttendanceServiceTest {
                 false,
                 10,
                 60,
+                false,
                 Instant.parse("2026-07-03T00:00:00Z")
         ));
         when(attendanceRecords.save(any(AttendanceRecordEntity.class))).thenAnswer(invocation -> {

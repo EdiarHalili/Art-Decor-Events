@@ -19,6 +19,7 @@ public record AppSettingsResponse(
         boolean liveLocationTrackingEnabled,
         int liveLocationIntervalMinutes,
         int sessionTimeoutMinutes,
+        boolean openModeUnlimitedCheckout,
         Instant updatedAt
 ) {
 }

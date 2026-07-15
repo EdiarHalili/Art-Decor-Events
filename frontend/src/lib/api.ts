@@ -213,6 +213,7 @@ export type AppSettings = {
   liveLocationTrackingEnabled: boolean;
   liveLocationIntervalMinutes: number;
   sessionTimeoutMinutes: number;
+  openModeUnlimitedCheckout: boolean;
   updatedAt: string | null;
 };
 

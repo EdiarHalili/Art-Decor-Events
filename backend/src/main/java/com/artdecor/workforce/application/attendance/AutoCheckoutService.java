@@ -3,6 +3,7 @@ package com.artdecor.workforce.application.attendance;
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.CheckoutType;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
@@ -24,15 +25,18 @@ public class AutoCheckoutService {
 
     private final AttendanceRecordRepository attendanceRecords;
     private final WorkScheduleRepository schedules;
+    private final AppSettingsService settings;
     private final Clock clock;
 
     public AutoCheckoutService(
             AttendanceRecordRepository attendanceRecords,
             WorkScheduleRepository schedules,
+            AppSettingsService settings,
             Clock clock
     ) {
         this.attendanceRecords = attendanceRecords;
         this.schedules = schedules;
+        this.settings = settings;
         this.clock = clock;
     }
 
@@ -53,6 +57,9 @@ public class AutoCheckoutService {
                 continue;
             }
             if (!record.getSchedule().isAutoCheckoutEnabled()) {
+                continue;
+            }
+            if (record.getSchedule().isSimpleOpenMode() && settings.current().openModeUnlimitedCheckout()) {
                 continue;
             }
             autoCheckout(record);

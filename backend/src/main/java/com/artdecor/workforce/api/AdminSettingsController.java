@@ -72,13 +72,14 @@ public class AdminSettingsController {
             boolean notificationsEnabled,
             boolean liveLocationTrackingEnabled,
             @Min(5) @Max(60) int liveLocationIntervalMinutes,
-            @Min(5) @Max(1440) int sessionTimeoutMinutes
+            @Min(5) @Max(1440) int sessionTimeoutMinutes,
+            boolean openModeUnlimitedCheckout
     ) {
         AppSettingsCommand toCommand() {
             return new AppSettingsCommand(companyName, logoUrl, primaryColor, accentColor, timezone,
                     defaultCheckInOpenTime, defaultCheckInCloseTime, allowedLateMinutes, gpsEnabled,
                     workplaceLatitude, workplaceLongitude, notificationsEnabled, liveLocationTrackingEnabled,
-                    liveLocationIntervalMinutes, sessionTimeoutMinutes);
+                    liveLocationIntervalMinutes, sessionTimeoutMinutes, openModeUnlimitedCheckout);
         }
     }
 }

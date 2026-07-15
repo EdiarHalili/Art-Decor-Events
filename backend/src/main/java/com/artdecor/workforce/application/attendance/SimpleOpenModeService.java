@@ -1,6 +1,8 @@
 package com.artdecor.workforce.application.attendance;
 
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.application.settings.AppSettingsService;
+import com.artdecor.workforce.application.settings.AppSettingsResponse;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
@@ -27,15 +29,18 @@ public class SimpleOpenModeService {
 
     private final WorkScheduleRepository schedules;
     private final ScheduleAssignmentRepository assignments;
+    private final AppSettingsService settings;
     private final Clock clock;
 
     public SimpleOpenModeService(
             WorkScheduleRepository schedules,
             ScheduleAssignmentRepository assignments,
+            AppSettingsService settings,
             Clock clock
     ) {
         this.schedules = schedules;
         this.assignments = assignments;
+        this.settings = settings;
         this.clock = clock;
     }
 
@@ -74,13 +79,16 @@ public class SimpleOpenModeService {
     }
 
     private WorkScheduleEntity simpleOpenSchedule(LocalDate workDate) {
-        ZoneId zone = clock.getZone();
+        AppSettingsResponse currentSettings = settings.current();
+        ZoneId zone = ZoneId.of(currentSettings.timezone());
+        LocalTime cutoffTime = currentSettings.defaultCheckInCloseTime();
+        LocalDate cutoffDate = cutoffTime.isAfter(LocalTime.MIDNIGHT) ? workDate : workDate.plusDays(1);
         WorkScheduleEntity schedule = new WorkScheduleEntity();
         schedule.setTitle(SIMPLE_OPEN_TITLE);
         schedule.setDescription("Automatically created because no daily check-in window was scheduled.");
         schedule.setWorkDate(workDate);
         schedule.setCheckInOpensAt(workDate.atStartOfDay(zone).toInstant());
-        schedule.setCheckInClosesAt(workDate.atTime(LocalTime.of(23, 59)).atZone(zone).toInstant());
+        schedule.setCheckInClosesAt(cutoffDate.atTime(cutoffTime).atZone(zone).toInstant());
         schedule.setPlannedStartAt(null);
         schedule.setPlannedEndAt(schedule.getCheckInClosesAt());
         schedule.setAutoCheckoutEnabled(true);

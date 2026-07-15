@@ -39,6 +39,7 @@ public class AppSettingsService {
         entity.setLiveLocationTrackingEnabled(command.liveLocationTrackingEnabled());
         entity.setLiveLocationIntervalMinutes(command.liveLocationIntervalMinutes());
         entity.setSessionTimeoutMinutes(command.sessionTimeoutMinutes());
+        entity.setOpenModeUnlimitedCheckout(command.openModeUnlimitedCheckout());
         return toResponse(entity);
     }
 
@@ -53,9 +54,6 @@ public class AppSettingsService {
         ZoneId.of(command.timezone());
         if (!isHexColor(command.primaryColor()) || !isHexColor(command.accentColor())) {
             throw new IllegalArgumentException("Brand colors must use hex format, for example #c9a052.");
-        }
-        if (!command.defaultCheckInCloseTime().isAfter(command.defaultCheckInOpenTime())) {
-            throw new IllegalArgumentException("Default check-in close time must be after opening time.");
         }
         if (command.allowedLateMinutes() < 0 || command.allowedLateMinutes() > 240) {
             throw new IllegalArgumentException("Allowed late minutes must be between 0 and 240.");
@@ -102,6 +100,7 @@ public class AppSettingsService {
                 entity.isLiveLocationTrackingEnabled(),
                 entity.getLiveLocationIntervalMinutes() <= 0 ? 10 : entity.getLiveLocationIntervalMinutes(),
                 entity.getSessionTimeoutMinutes(),
+                entity.isOpenModeUnlimitedCheckout(),
                 entity.getUpdatedAt()
         );
     }

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.artdecor.workforce.application.settings.AppSettingsResponse;
+import com.artdecor.workforce.application.settings.AppSettingsService;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentEntity;
@@ -13,6 +15,7 @@ import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,12 +25,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 class SimpleOpenModeServiceTest {
     private final WorkScheduleRepository schedules = org.mockito.Mockito.mock(WorkScheduleRepository.class);
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
+    private final AppSettingsService settings = org.mockito.Mockito.mock(AppSettingsService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-03T06:55:00Z"), ZoneOffset.UTC);
-    private final SimpleOpenModeService service = new SimpleOpenModeService(schedules, assignments, clock);
+    private final SimpleOpenModeService service = new SimpleOpenModeService(schedules, assignments, settings, clock);
 
     @Test
     void createsSimpleOpenScheduleAndAssignmentWhenNoScheduledWindowExists() {
         EmployeeEntity employee = employee();
+        when(settings.current()).thenReturn(settingsResponse(LocalTime.of(23, 59)));
         when(schedules.existsByWorkDateAndSimpleOpenModeFalseAndStatusIn(any(), any())).thenReturn(false);
         when(schedules.findFirstByWorkDateAndSimpleOpenModeTrueOrderByCreatedAtAsc(LocalDate.of(2026, 7, 3)))
                 .thenReturn(Optional.empty());
@@ -52,6 +57,26 @@ class SimpleOpenModeServiceTest {
         assertThat(assignment.getSchedule().getStatus()).isEqualTo(WorkScheduleStatus.CHECK_IN_OPEN);
     }
 
+    @Test
+    void treatsMidnightCutoffAsNextDayForSimpleOpenMode() {
+        EmployeeEntity employee = employee();
+        when(settings.current()).thenReturn(settingsResponse(LocalTime.MIDNIGHT));
+        when(schedules.existsByWorkDateAndSimpleOpenModeFalseAndStatusIn(any(), any())).thenReturn(false);
+        when(schedules.findFirstByWorkDateAndSimpleOpenModeTrueOrderByCreatedAtAsc(LocalDate.of(2026, 7, 3)))
+                .thenReturn(Optional.empty());
+        when(schedules.save(any(WorkScheduleEntity.class))).thenAnswer(invocation -> {
+            WorkScheduleEntity schedule = invocation.getArgument(0);
+            ReflectionTestUtils.setField(schedule, "id", UUID.randomUUID());
+            return schedule;
+        });
+        when(assignments.findByScheduleIdAndEmployeeId(any(), any())).thenReturn(Optional.empty());
+        when(assignments.save(any(ScheduleAssignmentEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ScheduleAssignmentEntity assignment = service.getOrCreateTodayAssignment(employee);
+
+        assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T00:00:00Z"));
+    }
+
     private EmployeeEntity employee() {
         EmployeeEntity employee = new EmployeeEntity();
         ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
@@ -59,5 +84,27 @@ class SimpleOpenModeServiceTest {
         employee.setFullName("Season Worker");
         employee.setPinHash("hashed");
         return employee;
+    }
+
+    private AppSettingsResponse settingsResponse(LocalTime cutoffTime) {
+        return new AppSettingsResponse(
+                "Art Decor Events",
+                null,
+                "#c9a052",
+                "#496f5d",
+                "UTC",
+                LocalTime.MIDNIGHT,
+                cutoffTime,
+                0,
+                true,
+                null,
+                null,
+                false,
+                false,
+                10,
+                60,
+                false,
+                null
+        );
     }
 }

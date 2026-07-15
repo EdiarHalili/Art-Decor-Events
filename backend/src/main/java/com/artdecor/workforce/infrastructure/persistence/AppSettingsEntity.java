@@ -58,6 +58,9 @@ public class AppSettingsEntity {
     @Column(nullable = false)
     private int sessionTimeoutMinutes = 60;
 
+    @Column(nullable = false)
+    private boolean openModeUnlimitedCheckout;
+
     private Instant updatedAt;
 
     public UUID getId() { return id; }
@@ -91,6 +94,8 @@ public class AppSettingsEntity {
     public void setLiveLocationIntervalMinutes(int liveLocationIntervalMinutes) { this.liveLocationIntervalMinutes = liveLocationIntervalMinutes; }
     public int getSessionTimeoutMinutes() { return sessionTimeoutMinutes; }
     public void setSessionTimeoutMinutes(int sessionTimeoutMinutes) { this.sessionTimeoutMinutes = sessionTimeoutMinutes; }
+    public boolean isOpenModeUnlimitedCheckout() { return openModeUnlimitedCheckout; }
+    public void setOpenModeUnlimitedCheckout(boolean openModeUnlimitedCheckout) { this.openModeUnlimitedCheckout = openModeUnlimitedCheckout; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     @PreUpdate

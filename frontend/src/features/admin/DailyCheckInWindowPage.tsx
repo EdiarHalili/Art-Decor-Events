@@ -49,6 +49,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
   const [editingWindowId, setEditingWindowId] = useState<string | null>(null);
   const [employeeQuery, setEmployeeQuery] = useState("");
   const [openModeCloseTime, setOpenModeCloseTime] = useState(toTimeInput(settings?.defaultCheckInCloseTime ?? "23:59:00"));
+  const [openModeUnlimitedCheckout, setOpenModeUnlimitedCheckout] = useState(Boolean(settings?.openModeUnlimitedCheckout));
   const [editingOpenModeTime, setEditingOpenModeTime] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,6 +65,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
       return;
     }
     setOpenModeCloseTime(toTimeInput(settings.defaultCheckInCloseTime));
+    setOpenModeUnlimitedCheckout(settings.openModeUnlimitedCheckout);
     if (!formOpen) {
       setForm(defaultForm(settings));
     }
@@ -152,10 +154,11 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
       const updated = await updateSettings(accessToken, {
         ...settings,
         defaultCheckInCloseTime: normalizeTime(openModeCloseTime),
+        openModeUnlimitedCheckout,
       });
       onSettingsUpdated(updated);
       setEditingOpenModeTime(false);
-      setMessage("Koha e mbylljes u përditësua.");
+      setMessage("Cilësimet e mënyrës së hapur u përditësuan.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Koha e mbylljes nuk mund të ruhej.");
     } finally {
@@ -264,21 +267,43 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
           <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[360px]">
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Koha e mbylljes</p>
-              <p className="mt-1 font-semibold">{openModeCloseTime}</p>
+              <p className="mt-1 font-semibold">{openModeUnlimitedCheckout ? "Pa kufi" : openModeCloseTime}</p>
             </div>
             <Button type="button" variant="secondary" onClick={() => setEditingOpenModeTime((current) => !current)}>
-              Ndrysho kohën e mbylljes
+              Cilësimet e mënyrës së hapur
             </Button>
           </div>
         </div>
 
+        {openModeUnlimitedCheckout && (
+          <p className="mt-4 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+            Dalja pa kufi është aktive. Punëtorët nuk do të marrin dalje automatike derisa kjo mënyrë të çaktivizohet ose administratori të kryejë daljen.
+          </p>
+        )}
+
         {editingOpenModeTime && (
-          <form className="mt-4 grid gap-2 sm:max-w-md sm:grid-cols-[1fr_auto_auto]" onSubmit={saveOpenModeCloseTime}>
-            <Input type="time" value={openModeCloseTime} onChange={(event) => setOpenModeCloseTime(event.target.value)} required />
-            <Button disabled={savingOpenModeTime}>{savingOpenModeTime ? "Duke ruajtur..." : "Ruaj"}</Button>
-            <Button type="button" variant="ghost" onClick={() => setEditingOpenModeTime(false)}>
-              Anulo
-            </Button>
+          <form className="mt-4 grid gap-3 sm:max-w-xl" onSubmit={saveOpenModeCloseTime}>
+            <label className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={openModeUnlimitedCheckout}
+                onChange={(event) => setOpenModeUnlimitedCheckout(event.target.checked)}
+              />
+              Dalje pa kufi
+            </label>
+            {!openModeUnlimitedCheckout && (
+              <label className="space-y-1 text-sm font-medium">
+                <span>Koha e mbylljes</span>
+                <Input type="time" value={openModeCloseTime} onChange={(event) => setOpenModeCloseTime(event.target.value)} required />
+              </label>
+            )}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button disabled={savingOpenModeTime}>{savingOpenModeTime ? "Duke ruajtur..." : "Ruaj"}</Button>
+              <Button type="button" variant="ghost" onClick={() => setEditingOpenModeTime(false)}>
+                Anulo
+              </Button>
+            </div>
           </form>
         )}
 
@@ -471,9 +496,6 @@ function validateWindowForm(form: WindowForm) {
   if (!form.workDate || !form.checkInOpensAt || !form.checkInClosesAt) {
     return "Data, ora e hapjes dhe ora e mbylljes janë të detyrueshme.";
   }
-  if (form.checkInClosesAt === form.checkInOpensAt) {
-    return "Ora e hapjes dhe mbylljes nuk mund të jenë të njëjta.";
-  }
   return "";
 }
 
@@ -486,7 +508,7 @@ function dailyModeStatus(windows: DailyCheckInWindow[]) {
 }
 
 function isOvernightWindow(form: WindowForm) {
-  return Boolean(form.workDate && form.checkInOpensAt && form.checkInClosesAt && form.checkInClosesAt < form.checkInOpensAt);
+  return Boolean(form.workDate && form.checkInOpensAt && form.checkInClosesAt && form.checkInClosesAt <= form.checkInOpensAt);
 }
 
 function windowCloseDate(form: WindowForm) {

@@ -39,6 +39,7 @@ const fallbackSettings: AppSettings = {
   liveLocationTrackingEnabled: false,
   liveLocationIntervalMinutes: 10,
   sessionTimeoutMinutes: 60,
+  openModeUnlimitedCheckout: false,
   updatedAt: null,
 };
 
@@ -181,6 +182,11 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
             <span>Hyrja standarde mbyllet</span>
             <Input type="time" value={toTimeInput(form.defaultCheckInCloseTime)} onChange={(event) => setForm({ ...form, defaultCheckInCloseTime: event.target.value })} />
           </label>
+          {isOvernightDefaultTime(form.defaultCheckInOpenTime, form.defaultCheckInCloseTime) && (
+            <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary md:col-span-2">
+              Ky orar kalon mesnatën dhe mbyllet ditën tjetër në {toTimeInput(form.defaultCheckInCloseTime)}.
+            </p>
+          )}
           <label className="space-y-1 text-sm font-medium">
             <span>Minutat e tolerancës</span>
             <Input type="number" min="0" max="240" value={form.allowedLateMinutes} onChange={(event) => setForm({ ...form, allowedLateMinutes: Number(event.target.value) })} />
@@ -311,6 +317,12 @@ function toTimeInput(value: string) {
 
 function normalizeTime(value: string) {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function isOvernightDefaultTime(openTime: string, closeTime: string) {
+  const open = toTimeInput(openTime);
+  const close = toTimeInput(closeTime);
+  return Boolean(open && close && close <= open);
 }
 
 function optionalNumber(value: string) {

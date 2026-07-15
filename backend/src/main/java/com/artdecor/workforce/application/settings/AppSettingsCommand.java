@@ -17,6 +17,7 @@ public record AppSettingsCommand(
         boolean notificationsEnabled,
         boolean liveLocationTrackingEnabled,
         int liveLocationIntervalMinutes,
-        int sessionTimeoutMinutes
+        int sessionTimeoutMinutes,
+        boolean openModeUnlimitedCheckout
 ) {
 }
