@@ -7,6 +7,7 @@ export type AuthResponse = {
   role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
   fullName: string;
   employeeId: string | null;
+  employeeCode: string | null;
   passwordMustChange: boolean;
 };
 
@@ -15,6 +16,7 @@ export type CurrentUserResponse = {
   role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
   fullName: string;
   employeeId: string | null;
+  employeeCode: string | null;
   passwordMustChange: boolean;
 };
 
@@ -441,7 +443,7 @@ export async function getMyAttendanceHistory(
 
 export async function exportMyAttendance(
   accessToken: string,
-  params: { from: string; to: string; format: "csv" | "pdf" },
+  params: { from: string; to: string; format: "pdf" },
 ): Promise<Blob> {
   return authorizedBlobRequest(
     `/employee/attendance/export?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&format=${params.format}`,

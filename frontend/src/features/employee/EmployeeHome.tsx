@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, CalendarClock, FileSpreadsheet, FileText, History, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
+import { Bell, CalendarClock, FileText, LogOut, MapPin, Wifi, WifiOff } from "lucide-react";
 import { BrandMark } from "../../components/BrandMark";
 import { PwaInstallPrompt } from "../../components/PwaInstallPrompt";
 import { ThemeToggle } from "../../components/ThemeToggle";
@@ -48,7 +48,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [historyRows, setHistoryRows] = useState<AttendanceReportRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyMessage, setHistoryMessage] = useState("");
-  const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | null>(null);
   const liveLocationInFlight = useRef(false);
   const lastValidLiveLocation = useRef<GpsLocation | null>(readPendingLiveLocation());
 
@@ -314,16 +314,6 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     }
   }
 
-  function updateHistoryPreset(preset: HistoryPreset) {
-    setHistoryPreset(preset);
-    if (preset === "custom") {
-      return;
-    }
-    const next = rangeForPreset(preset);
-    setHistoryFrom(next.from);
-    setHistoryTo(next.to);
-  }
-
   async function loadHistory() {
     if (!historyFrom || !historyTo || historyTo < historyFrom) {
       setHistoryMessage("Zgjidhni një interval të vlefshëm.");
@@ -340,15 +330,15 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     }
   }
 
-  async function downloadHistory(format: "pdf" | "csv") {
-    setExporting(format);
+  async function downloadHistory() {
+    setExporting("pdf");
     setHistoryMessage("");
     try {
-      const blob = await exportMyAttendance(session.accessToken, { from: historyFrom, to: historyTo, format });
+      const blob = await exportMyAttendance(session.accessToken, { from: historyFrom, to: historyTo, format: "pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `historia-e-punes-${historyFrom}-${historyTo}.${format}`;
+      link.download = `Historia_Punes_${safeFilenamePart(session.employeeCode ?? "Punetori")}_${historyFrom.slice(0, 7)}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -448,74 +438,17 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
         <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-3">
-            <History className="text-primary" size={21} />
-            <h2 className="font-semibold">Historia e punës</h2>
+            <FileText className="text-primary" size={21} />
+            <h2 className="font-semibold">Raporti mujor</h2>
           </div>
-
-          <div className="mt-4 grid gap-2">
-            <select
-              className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
-              value={historyPreset}
-              onChange={(event) => updateHistoryPreset(event.target.value as HistoryPreset)}
-            >
-              <option value="today">Sot</option>
-              <option value="this-week">Kjo javë</option>
-              <option value="this-month">Ky muaj</option>
-              <option value="last-month">Muaji i kaluar</option>
-              <option value="custom">Interval datash</option>
-            </select>
-            {historyPreset === "custom" && (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="space-y-1 text-sm font-medium">
-                  <span>Nga</span>
-                  <input className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} />
-                </label>
-                <label className="space-y-1 text-sm font-medium">
-                  <span>Deri</span>
-                  <input className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" type="date" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} />
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <SummaryCell label="Totali i ditëve" value={String(historyTotals.days)} />
-            <SummaryCell label="Orë normale" value={formatWorkedMinutes(historyTotals.normalMinutes)} />
-            <SummaryCell label="Orë shtesë" value={formatWorkedMinutes(historyTotals.overtimeMinutes)} />
-            <SummaryCell label="Totali" value={formatWorkedMinutes(historyTotals.totalMinutes)} />
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadHistory("pdf")}>
-              <FileText size={17} />
-              {exporting === "pdf" ? "Duke shkarkuar..." : "PDF"}
-            </Button>
-            <Button type="button" variant="secondary" disabled={Boolean(exporting)} onClick={() => void downloadHistory("csv")}>
-              <FileSpreadsheet size={17} />
-              {exporting === "csv" ? "Duke shkarkuar..." : "Excel/CSV"}
-            </Button>
-          </div>
-
+          <p className="mt-2 text-sm text-muted-foreground">
+            Shkarkoni raportin PDF te punes per muajin aktual.
+          </p>
+          <Button type="button" className="mt-4 w-full" disabled={Boolean(exporting)} onClick={() => void downloadHistory()}>
+            <FileText size={17} />
+            {exporting === "pdf" ? "Duke shkarkuar..." : "Shkarko raportin PDF"}
+          </Button>
           {historyMessage && <p className="mt-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{historyMessage}</p>}
-          <div className="mt-4 divide-y divide-border rounded-lg border border-border">
-            {historyLoading && <p className="p-4 text-sm text-muted-foreground">Historia po ngarkohet...</p>}
-            {!historyLoading && historyRows.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nuk ka regjistrime për këtë periudhë.</p>}
-            {!historyLoading && historyRows.map((row) => (
-              <div key={`${row.workDate}-${row.attendanceRecordId ?? row.scheduleId}`} className="grid gap-2 p-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="font-semibold">{formatDateSq(row.workDate)}</p>
-                  <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{historyStatus(row)}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-                  <span>Hyrja: {formatAttendanceTime(row.checkedInAt)}</span>
-                  <span>Dalja: {formatAttendanceTime(row.checkedOutAt)}</span>
-                  <span>Orët: {formatWorkedMinutes(row.workedMinutes)}</span>
-                  <span>Shtesë: {formatWorkedMinutes(row.overtimeMinutes)}</span>
-                </div>
-                {row.autoCheckout && <p className="text-xs font-medium text-primary">Dalje automatike</p>}
-              </div>
-            ))}
-          </div>
         </Card>
 
         {checkinConfirmOpen && (
@@ -790,6 +723,10 @@ function rangeForPreset(preset: HistoryPreset) {
 
 function dateOnly(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function safeFilenamePart(value: string) {
+  return value.trim().replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "Punetori";
 }
 
 function formatDateSq(value: string) {

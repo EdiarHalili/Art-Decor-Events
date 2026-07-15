@@ -84,6 +84,7 @@ export function App() {
           role: currentUser.role,
           fullName: currentUser.fullName,
           employeeId: currentUser.employeeId,
+          employeeCode: currentUser.employeeCode,
           passwordMustChange: currentUser.passwordMustChange,
         };
         localStorage.setItem("artdecor.session", JSON.stringify(refreshedSession));
@@ -182,6 +183,10 @@ function ChangePasswordScreen({
       setMessage("Fjalëkalimi duhet të ketë të paktën 8 karaktere.");
       return;
     }
+    if (newPassword.length > 128) {
+      setMessage("Fjalekalimi duhet te kete 128 karaktere ose me pak.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setMessage("Fjalëkalimet e reja nuk përputhen.");
       return;
@@ -210,8 +215,8 @@ function ChangePasswordScreen({
         </div>
         <form className="mt-5 space-y-3" onSubmit={submit}>
           <Input type="password" placeholder="Fjalëkalimi i përkohshëm aktual" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
-          <Input type="password" placeholder="Fjalëkalimi i ri" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
-          <Input type="password" placeholder="Konfirmo fjalëkalimin e ri" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
+          <Input type="password" placeholder="Fjalëkalimi i ri" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} maxLength={128} required />
+          <Input type="password" placeholder="Konfirmo fjalëkalimin e ri" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} maxLength={128} required />
           {message && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{message}</p>}
           <Button className="w-full" disabled={saving}>{saving ? "Duke ruajtur..." : "Ruaj fjalëkalimin"}</Button>
           <Button type="button" variant="ghost" className="w-full" onClick={onLogout}>Dil</Button>

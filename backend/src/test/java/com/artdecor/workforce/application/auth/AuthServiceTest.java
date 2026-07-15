@@ -101,6 +101,22 @@ class AuthServiceTest {
     }
 
     @Test
+    void logsInEmployeeWithLongPasswordAndKeepsPinCompatibility() {
+        String longPassword = "LongPasswordForSeasonalWorker1234567890";
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", longPassword, UserRole.EMPLOYEE);
+        EmployeeEntity employee = employee("EMP001", "Season Worker", "123456789");
+        employee.setUserAccount(employeeUser);
+        when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
+
+        AuthResponse passwordResponse = authService.loginEmployee("EMP001", longPassword);
+        AuthResponse pinResponse = authService.loginEmployee("EMP001", "123456789");
+
+        assertThat(passwordResponse.accessToken()).isNotBlank();
+        assertThat(passwordResponse.employeeCode()).isEqualTo("EMP001");
+        assertThat(pinResponse.accessToken()).isNotBlank();
+    }
+
+    @Test
     void changePasswordClearsFirstLoginFlag() {
         UserAccountEntity admin = user("Owner", "owner@artdecor.test", "secret123", UserRole.ADMINISTRATOR);
         admin.setPasswordMustChange(true);
@@ -115,6 +131,45 @@ class AuthServiceTest {
         assertThat(response.passwordMustChange()).isFalse();
         assertThat(admin.isPasswordMustChange()).isFalse();
         assertThat(passwordEncoder.matches("newSecret123", admin.getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void changePasswordAcceptsExactlyEightAndLongPasswords() {
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", "TempPass123", UserRole.EMPLOYEE);
+        employeeUser.setPasswordMustChange(true);
+        EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
+        employee.setUserAccount(employeeUser);
+        when(users.findById(employeeUser.getId())).thenReturn(Optional.of(employeeUser));
+        when(employees.findById(employee.getId())).thenReturn(Optional.of(employee));
+
+        AuthResponse first = authService.changePassword(
+                new com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal(employeeUser.getId(), UserRole.EMPLOYEE, employee.getId()),
+                "TempPass123",
+                "Pass1234"
+        );
+        assertThat(first.passwordMustChange()).isFalse();
+        assertThat(passwordEncoder.matches("Pass1234", employeeUser.getPasswordHash())).isTrue();
+
+        AuthResponse second = authService.changePassword(
+                new com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal(employeeUser.getId(), UserRole.EMPLOYEE, employee.getId()),
+                "Pass1234",
+                "AnotherLongPasswordForEmployee1234567890"
+        );
+        assertThat(second.passwordMustChange()).isFalse();
+        assertThat(passwordEncoder.matches("AnotherLongPasswordForEmployee1234567890", employeeUser.getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void rejectsPasswordLongerThanMaximum() {
+        UserAccountEntity admin = user("Owner", "owner@artdecor.test", "secret123", UserRole.ADMINISTRATOR);
+        when(users.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> authService.changePassword(
+                new com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal(admin.getId(), UserRole.ADMINISTRATOR, null),
+                "secret123",
+                "x".repeat(129)
+        )).isInstanceOf(AuthException.class)
+                .hasMessage("Password must contain 128 characters or fewer.");
     }
 
     private UserAccountEntity user(String fullName, String email, String password, UserRole role) {

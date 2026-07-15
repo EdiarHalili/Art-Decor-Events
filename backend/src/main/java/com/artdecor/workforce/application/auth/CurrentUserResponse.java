@@ -5,6 +5,7 @@ public record CurrentUserResponse(
         String role,
         String fullName,
         String employeeId,
+        String employeeCode,
         boolean passwordMustChange
 ) {
 }

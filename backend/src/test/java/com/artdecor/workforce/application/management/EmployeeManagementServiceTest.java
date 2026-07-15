@@ -72,6 +72,57 @@ class EmployeeManagementServiceTest {
     }
 
     @Test
+    void createsEmployeeWithExactlyEightCharacterPassword() {
+        service.createEmployee(new CreateEmployeeCommand(
+                "EMP008",
+                "Eight Worker",
+                "Pass1234",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                WageType.HOURLY,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(1.5)
+        ));
+
+        ArgumentCaptor<EmployeeEntity> employeeCaptor = ArgumentCaptor.forClass(EmployeeEntity.class);
+        org.mockito.Mockito.verify(employees).save(employeeCaptor.capture());
+        String hash = employeeCaptor.getValue().getUserAccount().getPasswordHash();
+        assertThat(hash).isNotEqualTo("Pass1234");
+        assertThat(passwordEncoder.matches("Pass1234", hash)).isTrue();
+    }
+
+    @Test
+    void createsEmployeeWithLongPasswordWithoutTruncating() {
+        String longPassword = "SeasonWorkerPassword1234567890LongEnoughForRealUse";
+
+        service.createEmployee(new CreateEmployeeCommand(
+                "EMP064",
+                "Long Password Worker",
+                longPassword,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                WageType.HOURLY,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(1.5)
+        ));
+
+        ArgumentCaptor<EmployeeEntity> employeeCaptor = ArgumentCaptor.forClass(EmployeeEntity.class);
+        org.mockito.Mockito.verify(employees).save(employeeCaptor.capture());
+        String hash = employeeCaptor.getValue().getUserAccount().getPasswordHash();
+        assertThat(hash).isNotEqualTo(longPassword);
+        assertThat(hash).hasSizeGreaterThanOrEqualTo(50);
+        assertThat(passwordEncoder.matches(longPassword, hash)).isTrue();
+    }
+
+    @Test
     void resetsEmployeePasswordAndRequiresChange() {
         UUID employeeId = UUID.randomUUID();
         EmployeeEntity employee = new EmployeeEntity();
@@ -88,6 +139,7 @@ class EmployeeManagementServiceTest {
         assertThat(employee.getUserAccount()).isNotNull();
         assertThat(employee.getUserAccount().isPasswordMustChange()).isTrue();
         assertThat(passwordEncoder.matches(response.temporaryPassword(), employee.getUserAccount().getPasswordHash())).isTrue();
+        assertThat(employee.getUserAccount().getPasswordHash()).isNotEqualTo(response.temporaryPassword());
     }
 
     @Test

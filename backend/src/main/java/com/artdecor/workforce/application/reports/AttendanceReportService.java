@@ -121,13 +121,13 @@ public class AttendanceReportService {
                 .orElseThrow(() -> new IllegalArgumentException("Employee was not found."));
         List<AttendanceReportRow> rows = employeeHistory(employeeId, from, to);
         String normalized = format == null ? "csv" : format.toLowerCase(Locale.ROOT);
-        String baseName = "art-decor-" + employee.getEmployeeCode() + "-" + from + "-to-" + to;
+        String baseName = employeeExportBaseName(employee, from, to);
 
         return switch (normalized) {
             case "pdf" -> new ExportFile(
                     baseName + ".pdf",
                     "application/pdf",
-                    SimplePdf.render("Permbledhje mujore e punes", employeeReportLines(employee, from, to, rows))
+                    SimplePdf.render("Përmbledhje mujore e punës", employeeReportLines(employee, from, to, rows))
             );
             case "xlsx", "xls", "excel" -> new ExportFile(
                     baseName + ".xls",
@@ -385,6 +385,18 @@ public class AttendanceReportService {
         return builder.toString();
     }
 
+    private String employeeExportBaseName(EmployeeEntity employee, LocalDate from, LocalDate to) {
+        String period = from.getYear() == to.getYear() && from.getMonth() == to.getMonth()
+                ? from.getYear() + "-" + String.format(Locale.ROOT, "%02d", from.getMonthValue())
+                : from + "_deri_" + to;
+        return "Historia_Punes_" + safeFilenamePart(employee.getEmployeeCode()) + "_" + period;
+    }
+
+    private String safeFilenamePart(String value) {
+        String cleaned = value == null ? "" : value.replaceAll("[^A-Za-z0-9_-]+", "_").replaceAll("^_+|_+$", "");
+        return cleaned.isBlank() ? "Punetori" : cleaned;
+    }
+
     private String excelXml(List<AttendanceReportRow> rows) {
         StringBuilder builder = new StringBuilder("""
                 <?xml version="1.0"?>
@@ -475,12 +487,12 @@ public class AttendanceReportService {
         EmployeePdfTotals totals = employeePdfTotals(rows);
         List<String> lines = new ArrayList<>();
         lines.add("Kompania : " + companyName());
-        lines.add("Punetori : " + employee.getFullName());
+        lines.add("Punëtori : " + employee.getFullName());
         lines.add("Kodi     : " + employee.getEmployeeCode());
         lines.add("Periudha : " + PDF_DATE.format(from) + " - " + PDF_DATE.format(to));
         lines.add("");
         lines.add(String.format("%-10s %-17s %-22s %-13s %s",
-                "Data", "Hyrja", "Dalja", "Oret e punes", "Statusi"));
+                "Data", "Hyrja", "Dalja", "Orët e punës", "Statusi"));
         lines.add("---------- ----------------- ---------------------- ------------- ----------------");
         for (AttendanceReportRow row : rows) {
             lines.add(String.format(
@@ -514,10 +526,10 @@ public class AttendanceReportService {
             lines.add("Shenim: Dalje automatike = dalje nga sistemi. Dalje nga administratori = dalje e regjistruar nga administratori.");
         }
         lines.add("");
-        lines.add("Totali i diteve te punuara : " + totals.workedDays());
-        lines.add("Totali i oreve normale    : " + minutesLabel(totals.normalMinutes()));
-        lines.add("Totali i oreve shtese     : " + minutesLabel(totals.overtimeMinutes()));
-        lines.add("Totali i oreve            : " + minutesLabel(totals.totalMinutes()));
+        lines.add("Totali i ditëve të punuara : " + totals.workedDays());
+        lines.add("Totali i orëve normale     : " + minutesLabel(totals.normalMinutes()));
+        lines.add("Totali i orëve shtesë      : " + minutesLabel(totals.overtimeMinutes()));
+        lines.add("Totali i përgjithshëm      : " + minutesLabel(totals.totalMinutes()));
         return lines;
     }
 

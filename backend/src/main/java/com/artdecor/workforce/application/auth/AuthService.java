@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 128;
     private static final String INVALID_CREDENTIALS = "Të dhënat e identifikimit nuk janë të sakta.";
 
     private final UserAccountRepository users;
@@ -58,6 +59,7 @@ public class AuthService {
                 user.getRole().name(),
                 user.getFullName(),
                 null,
+                null,
                 user.isPasswordMustChange()
         );
     }
@@ -89,6 +91,7 @@ public class AuthService {
                 UserRole.EMPLOYEE.name(),
                 employee.getFullName(),
                 employee.getId().toString(),
+                employee.getEmployeeCode(),
                 user.isPasswordMustChange()
         );
     }
@@ -109,11 +112,13 @@ public class AuthService {
 
         String fullName = user.getFullName();
         String employeeId = null;
+        String employeeCode = null;
         if (principal.employeeId() != null) {
             var employee = employees.findById(principal.employeeId())
                     .orElseThrow(() -> new AuthException("Authenticated employee no longer exists."));
             fullName = employee.getFullName();
             employeeId = employee.getId().toString();
+            employeeCode = employee.getEmployeeCode();
         }
 
         return new AuthResponse(
@@ -123,6 +128,7 @@ public class AuthService {
                 user.getRole().name(),
                 fullName,
                 employeeId,
+                employeeCode,
                 false
         );
     }
@@ -139,6 +145,7 @@ public class AuthService {
                     principal.role().name(),
                     employee.getFullName(),
                     employee.getId().toString(),
+                    employee.getEmployeeCode(),
                     user.isPasswordMustChange()
             );
         }
@@ -151,6 +158,7 @@ public class AuthService {
                 principal.role().name(),
                 user.getFullName(),
                 null,
+                null,
                 user.isPasswordMustChange()
         );
     }
@@ -158,6 +166,9 @@ public class AuthService {
     private void validatePassword(String password) {
         if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
             throw new AuthException("Password must be at least 8 characters.");
+        }
+        if (password.length() > MAX_PASSWORD_LENGTH) {
+            throw new AuthException("Password must contain 128 characters or fewer.");
         }
     }
 }

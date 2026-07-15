@@ -232,6 +232,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
             value={form.password}
             onChange={(event) => setForm({ ...form, password: event.target.value })}
             minLength={8}
+            maxLength={128}
             type="password"
             required={!editingId}
           />
@@ -323,6 +324,9 @@ function validateEmployeePassword(password: string, editing: boolean) {
   }
   if (normalized && normalized.length < 8) {
     return "Fjalëkalimi duhet të ketë të paktën 8 karaktere.";
+  }
+  if (normalized.length > 128) {
+    return "Fjalekalimi duhet te kete 128 karaktere ose me pak.";
   }
   return "";
 }

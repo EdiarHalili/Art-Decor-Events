@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmployeeManagementService {
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 128;
     private static final String TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#";
 
     private final EmployeeRepository employees;
@@ -147,6 +148,9 @@ public class EmployeeManagementService {
         }
         if (password.length() < MIN_PASSWORD_LENGTH) {
             throw new ManagementException("Password must contain at least 8 characters.");
+        }
+        if (password.length() > MAX_PASSWORD_LENGTH) {
+            throw new ManagementException("Password must contain 128 characters or fewer.");
         }
     }
 
