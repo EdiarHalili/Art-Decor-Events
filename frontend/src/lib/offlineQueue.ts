@@ -15,10 +15,11 @@ const STORAGE_KEY = "artdecor.offlineAttendanceQueue";
 
 export function queueAttendanceAction(action: OfflineAttendanceAction) {
   const queued = getQueuedAttendanceActions();
-  if (queued.some((queuedAction) => queuedAction.id === action.id)) {
-    return;
+  if (queued.some((queuedAction) => samePendingAction(queuedAction, action))) {
+    return false;
   }
   setQueuedAttendanceActions([...queued, action]);
+  return true;
 }
 
 export function getQueuedAttendanceActions(): OfflineAttendanceAction[] {
@@ -56,6 +57,7 @@ export async function syncQueuedAttendanceActions(accessToken: string): Promise<
         scheduleId: action.scheduleId,
         latitude: action.latitude,
         longitude: action.longitude,
+        capturedAt: action.capturedAt,
         device: {
           ...action.device,
           offlineCapturedAt: action.capturedAt,
@@ -81,6 +83,11 @@ export async function syncQueuedAttendanceActions(accessToken: string): Promise<
 
   setQueuedAttendanceActions(remaining);
   return { synced, remaining: remaining.length };
+}
+
+function samePendingAction(left: OfflineAttendanceAction, right: OfflineAttendanceAction) {
+  return left.id === right.id
+    || (left.type === right.type && left.employeeId === right.employeeId && left.scheduleId === right.scheduleId);
 }
 
 function setQueuedAttendanceActions(actions: OfflineAttendanceAction[]) {

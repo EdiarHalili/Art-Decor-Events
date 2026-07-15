@@ -401,7 +401,7 @@ export async function getEmployeeToday(accessToken: string): Promise<EmployeeTod
 
 export async function checkIn(
   accessToken: string,
-  payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
+  payload: { scheduleId: string; latitude?: number; longitude?: number; capturedAt?: string; device: Record<string, string> },
 ): Promise<AttendanceResponse> {
   debugGpsLog("check-in API request payload", {
     scheduleId: payload.scheduleId,
@@ -416,7 +416,7 @@ export async function checkIn(
 
 export async function checkOut(
   accessToken: string,
-  payload: { scheduleId: string; latitude?: number; longitude?: number; device: Record<string, string> },
+  payload: { scheduleId: string; latitude?: number; longitude?: number; capturedAt?: string; device: Record<string, string> },
 ): Promise<AttendanceResponse> {
   debugGpsLog("check-out API request payload", {
     scheduleId: payload.scheduleId,
@@ -820,6 +820,10 @@ function resolveApiBaseUrl() {
 
 function networkErrorMessage() {
   return "Nuk mund të lidhemi me serverin. Kontrolloni internetin, adresën e backend-it ose konfigurimin CORS.";
+}
+
+export function isTemporaryNetworkError(error: unknown) {
+  return error instanceof Error && error.message === networkErrorMessage();
 }
 
 export function debugGpsLog(stage: string, values: Record<string, unknown>) {

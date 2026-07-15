@@ -106,7 +106,8 @@ class AttendanceServiceTest {
                 scheduleId,
                 42.30413,
                 21.64894,
-                Map.of("platform", "test")
+                Map.of("platform", "test"),
+                null
         );
 
         service.checkIn(principal, gpsCommand);
@@ -180,6 +181,64 @@ class AttendanceServiceTest {
     }
 
     @Test
+    void queuedCheckInUsesOriginalCapturedTimeAndGps() {
+        AttendanceActionCommand offlineCommand = new AttendanceActionCommand(
+                scheduleId,
+                42.30413,
+                21.64894,
+                Map.of("platform", "phone", "offlineActionId", "offline-1"),
+                Instant.parse("2026-07-03T06:52:00Z")
+        );
+
+        AttendanceResponse response = service.checkIn(principal, offlineCommand);
+
+        assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T06:52:00Z"));
+        ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
+        verify(attendanceRecords).save(captor.capture());
+        AttendanceRecordEntity saved = captor.getValue();
+        assertThat(saved.getCheckInLatitude()).isEqualTo(42.30413);
+        assertThat(saved.getCheckInLongitude()).isEqualTo(21.64894);
+    }
+
+    @Test
+    void queuedCheckInIsAcceptedAfterWindowClosedWhenCapturedDuringWindow() {
+        schedule.setStatus(WorkScheduleStatus.CHECK_IN_CLOSED);
+
+        AttendanceResponse response = service.checkIn(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.30413,
+                21.64894,
+                Map.of("platform", "phone", "offlineActionId", "offline-closed-window"),
+                Instant.parse("2026-07-03T06:52:00Z")
+        ));
+
+        assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
+        assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T06:52:00Z"));
+    }
+
+    @Test
+    void queuedCheckOutUsesOriginalCapturedTimeForWorkedMinutes() {
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", UUID.randomUUID());
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:52:00Z"));
+        when(attendanceRecords.findByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+
+        AttendanceResponse response = service.checkOut(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.30413,
+                21.64894,
+                Map.of("platform", "phone", "offlineActionId", "offline-2"),
+                Instant.parse("2026-07-03T15:10:00Z")
+        ));
+
+        assertThat(response.checkedOutAt()).isEqualTo(Instant.parse("2026-07-03T15:10:00Z"));
+        assertThat(response.workedMinutes()).isEqualTo(498);
+        assertThat(response.overtimeMinutes()).isEqualTo(10);
+    }
+
+    @Test
     void logsLiveTrackingStopWhenCheckedOutAfterLocationUpdates() {
         UUID recordId = UUID.randomUUID();
         AttendanceRecordEntity existing = new AttendanceRecordEntity();
@@ -219,7 +278,7 @@ class AttendanceServiceTest {
     }
 
     private AttendanceActionCommand command() {
-        return new AttendanceActionCommand(scheduleId, 42.0, 21.0, Map.of("platform", "test"));
+        return new AttendanceActionCommand(scheduleId, 42.0, 21.0, Map.of("platform", "test"), null);
     }
 
     private EmployeeEntity employee(UUID id) {

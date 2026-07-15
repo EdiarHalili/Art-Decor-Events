@@ -12,6 +12,7 @@ import {
   exportMyAttendance,
   getEmployeeToday,
   getMyAttendanceHistory,
+  isTemporaryNetworkError,
   recordLiveLocation,
   type AppSettings,
   type AttendanceReportRow,
@@ -35,6 +36,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   const [message, setMessage] = useState("");
   const [actionLoading, setActionLoading] = useState<"CHECK_IN" | "CHECK_OUT" | null>(null);
   const [queuedCount, setQueuedCount] = useState(getQueuedAttendanceActions().length);
+  const [queuedActions, setQueuedActions] = useState(() => getQueuedAttendanceActions());
   const [todayFresh, setTodayFresh] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [liveTrackingActive, setLiveTrackingActive] = useState(false);
@@ -56,7 +58,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     async function syncOnlineState() {
       const nextOnline = navigator.onLine;
       setOnline(nextOnline);
-      setQueuedCount(getQueuedAttendanceActions().length);
+      refreshQueuedActions();
       if (nextOnline) {
         await syncPendingActions();
       }
@@ -182,6 +184,12 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
   const employeeName = today?.employeeName ?? session.fullName;
   const historyTotals = summarizeHistory(historyRows);
+  const pendingCheckIn = queuedActions.some((action) =>
+    action.type === "CHECK_IN" && action.employeeId === session.employeeId && action.scheduleId === today?.scheduleId,
+  );
+  const pendingCheckOut = queuedActions.some((action) =>
+    action.type === "CHECK_OUT" && action.employeeId === session.employeeId && action.scheduleId === today?.scheduleId,
+  );
 
   useEffect(() => {
     void loadHistory();
@@ -216,6 +224,12 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     };
   }
 
+  function refreshQueuedActions() {
+    const actions = getQueuedAttendanceActions();
+    setQueuedActions(actions);
+    setQueuedCount(actions.length);
+  }
+
   async function submitAttendance(type: "CHECK_IN" | "CHECK_OUT") {
     if (!today?.scheduleId || !session.employeeId) {
       setMessage("Regjistrimi i orarit nuk është i disponueshëm për momentin.");
@@ -230,7 +244,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     setMessage("");
     setAttendanceSuccess("");
     const location = settings?.gpsEnabled === false ? {} : await captureLocation();
-    const payload = { scheduleId: today.scheduleId, ...location, device: deviceMetadata() };
+    const capturedAt = new Date().toISOString();
+    const payload = { scheduleId: today.scheduleId, ...location, capturedAt, device: deviceMetadata() };
     debugGpsLog(`${type.toLowerCase().replace("_", "-")} prepared payload`, {
       scheduleId: payload.scheduleId,
       latitude: payload.latitude,
@@ -238,23 +253,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
     });
 
     if (!navigator.onLine) {
-      queueAttendanceAction({
-        id: crypto.randomUUID(),
-        type,
-        employeeId: session.employeeId,
-        scheduleId: today.scheduleId,
-        capturedAt: new Date().toISOString(),
-        ...location,
-        device: deviceMetadata(),
-      });
-      setQueuedCount(getQueuedAttendanceActions().length);
-      if (type === "CHECK_OUT") {
-        setCheckoutConfirmOpen(false);
-        setMessage("Dalja u ruajt pa internet dhe do të sinkronizohet kur lidhja të kthehet.");
-      } else {
-        setCheckinConfirmOpen(false);
-        setMessage("Hyrja u ruajt pa internet dhe do të sinkronizohet kur lidhja të kthehet.");
-      }
+      queuePendingAttendance(type, payload);
       setActionLoading(null);
       return;
     }
@@ -286,21 +285,56 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         setMessage("");
       }
     } catch (error) {
+      if (isTemporaryNetworkError(error)) {
+        queuePendingAttendance(type, payload);
+        return;
+      }
       setMessage(type === "CHECK_OUT" ? checkoutErrorMessage(error) : error instanceof Error ? error.message : "Hyrja nuk mund të regjistrohej.");
     } finally {
       setActionLoading(null);
     }
   }
 
+  function queuePendingAttendance(
+    type: "CHECK_IN" | "CHECK_OUT",
+    payload: { scheduleId: string; latitude?: number; longitude?: number; capturedAt: string; device: Record<string, string> },
+  ) {
+    const queued = queueAttendanceAction({
+      id: crypto.randomUUID(),
+      type,
+      employeeId: session.employeeId!,
+      scheduleId: payload.scheduleId,
+      capturedAt: payload.capturedAt,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      device: payload.device,
+    });
+    refreshQueuedActions();
+    if (type === "CHECK_OUT") {
+      setCheckoutConfirmOpen(false);
+      setToday({ ...today!, status: "Dalja është në pritje për sinkronizim.", checkInOpen: false, checkOutAvailable: false });
+      setMessage(queued
+        ? "Dalja u ruajt lokalisht. Do të dërgohet automatikisht kur lidhja të rikthehet."
+        : "Dalja është tashmë në pritje dhe do të dërgohet automatikisht kur lidhja të rikthehet.");
+      return;
+    }
+
+    setCheckinConfirmOpen(false);
+    setToday({ ...today!, status: "Hyrja është në pritje për sinkronizim.", checkInOpen: false, checkOutAvailable: true });
+    setMessage(queued
+      ? "Hyrja u ruajt lokalisht. Do të dërgohet automatikisht kur lidhja të rikthehet."
+      : "Hyrja është tashmë në pritje dhe do të dërgohet automatikisht kur lidhja të rikthehet.");
+  }
+
   async function syncPendingActions() {
     const before = getQueuedAttendanceActions().length;
     if (before === 0) {
-      setQueuedCount(0);
+      refreshQueuedActions();
       return;
     }
 
     const result = await syncQueuedAttendanceActions(session.accessToken);
-    setQueuedCount(result.remaining);
+    refreshQueuedActions();
     if (result.synced > 0) {
       setMessage(result.remaining === 0 ? "Regjistrimet pa internet u sinkronizuan." : "Disa regjistrime pa internet ende presin sinkronizimin.");
       getEmployeeToday(session.accessToken)
@@ -420,18 +454,18 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           <div className="mt-5 grid gap-3">
             <Button
               className="h-14 text-base sm:h-16"
-              disabled={!today?.checkInOpen || actionLoading !== null || (online && !todayFresh)}
+              disabled={!today?.checkInOpen || pendingCheckIn || actionLoading !== null || (online && !todayFresh)}
               onClick={() => setCheckinConfirmOpen(true)}
             >
-              {actionLoading === "CHECK_IN" ? "Duke regjistruar..." : "Hyrje"}
+              {pendingCheckIn ? "Hyrja është në pritje..." : actionLoading === "CHECK_IN" ? "Duke regjistruar..." : "Hyrje"}
             </Button>
             <Button
               className="h-14 text-base sm:h-16"
               variant="secondary"
-              disabled={!today?.checkOutAvailable || actionLoading !== null || (online && !todayFresh)}
+              disabled={!today?.checkOutAvailable || pendingCheckOut || actionLoading !== null || (online && !todayFresh)}
               onClick={() => setCheckoutConfirmOpen(true)}
             >
-              {actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Dalje"}
+              {pendingCheckOut ? "Dalja është në pritje..." : actionLoading === "CHECK_OUT" ? "Duke regjistruar..." : "Dalje"}
             </Button>
           </div>
         </Card>

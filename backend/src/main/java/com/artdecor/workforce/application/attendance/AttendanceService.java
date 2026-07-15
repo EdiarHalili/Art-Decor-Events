@@ -72,16 +72,15 @@ public class AttendanceService {
         if (schedule.getStatus() == WorkScheduleStatus.CANCELLED) {
             throw new AttendanceException("SCHEDULE_CANCELLED", "This schedule has been cancelled.");
         }
-        if (schedule.getStatus() == WorkScheduleStatus.CHECK_IN_CLOSED) {
+        Instant actionTime = actionTime(command);
+        if (schedule.getStatus() == WorkScheduleStatus.CHECK_IN_CLOSED && actionTime.isAfter(schedule.getCheckInClosesAt())) {
             throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
         }
-
-        Instant now = Instant.now(clock);
         if (!schedule.isSimpleOpenMode() && schedule.getStatus() != WorkScheduleStatus.CHECK_IN_OPEN) {
-            if (now.isBefore(schedule.getCheckInOpensAt())) {
+            if (actionTime.isBefore(schedule.getCheckInOpensAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_NOT_OPEN", "Check-in is not open yet.");
             }
-            if (now.isAfter(schedule.getCheckInClosesAt())) {
+            if (actionTime.isAfter(schedule.getCheckInClosesAt())) {
                 throw new AttendanceException("ATTENDANCE_WINDOW_CLOSED", "Check-in is closed for this daily window.");
             }
         }
@@ -103,7 +102,7 @@ public class AttendanceService {
         );
         record.setSchedule(schedule);
         record.setEmployee(employee);
-        record.setCheckedInAt(now);
+        record.setCheckedInAt(actionTime);
         record.setCheckInLatitude(gpsEnabled ? command.latitude() : null);
         record.setCheckInLongitude(gpsEnabled ? command.longitude() : null);
         record.setCheckInDevice(command.device());
@@ -132,7 +131,7 @@ public class AttendanceService {
             throw new AttendanceException("DUPLICATE_CHECK_OUT", "Nuk ka një orar aktiv për ta përfunduar.");
         }
 
-        Instant now = Instant.now(clock);
+        Instant actionTime = actionTime(command);
         boolean gpsEnabled = settings.current().gpsEnabled();
         GpsDebugLogger.log(
                 "check-out request",
@@ -142,12 +141,12 @@ public class AttendanceService {
                 "longitude", command.longitude(),
                 "gpsEnabled", gpsEnabled
         );
-        record.setCheckedOutAt(now);
+        record.setCheckedOutAt(actionTime);
         record.setCheckOutLatitude(gpsEnabled ? command.latitude() : null);
         record.setCheckOutLongitude(gpsEnabled ? command.longitude() : null);
         record.setCheckOutDevice(command.device());
-        record.setWorkedMinutes((int) Duration.between(record.getCheckedInAt(), now).toMinutes());
-        record.setOvertimeMinutes(calculateOvertimeMinutes(record, now));
+        record.setWorkedMinutes((int) Duration.between(record.getCheckedInAt(), actionTime).toMinutes());
+        record.setOvertimeMinutes(calculateOvertimeMinutes(record, actionTime));
         record.setAutoCheckout(false);
         record.setCheckoutType(CheckoutType.MANUAL_EMPLOYEE);
         record.setStatus(AttendanceStatus.CHECKED_OUT);
@@ -214,6 +213,10 @@ public class AttendanceService {
         }
 
         return (int) Duration.between(plannedEndAt, checkedOutAt).toMinutes();
+    }
+
+    private Instant actionTime(AttendanceActionCommand command) {
+        return command.capturedAt() == null ? Instant.now(clock) : command.capturedAt();
     }
 
     private AttendanceResponse toResponse(AttendanceRecordEntity record) {
