@@ -247,8 +247,8 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[400px_1fr]">
-      <Card className="p-5">
+    <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <div className="rounded-md bg-primary/15 p-2 text-primary">
             <UserPlus size={21} />
@@ -279,7 +279,7 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
           />
           <Input placeholder="Telefoni" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
           <Input placeholder="URL e fotos së profilit" value={form.profilePhotoUrl} onChange={(event) => setForm({ ...form, profilePhotoUrl: event.target.value })} />
-          <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
             <Input placeholder="Pozita" value={form.positionTitle} onChange={(event) => setForm({ ...form, positionTitle: event.target.value })} />
             <Input placeholder="Departamenti" value={form.departmentName} onChange={(event) => setForm({ ...form, departmentName: event.target.value })} />
             <Input placeholder="Ekipi" value={form.teamName} onChange={(event) => setForm({ ...form, teamName: event.target.value })} />
@@ -293,7 +293,7 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
       </Card>
 
       <div className="grid gap-5">
-        <Card className="p-5">
+      <Card className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold">Punëtorët</h2>
@@ -540,7 +540,7 @@ function EmployeeProfile({
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar employee={employee} large />
           <div>
@@ -548,7 +548,7 @@ function EmployeeProfile({
             <p className="mt-1 text-sm text-muted-foreground">{employee.employeeCode} · {employee.status === "ACTIVE" ? "Aktiv" : "Joaktiv"}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="grid w-full min-w-0 gap-2 min-[420px]:flex min-[420px]:w-auto min-[420px]:flex-wrap sm:justify-end">
           <Button type="button" variant="secondary" onClick={onEdit}><Edit3 size={17} />Edito</Button>
           <Button type="button" variant="secondary" disabled={resettingPassword} onClick={() => void resetPassword()}>
             <KeyRound size={17} />
@@ -587,7 +587,7 @@ function EmployeeProfile({
         </div>
       )}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ProfileField label="Telefoni" value={employee.phone || "Nuk është vendosur"} />
         <ProfileField label="Pozita" value={employee.positionTitle || "Nuk është vendosur"} />
         <ProfileField label="Departamenti" value={employee.departmentName || "Nuk është vendosur"} />
@@ -605,7 +605,7 @@ function EmployeeProfile({
             <p className="font-semibold">Eksporto historinë e punës</p>
             <p className="mt-1 text-sm text-muted-foreground">Përmbledhje e thjeshtë e orëve dhe regjistrimeve të punës.</p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-[150px_150px_150px] xl:flex xl:items-end">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-3 xl:flex xl:items-end">
             <label className="space-y-1 text-sm font-medium">
               <span>Periudha</span>
               <select
@@ -654,12 +654,12 @@ function EmployeeProfile({
           {historyLoading && <p className="p-4 text-sm text-muted-foreground">Historia po ngarkohet...</p>}
           {!historyLoading && history.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nuk ka regjistrime për këtë muaj.</p>}
           {history.slice(0, 12).map((row) => (
-            <div key={`${row.scheduleId}-${row.workDate}`} className="grid gap-3 p-4 text-sm lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
+            <div key={`${row.scheduleId}-${row.workDate}`} className="grid min-w-0 gap-3 p-3 text-sm sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-center">
               <div>
                 <p className="font-semibold">{formatDate(row.workDate)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
               </div>
-              <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
+              <div className="grid min-w-0 gap-2 text-muted-foreground sm:grid-cols-2">
                 <span>Hyrja: {formatTime(row.checkedInAt)}</span>
                 <span>Dalja: {checkoutLabel(row.checkoutType, row.checkedOutAt)}</span>
                 <GpsCell label="GPS hyrje" latitude={row.checkInLatitude} longitude={row.checkInLongitude} distanceMeters={row.checkInDistanceMeters} />
@@ -682,8 +682,8 @@ function EmployeeProfile({
         </div>
       </div>
       {checkoutRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 shadow-xl sm:p-5">
             <h3 className="text-lg font-semibold">Regjistro daljen</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               Zgjidhni datën dhe orën kur ky punëtor ka përfunduar punën.
@@ -712,8 +712,8 @@ function EmployeeProfile({
         </div>
       )}
       {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 shadow-xl sm:p-5">
             <div className="flex items-center gap-3 text-destructive">
               <div className="rounded-md bg-destructive/10 p-2">
                 <Trash2 size={20} />
@@ -759,8 +759,8 @@ function EmployeeProfile({
         </div>
       )}
       {forceDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-lg rounded-lg border border-destructive/30 bg-card p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-destructive/30 bg-card p-4 shadow-xl sm:p-5">
             <div className="flex items-center gap-3 text-destructive">
               <div className="rounded-md bg-destructive/10 p-2">
                 <Trash2 size={20} />

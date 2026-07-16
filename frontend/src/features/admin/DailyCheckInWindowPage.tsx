@@ -247,8 +247,8 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
   }
 
   return (
-    <div className="grid gap-5">
-      <Card className="p-5">
+    <div className="grid min-w-0 gap-4 sm:gap-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -264,7 +264,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
             </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[360px]">
+          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 lg:w-auto lg:min-w-0">
             <div className="rounded-md border border-border px-3 py-2">
               <p className="text-xs text-muted-foreground">Koha e mbylljes</p>
               <p className="mt-1 font-semibold">{openModeUnlimitedCheckout ? "Pa kufi" : openModeCloseTime}</p>
@@ -308,7 +308,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
         )}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <Button type="button" onClick={openCreateForm}>
+          <Button type="button" className="w-full sm:w-auto" onClick={openCreateForm}>
             <CalendarClock size={18} />
             Krijo orar të planifikuar
           </Button>
@@ -318,7 +318,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
       {message && <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
       {formOpen && (
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="font-semibold">{editingWindowId ? "Ndrysho orarin" : "Krijo orar"}</h2>
@@ -331,7 +331,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
           </div>
 
           <form className="mt-5 space-y-4" onSubmit={submit}>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid min-w-0 gap-3 md:grid-cols-3">
               <label className="space-y-1 text-sm font-medium">
                 <span>Data</span>
                 <Input type="date" value={form.workDate} onChange={(event) => setForm({ ...form, workDate: event.target.value })} required />
@@ -365,12 +365,12 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
                     <p className="text-sm font-semibold">Punëtorët e lejuar</p>
                     <p className="text-xs text-muted-foreground">{form.employeeIds.length} të zgjedhur</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="secondary" className="h-9 px-3" onClick={selectAllEmployees}>
+                  <div className="grid grid-cols-2 gap-2 min-[420px]:flex min-[420px]:flex-wrap">
+                    <Button type="button" variant="secondary" className="min-h-9 px-3" onClick={selectAllEmployees}>
                       <Check size={16} />
                       Zgjidhi të gjithë
                     </Button>
-                    <Button type="button" variant="ghost" className="h-9 px-3" onClick={clearEmployees}>
+                    <Button type="button" variant="ghost" className="min-h-9 px-3" onClick={clearEmployees}>
                       <X size={16} />
                       Pastro
                     </Button>
@@ -412,7 +412,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
         </Card>
       )}
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">Oraret e planifikuara</h2>
@@ -431,7 +431,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
             </div>
           )}
           {windows.map((window) => (
-            <div key={window.id} className="rounded-lg border border-border p-4">
+            <div key={window.id} className="rounded-lg border border-border p-3 sm:p-4">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -443,7 +443,7 @@ export function DailyCheckInWindowPage({ accessToken, settings, onSettingsUpdate
                   </p>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                   {window.status === "CANCELLED" ? (
                     <Button type="button" variant="danger" onClick={() => void deleteCancelled(window.id)}>
                       <Trash2 size={16} />

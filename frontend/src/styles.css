@@ -38,13 +38,15 @@
 
 html {
   width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -68,6 +70,7 @@ input,
 select,
 textarea {
   touch-action: manipulation;
+  min-width: 0;
 }
 
 img,
@@ -77,13 +80,21 @@ video {
   max-width: 100%;
 }
 
+#root {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 p,
 h1,
 h2,
 h3,
 span,
 button,
-a {
+a,
+label {
   overflow-wrap: anywhere;
 }
 

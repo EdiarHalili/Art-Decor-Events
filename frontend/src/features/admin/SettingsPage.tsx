@@ -135,8 +135,8 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Card className="p-5">
+    <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <div className="rounded-md bg-primary/15 p-2 text-primary">
             <Palette size={22} />
@@ -149,7 +149,7 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
 
         {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
 
-        <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={submit}>
+        <form className="mt-5 grid min-w-0 gap-4 md:grid-cols-2" onSubmit={submit}>
           <label className="space-y-1 text-sm font-medium md:col-span-2">
             <span>Emri i kompanisë</span>
             <Input value={form.companyName} onChange={(event) => setForm({ ...form, companyName: event.target.value })} required />
@@ -219,7 +219,7 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
               placeholder="Optional"
             />
           </label>
-          <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 md:col-span-2">
             <Toggle label="GPS gjatë hyrjes/daljes" checked={form.gpsEnabled} onChange={(checked) => setForm({ ...form, gpsEnabled: checked })} />
             <Toggle label="Lokacion live gjatë punës" checked={form.liveLocationTrackingEnabled} onChange={(checked) => setForm({ ...form, liveLocationTrackingEnabled: checked })} />
           </div>
@@ -231,7 +231,7 @@ export function SettingsPage({ accessToken, settings, onSettingsUpdated }: Setti
       </Card>
 
       <div className="grid gap-5">
-        <Card className="p-5">
+      <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <Megaphone className="text-primary" size={21} />
             <h2 className="font-semibold">Njoftime për punëtorët</h2>

@@ -58,7 +58,7 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
   return (
     <main className="min-h-screen overflow-x-hidden bg-background pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <div className="grid min-h-screen min-w-0 lg:grid-cols-[260px_1fr]">
-        <aside className="hidden border-r border-border bg-card p-5 lg:block">
+        <aside className="hidden min-w-0 border-r border-border bg-card p-5 lg:block">
           <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
           <nav className="mt-8 space-y-2 text-sm">
             {navItems.map((item) => (
@@ -76,20 +76,20 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
           </nav>
         </aside>
 
-        <section className="min-w-0 max-w-full px-3 py-4 sm:px-6 lg:px-8">
-          <header className="sticky top-0 z-20 -mx-3 flex flex-col gap-3 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
+        <section className="min-w-0 max-w-full overflow-x-hidden px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
+          <header className="sticky top-0 z-20 -mx-3 flex min-w-0 flex-col gap-3 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3 lg:static lg:mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
             <div className="min-w-0">
               <p className="text-sm font-medium text-primary">Paneli administrativ</p>
-              <h1 className="mt-1 break-words text-xl font-semibold sm:text-3xl">{viewTitle(activeView)}</h1>
+              <h1 className="mt-1 break-words text-xl font-semibold leading-tight sm:text-3xl">{viewTitle(activeView)}</h1>
               <p className="mt-1 text-sm text-muted-foreground">I identifikuar si {session.fullName}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid w-full min-w-0 grid-cols-2 gap-2 min-[380px]:flex min-[380px]:w-auto min-[380px]:flex-wrap sm:justify-end">
               <Button variant="secondary" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Hap menynë">
                 <Menu size={18} />
                 Meny
               </Button>
               <ThemeToggle />
-              <Button variant="ghost" onClick={onLogout} aria-label="Dil" title="Dil">
+              <Button variant="ghost" className="w-full min-[380px]:w-auto" onClick={onLogout} aria-label="Dil" title="Dil">
                 <LogOut size={18} />
                 Dil
               </Button>
@@ -240,9 +240,9 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
 
   return (
     <>
-      <section className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-corporate">
-            <div className="grid lg:grid-cols-[1fr_360px]">
-              <div className="p-6">
+      <section className="mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-corporate sm:mt-6">
+            <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 p-4 sm:p-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Art Decor Events</p>
                 <h2 className="mt-3 text-2xl font-semibold">Gjendja e sotme e punëtorëve</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -252,24 +252,24 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                 </p>
                 {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
               </div>
-              <img src={detailUrl} alt="" className="h-64 w-full object-cover lg:h-full" />
+              <img src={detailUrl} alt="" className="h-36 w-full object-cover sm:h-48 lg:h-full" />
             </div>
           </section>
 
-          <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             {kpis.map((kpi) => (
-              <Card key={kpi.label} className="p-5">
+              <Card key={kpi.label} className="p-4 sm:p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">{kpi.label}</p>
                   <kpi.icon className="text-primary" size={21} />
                 </div>
-                <p className="mt-4 text-3xl font-semibold">{kpi.value}</p>
+                <p className="mt-3 text-2xl font-semibold sm:mt-4 sm:text-3xl">{kpi.value}</p>
               </Card>
             ))}
           </section>
 
-          <section className="mt-6 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-            <Card className="p-5">
+          <section className="mt-4 grid min-w-0 gap-4 sm:mt-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+            <Card className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-semibold">Prezenca live</h2>
                 {loading && <RefreshCw className="animate-spin text-muted-foreground" size={16} />}
@@ -281,18 +281,18 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                   </div>
                 )}
                 {snapshot?.liveAttendance.map((row) => (
-                  <div key={`${row.employeeId}-${row.checkedInAt}`} className="grid gap-3 p-4 text-sm md:grid-cols-[1.2fr_1fr_auto] md:items-center">
+                  <div key={`${row.employeeId}-${row.checkedInAt}`} className="grid min-w-0 gap-3 p-3 text-sm sm:p-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] md:items-center">
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{row.employeeName}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{row.employeeCode}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:text-sm">
+                    <div className="grid min-w-0 grid-cols-1 gap-2 text-xs text-muted-foreground min-[360px]:grid-cols-2 sm:text-sm">
                       <span>Hyrja: {formatTime(row.checkedInAt)}</span>
                       <span>Dalja: {formatTime(row.checkedOutAt)}</span>
                       <span>Punuar: {formatMinutes(row.workedMinutes)}</span>
                       <span>Shtesë: {row.overtimeMinutes > 0 ? formatMinutes(row.overtimeMinutes) : "-"}</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                    <div className="grid min-w-0 grid-cols-2 gap-2 min-[420px]:flex min-[420px]:flex-wrap md:justify-end">
                       <span className="rounded-md bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
                         {attendanceStatusLabel(row)}
                       </span>
@@ -311,7 +311,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                 ))}
               </div>
             </Card>
-            <Card className="p-5">
+            <Card className="p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="text-primary" size={19} />
@@ -326,8 +326,8 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                   </div>
                 )}
                 {snapshot?.liveLocations.map((location) => (
-                  <div key={location.attendanceRecordId} className="grid gap-3 p-4 text-sm md:grid-cols-[1fr_auto] md:items-center">
-                    <div>
+                  <div key={location.attendanceRecordId} className="grid min-w-0 gap-3 p-3 text-sm sm:p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                    <div className="min-w-0">
                       <p className="font-semibold">{location.employeeName}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {location.employeeCode} · {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
@@ -347,7 +347,7 @@ function DashboardOverview({ accessToken }: { accessToken: string }) {
                 ))}
               </div>
             </Card>
-            <Card className="p-5">
+            <Card className="p-4 sm:p-5">
               <h2 className="font-semibold">Veprime të shpejta</h2>
               <div className="mt-5 grid gap-3">
                 {(snapshot?.quickActions ?? ["Shto punëtor", "Krijo dritare", "Publiko njoftim"]).map((action) => (

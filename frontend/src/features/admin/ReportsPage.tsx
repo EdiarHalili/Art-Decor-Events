@@ -94,8 +94,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
   const maxAssigned = Math.max(1, ...(report?.buckets.map((bucket) => bucket.assigned) ?? [1]));
 
   return (
-    <div className="space-y-5">
-      <Card className="p-5">
+    <div className="min-w-0 space-y-4 sm:space-y-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-[150px_150px_150px_auto]">
+          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 lg:w-auto lg:grid-cols-[150px_150px_150px_auto]">
             <label className="space-y-1 text-sm font-medium">
               <span>Nga</span>
               <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -139,15 +139,15 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
         {message && <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{message}</p>}
       </Card>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <Metric label="Punëtorë" value={summary?.assigned ?? 0} />
         <Metric label="Në punë" value={checkedInCount} />
         <Metric label="Dalë" value={checkedOutCount} />
         <Metric label="Orë pune" value={Math.round((summary?.workedMinutes ?? 0) / 60)} />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-5">
+      <section className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Përmbledhje e attendance</h2>
@@ -180,7 +180,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Historiku i punëtorëve</h2>
@@ -215,7 +215,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
         </Card>
       </section>
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-semibold">{selectedEmployee ? `Historiku - ${selectedEmployee.employeeName}` : "Regjistrimet e attendance"}</h2>
@@ -223,8 +223,8 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
               {filteredRows.length} regjistrime · {hours(summary?.workedMinutes ?? 0)} punuar · {hours(summary?.overtimeMinutes ?? 0)} shtesë
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative sm:w-64">
+          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:flex-wrap lg:justify-end">
+            <div className="relative sm:col-span-2 lg:col-span-1 lg:w-64">
               <Search className="absolute left-3 top-3 text-muted-foreground" size={18} />
               <Input className="pl-10" placeholder="Kërko regjistrime" value={query} onChange={(event) => setQuery(event.target.value)} />
             </div>
@@ -243,7 +243,7 @@ export function ReportsPage({ accessToken }: ReportsPageProps) {
           </div>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-lg border border-border">
+        <div className="mt-5 max-w-full overflow-x-auto rounded-lg border border-border">
           <table className="w-full min-w-[1120px] text-left text-sm">
             <thead className="bg-muted text-xs uppercase text-muted-foreground">
               <tr>

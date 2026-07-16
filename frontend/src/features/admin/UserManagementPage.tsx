@@ -79,8 +79,8 @@ export function UserManagementPage({ accessToken }: UserManagementPageProps) {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-      <Card className="p-5">
+    <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <div className="rounded-md bg-primary/15 p-2 text-primary">
             <ShieldCheck size={21} />
@@ -122,7 +122,7 @@ export function UserManagementPage({ accessToken }: UserManagementPageProps) {
         </form>
       </Card>
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">System users</h2>
@@ -141,12 +141,12 @@ export function UserManagementPage({ accessToken }: UserManagementPageProps) {
         <div className="mt-5 divide-y divide-border rounded-lg border border-border">
           {filteredUsers.length === 0 && <p className="p-4 text-sm text-muted-foreground">No users found.</p>}
           {filteredUsers.map((user) => (
-            <div key={user.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div key={user.id} className="flex min-w-0 flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div>
                 <p className="font-medium">{user.fullName}</p>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">{user.role}</span>
                 <span className={user.status === "ACTIVE" ? "text-sm text-accent" : "text-sm text-muted-foreground"}>
                   {user.status}

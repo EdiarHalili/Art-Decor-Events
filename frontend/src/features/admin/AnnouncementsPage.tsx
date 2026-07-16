@@ -84,8 +84,8 @@ export function AnnouncementsPage({ accessToken }: AnnouncementsPageProps) {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,420px)_1fr]">
-      <Card className="p-5">
+    <div className="grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <div className="rounded-md bg-primary/15 p-2 text-primary">
             <Megaphone size={21} />
@@ -112,7 +112,7 @@ export function AnnouncementsPage({ accessToken }: AnnouncementsPageProps) {
             onChange={(event) => setForm({ ...form, body: event.target.value })}
             required
           />
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             <Button disabled={saving}>{saving ? "Duke ruajtur..." : editingId ? "Ruaj ndryshimet" : "Publiko"}</Button>
             {editingId && (
               <Button
@@ -131,7 +131,7 @@ export function AnnouncementsPage({ accessToken }: AnnouncementsPageProps) {
         </form>
       </Card>
 
-      <Card className="p-5">
+      <Card className="p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-semibold">Njoftimet e publikuara</h2>
           <span className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{announcements.length}</span>
@@ -144,19 +144,19 @@ export function AnnouncementsPage({ accessToken }: AnnouncementsPageProps) {
             </p>
           )}
           {announcements.map((item) => (
-            <div key={item.id} className="rounded-lg border border-border p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div key={item.id} className="rounded-lg border border-border p-3 sm:p-4">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="break-words font-semibold">{item.title}</p>
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{item.body}</p>
                   <p className="mt-2 text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</p>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => editAnnouncement(item)}>
+                <div className="grid shrink-0 grid-cols-2 gap-2 min-[420px]:flex">
+                  <Button type="button" variant="secondary" className="min-h-9 px-3" onClick={() => editAnnouncement(item)}>
                     <Edit3 size={16} />
                     Edito
                   </Button>
-                  <Button type="button" variant="ghost" className="h-9 px-3 text-destructive" onClick={() => void removeAnnouncement(item.id)}>
+                  <Button type="button" variant="ghost" className="min-h-9 px-3 text-destructive" onClick={() => void removeAnnouncement(item.id)}>
                     <Trash2 size={16} />
                     Fshi
                   </Button>

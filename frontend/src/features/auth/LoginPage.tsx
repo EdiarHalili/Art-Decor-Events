@@ -57,7 +57,7 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
   }
 
   return (
-    <main className="grid min-h-screen bg-background lg:grid-cols-[1.1fr_0.9fr]">
+    <main className="grid min-h-screen min-w-0 overflow-x-hidden bg-background lg:grid-cols-[1.1fr_0.9fr]">
       <section className="relative hidden overflow-hidden lg:block">
         <img src={venueUrl} alt="" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-black/35" />
@@ -70,14 +70,14 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
         </div>
       </section>
 
-      <section className="brand-surface flex min-h-screen items-center justify-center px-5 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2rem+env(safe-area-inset-top))]">
-        <div className="absolute right-5 top-5">
+      <section className="brand-surface flex min-h-screen items-center justify-center px-3 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5 sm:py-8 sm:pb-[calc(2rem+env(safe-area-inset-bottom))] sm:pt-[calc(2rem+env(safe-area-inset-top))]">
+        <div className="absolute right-3 top-3 sm:right-5 sm:top-5">
           <ThemeToggle />
         </div>
-        <Card className="w-full max-w-md p-5 shadow-corporate sm:p-6">
+        <Card className="w-full max-w-md p-4 shadow-corporate sm:p-6">
           <BrandMark logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
 
-          <div className="mt-8 grid grid-cols-2 rounded-lg bg-muted p-1">
+          <div className="mt-5 grid grid-cols-2 rounded-lg bg-muted p-1 sm:mt-8">
             <Button
               type="button"
               variant={mode === "employee" ? "primary" : "ghost"}
@@ -98,7 +98,7 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
             </Button>
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
+          <form className="mt-5 space-y-3 sm:mt-6 sm:space-y-4" onSubmit={submit} noValidate>
             {mode === "employee" ? (
               <>
                 <label className="block space-y-2">

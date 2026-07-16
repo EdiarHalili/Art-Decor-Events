@@ -18,7 +18,7 @@ export function Button({ className, variant = "primary", ...props }: ButtonProps
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-center text-sm font-semibold leading-tight transition disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
         className,
       )}
@@ -26,4 +26,3 @@ export function Button({ className, variant = "primary", ...props }: ButtonProps
     />
   );
 }
-

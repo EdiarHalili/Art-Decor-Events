@@ -386,11 +386,11 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }
 
   return (
-    <main className="brand-surface min-h-screen overflow-x-hidden px-3 py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-4 sm:py-5">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-4 sm:gap-5">
-        <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-background/80 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
+    <main className="brand-surface min-h-screen overflow-x-hidden px-3 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-4 sm:py-5">
+      <div className="mx-auto flex w-full max-w-md flex-col gap-3 sm:gap-5">
+        <header className="sticky top-0 z-10 -mx-3 flex min-w-0 items-center justify-between gap-2 bg-background/80 px-3 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
           <BrandMark compact logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {online ? <Wifi size={15} /> : <WifiOff size={15} />}
               {online ? "Online" : "Pa internet"}
@@ -412,7 +412,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           </div>
         </section>
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <div className="rounded-md bg-primary/15 p-2 text-primary">
               <CalendarClock size={22} />
@@ -425,7 +425,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
             </div>
           </div>
 
-          <div className="mt-5 rounded-md bg-muted p-4 text-sm">
+          <div className="mt-4 rounded-md bg-muted p-3 text-sm sm:mt-5 sm:p-4">
             <div className="flex items-center gap-2 font-medium">
               <MapPin size={17} />
               Gjendja
@@ -453,14 +453,14 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
 
           <div className="mt-5 grid gap-3">
             <Button
-              className="h-14 text-base sm:h-16"
+              className="min-h-14 text-base sm:min-h-16"
               disabled={!today?.checkInOpen || pendingCheckIn || actionLoading !== null || (online && !todayFresh)}
               onClick={() => setCheckinConfirmOpen(true)}
             >
               {pendingCheckIn ? "Hyrja është në pritje..." : actionLoading === "CHECK_IN" ? "Duke regjistruar..." : "Hyrje"}
             </Button>
             <Button
-              className="h-14 text-base sm:h-16"
+              className="min-h-14 text-base sm:min-h-16"
               variant="secondary"
               disabled={!today?.checkOutAvailable || pendingCheckOut || actionLoading !== null || (online && !todayFresh)}
               onClick={() => setCheckoutConfirmOpen(true)}
@@ -486,8 +486,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         </Card>
 
         {checkinConfirmOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkin-confirm-title">
-            <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4" role="dialog" aria-modal="true" aria-labelledby="checkin-confirm-title">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 shadow-xl sm:p-5">
               <h2 id="checkin-confirm-title" className="text-lg font-semibold">Konfirmo Hyrjen</h2>
               <p className="mt-3 text-sm text-muted-foreground">
                 A jeni i sigurt që dëshironi ta filloni orarin tuaj të punës?
@@ -514,8 +514,8 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
         )}
 
         {checkoutConfirmOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
-            <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 shadow-xl sm:p-5">
               <h2 id="checkout-confirm-title" className="text-lg font-semibold">Konfirmo daljen</h2>
               <p className="mt-3 text-sm text-muted-foreground">A jeni i sigurt që dëshironi të bëni daljen?</p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -539,7 +539,7 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
           </div>
         )}
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <Bell className="text-primary" size={21} />
             <h2 className="font-semibold">Njoftime</h2>
