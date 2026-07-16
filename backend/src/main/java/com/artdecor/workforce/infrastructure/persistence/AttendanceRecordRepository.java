@@ -40,6 +40,8 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
 
     void deleteByScheduleId(UUID scheduleId);
 
+    void deleteByEmployeeId(UUID employeeId);
+
     @Query("""
             select record
             from AttendanceRecordEntity record

@@ -96,6 +96,25 @@ public class AdminEmployeeController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{employeeId}/force")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<Void> forceDeleteEmployee(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @PathVariable UUID employeeId
+    ) {
+        employees.forceDeleteEmployee(employeeId, principal);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/deletion-policy")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public EmployeeDeletionPolicyResponse deletionPolicy() {
+        return new EmployeeDeletionPolicyResponse(employees.isForceEmployeeDeleteAllowed());
+    }
+
+    public record EmployeeDeletionPolicyResponse(boolean forceDeleteAllowed) {
+    }
+
     public record CreateEmployeeRequest(
             @NotBlank(message = "ID e punëtorit është e detyrueshme.") @Size(max = 40, message = "ID e punëtorit duhet të ketë 40 karaktere ose më pak.") String employeeCode,
             @NotBlank(message = "Emri i plotë është i detyrueshëm.") @Size(max = 160, message = "Emri i plotë duhet të ketë 160 karaktere ose më pak.") String fullName,

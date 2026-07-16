@@ -42,17 +42,7 @@ class EmployeeManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new EmployeeManagementService(
-                employees,
-                users,
-                attendanceRecords,
-                liveLocations,
-                assignments,
-                auditLogs,
-                pushSubscriptions,
-                payrollSummaries,
-                passwordEncoder
-        );
+        service = service(false);
         when(employees.save(any(EmployeeEntity.class))).thenAnswer(invocation -> {
             EmployeeEntity employee = invocation.getArgument(0);
             ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
@@ -63,6 +53,21 @@ class EmployeeManagementServiceTest {
             ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
             return user;
         });
+    }
+
+    private EmployeeManagementService service(boolean forceDeleteAllowed) {
+        return new EmployeeManagementService(
+                employees,
+                users,
+                attendanceRecords,
+                liveLocations,
+                assignments,
+                auditLogs,
+                pushSubscriptions,
+                payrollSummaries,
+                passwordEncoder,
+                forceDeleteAllowed
+        );
     }
 
     @Test
@@ -310,13 +315,99 @@ class EmployeeManagementServiceTest {
                 .hasMessageContaining("llogarinë tuaj");
     }
 
+    @Test
+    void forceDeleteRequiresConfigurationFlag() {
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> service.forceDeleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class)
+                .hasMessageContaining("nuk është e aktivizuar");
+
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+    }
+
+    @Test
+    void forceDeleteRemovesEmployeeWithAttendanceAndLocationHistory() {
+        service = service(true);
+        UUID employeeId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, userId);
+        UserAccountEntity user = employee.getUserAccount();
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        service.forceDeleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(
+                auditLogs,
+                liveLocations,
+                attendanceRecords,
+                assignments,
+                payrollSummaries,
+                pushSubscriptions,
+                employees,
+                users
+        );
+        order.verify(auditLogs).save(any());
+        order.verify(liveLocations).deleteByEmployeeId(employeeId);
+        order.verify(attendanceRecords).deleteByEmployeeId(employeeId);
+        order.verify(assignments).deleteByEmployeeId(employeeId);
+        order.verify(payrollSummaries).deleteByEmployeeId(employeeId);
+        order.verify(pushSubscriptions).deleteByEmployeeId(employeeId);
+        order.verify(auditLogs).deleteByActorEmployeeId(employeeId);
+        order.verify(pushSubscriptions).deleteByUserId(userId);
+        order.verify(auditLogs).deleteByActorUserId(userId);
+        order.verify(employees).delete(employee);
+        order.verify(employees).flush();
+        order.verify(users).delete(user);
+        org.mockito.Mockito.verify(assignments, org.mockito.Mockito.never()).deleteByScheduleId(any());
+        org.mockito.Mockito.verify(attendanceRecords, org.mockito.Mockito.never()).deleteByScheduleId(any());
+    }
+
+    @Test
+    void forceDeleteRejectsAdminUserAccount() {
+        service = service(true);
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID(), UserRole.ADMINISTRATOR);
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> service.forceDeleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class)
+                .hasMessageContaining("administratorit");
+
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+    }
+
+    @Test
+    void forceDeleteDoesNotDeleteEmployeeWhenDependencyCleanupFails() {
+        service = service(true);
+        UUID employeeId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        org.mockito.Mockito.doThrow(new RuntimeException("database failure"))
+                .when(attendanceRecords).deleteByEmployeeId(employeeId);
+
+        assertThatThrownBy(() -> service.forceDeleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("database failure");
+
+        org.mockito.Mockito.verify(liveLocations).deleteByEmployeeId(employeeId);
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).delete(any(UserAccountEntity.class));
+    }
+
     private EmployeeEntity employee(UUID employeeId, UUID userId) {
+        return employee(employeeId, userId, UserRole.EMPLOYEE);
+    }
+
+    private EmployeeEntity employee(UUID employeeId, UUID userId, UserRole role) {
         UserAccountEntity user = new UserAccountEntity();
         ReflectionTestUtils.setField(user, "id", userId);
         user.setFullName("Worker");
         user.setEmail("emp001");
         user.setPasswordHash("hash");
-        user.setRole(UserRole.EMPLOYEE);
+        user.setRole(role);
 
         EmployeeEntity employee = new EmployeeEntity();
         ReflectionTestUtils.setField(employee, "id", employeeId);

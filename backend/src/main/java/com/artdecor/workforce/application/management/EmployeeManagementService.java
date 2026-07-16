@@ -6,6 +6,7 @@ import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.AuditLogEntity;
 import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.PayrollEmployeeSummaryRepository;
@@ -17,7 +18,9 @@ import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,7 @@ public class EmployeeManagementService {
     private final PushSubscriptionRepository pushSubscriptions;
     private final PayrollEmployeeSummaryRepository payrollSummaries;
     private final PasswordEncoder passwordEncoder;
+    private final boolean forceEmployeeDeleteAllowed;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EmployeeManagementService(
@@ -48,7 +52,8 @@ public class EmployeeManagementService {
             AuditLogRepository auditLogs,
             PushSubscriptionRepository pushSubscriptions,
             PayrollEmployeeSummaryRepository payrollSummaries,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            @Value("${app.management.allow-force-employee-delete:false}") boolean forceEmployeeDeleteAllowed
     ) {
         this.employees = employees;
         this.users = users;
@@ -59,6 +64,7 @@ public class EmployeeManagementService {
         this.pushSubscriptions = pushSubscriptions;
         this.payrollSummaries = payrollSummaries;
         this.passwordEncoder = passwordEncoder;
+        this.forceEmployeeDeleteAllowed = forceEmployeeDeleteAllowed;
     }
 
     @Transactional(readOnly = true)
@@ -152,6 +158,49 @@ public class EmployeeManagementService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public boolean isForceEmployeeDeleteAllowed() {
+        return forceEmployeeDeleteAllowed;
+    }
+
+    @Transactional
+    public void forceDeleteEmployee(UUID employeeId, AuthenticatedPrincipal principal) {
+        EmployeeEntity employee = employees.findById(employeeId)
+                .orElseThrow(() -> new ManagementNotFoundException("Punëtori nuk u gjet."));
+        if (!forceEmployeeDeleteAllowed) {
+            throw new ManagementConflictException("Fshirja e detyruar nuk është e aktivizuar në këtë ambient.");
+        }
+
+        UserAccountEntity user = employee.getUserAccount();
+        if (user != null && principal != null && user.getId().equals(principal.userId())) {
+            throw new ManagementConflictException("Nuk mund ta fshini llogarinë tuaj.");
+        }
+        if (user != null && user.getRole() == UserRole.ADMINISTRATOR) {
+            throw new ManagementConflictException("Llogaria e administratorit nuk mund të fshihet me këtë veprim.");
+        }
+
+        logForceDelete(principal, employee);
+
+        UUID employeeIdValue = employee.getId();
+        liveLocations.deleteByEmployeeId(employeeIdValue);
+        attendanceRecords.deleteByEmployeeId(employeeIdValue);
+        assignments.deleteByEmployeeId(employeeIdValue);
+        payrollSummaries.deleteByEmployeeId(employeeIdValue);
+        pushSubscriptions.deleteByEmployeeId(employeeIdValue);
+        auditLogs.deleteByActorEmployeeId(employeeIdValue);
+        if (user != null) {
+            pushSubscriptions.deleteByUserId(user.getId());
+            auditLogs.deleteByActorUserId(user.getId());
+        }
+
+        employee.setUserAccount(null);
+        employees.delete(employee);
+        employees.flush();
+        if (user != null) {
+            users.delete(user);
+        }
+    }
+
     private boolean hasHistoricalDependencies(EmployeeEntity employee, UserAccountEntity user) {
         UUID employeeId = employee.getId();
         if (attendanceRecords.existsByEmployeeId(employeeId)
@@ -163,6 +212,22 @@ public class EmployeeManagementService {
             return true;
         }
         return user != null && (auditLogs.existsByActorUserId(user.getId()) || pushSubscriptions.existsByUserId(user.getId()));
+    }
+
+    private void logForceDelete(AuthenticatedPrincipal principal, EmployeeEntity employee) {
+        AuditLogEntity log = new AuditLogEntity();
+        if (principal != null) {
+            if (principal.employeeId() != null) {
+                log.setActorEmployeeId(principal.employeeId());
+            } else {
+                log.setActorUserId(principal.userId());
+            }
+        }
+        log.setAction("EMPLOYEE_FORCE_DELETED");
+        log.setEntityType("EMPLOYEE");
+        log.setEntityId(employee.getId());
+        log.setMetadata(Map.of("employeeCode", employee.getEmployeeCode()));
+        auditLogs.save(log);
     }
 
     private UserAccountEntity createEmployeeUser(

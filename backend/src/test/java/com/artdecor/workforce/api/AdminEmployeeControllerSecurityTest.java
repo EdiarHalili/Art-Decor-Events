@@ -3,6 +3,7 @@ package com.artdecor.workforce.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -94,5 +95,48 @@ class AdminEmployeeControllerSecurityTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(message));
+    }
+
+    @Test
+    void forceEmployeeDeletionRejectsNonAdminUsers() throws Exception {
+        String token = tokens.issueToken(UUID.randomUUID(), UserRole.SUPERVISOR, null);
+
+        mvc.perform(delete("/api/v1/admin/employees/{employeeId}/force", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void forceEmployeeDeletionReturnsNoContentForAdministrator() throws Exception {
+        UUID employeeId = UUID.randomUUID();
+        String token = tokens.issueToken(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
+
+        mvc.perform(delete("/api/v1/admin/employees/{employeeId}/force", employeeId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void forceEmployeeDeletionReturnsNotFoundForUnknownEmployee() throws Exception {
+        UUID employeeId = UUID.randomUUID();
+        String token = tokens.issueToken(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
+        doThrow(new ManagementNotFoundException("Punëtori nuk u gjet."))
+                .when(employees).forceDeleteEmployee(eq(employeeId), any(AuthenticatedPrincipal.class));
+
+        mvc.perform(delete("/api/v1/admin/employees/{employeeId}/force", employeeId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Punëtori nuk u gjet."));
+    }
+
+    @Test
+    void employeeDeletionPolicyShowsForceDeleteFlagForAdministrator() throws Exception {
+        String token = tokens.issueToken(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
+        when(employees.isForceEmployeeDeleteAllowed()).thenReturn(true);
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/admin/employees/deletion-policy")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.forceDeleteAllowed").value(true));
     }
 }

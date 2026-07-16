@@ -13,6 +13,8 @@ public interface LiveLocationUpdateRepository extends JpaRepository<LiveLocation
 
     boolean existsByEmployeeId(UUID employeeId);
 
+    void deleteByEmployeeId(UUID employeeId);
+
     Optional<LiveLocationUpdateEntity> findTopByAttendanceRecordIdOrderByCapturedAtDesc(UUID attendanceRecordId);
 
     @Query("""

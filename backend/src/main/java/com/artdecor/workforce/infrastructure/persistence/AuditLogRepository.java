@@ -10,4 +10,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> 
     boolean existsByActorEmployeeId(UUID employeeId);
 
     boolean existsByActorUserId(UUID userId);
+
+    void deleteByActorEmployeeId(UUID employeeId);
+
+    void deleteByActorUserId(UUID userId);
 }

@@ -80,4 +80,6 @@ public interface ScheduleAssignmentRepository extends JpaRepository<ScheduleAssi
     List<ScheduleAssignmentEntity> findAllByScheduleId(UUID scheduleId);
 
     void deleteByScheduleId(UUID scheduleId);
+
+    void deleteByEmployeeId(UUID employeeId);
 }

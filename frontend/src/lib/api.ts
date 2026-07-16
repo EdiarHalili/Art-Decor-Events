@@ -353,6 +353,16 @@ export async function deleteEmployee(accessToken: string, employeeId: string): P
   });
 }
 
+export async function forceDeleteEmployee(accessToken: string, employeeId: string): Promise<void> {
+  return authorizedRequest<void>(`/admin/employees/${employeeId}/force`, accessToken, {
+    method: "DELETE",
+  });
+}
+
+export async function getEmployeeDeletionPolicy(accessToken: string): Promise<{ forceDeleteAllowed: boolean }> {
+  return authorizedRequest<{ forceDeleteAllowed: boolean }>("/admin/employees/deletion-policy", accessToken);
+}
+
 export async function listAdminUsers(accessToken: string): Promise<AdminUser[]> {
   return authorizedRequest<AdminUser[]>("/admin/users", accessToken);
 }

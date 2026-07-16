@@ -9,18 +9,22 @@ import {
   deleteEmployee,
   deactivateEmployee,
   exportEmployeeAttendance,
+  forceDeleteEmployee,
   getEmployeeHistory,
+  getEmployeeDeletionPolicy,
   listEmployees,
   mapLocationUrl,
   resetEmployeePassword,
   updateEmployee,
   type AttendanceReportRow,
+  type AuthResponse,
   type CheckoutType,
   type Employee,
 } from "../../lib/api";
 
 type EmployeeManagementPageProps = {
   accessToken: string;
+  role: AuthResponse["role"];
 };
 
 type EmployeeForm = {
@@ -49,7 +53,7 @@ const initialForm: EmployeeForm = {
   notes: "",
 };
 
-export function EmployeeManagementPage({ accessToken }: EmployeeManagementPageProps) {
+export function EmployeeManagementPage({ accessToken, role }: EmployeeManagementPageProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [form, setForm] = useState<EmployeeForm>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,6 +63,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [forceDeleteAllowed, setForceDeleteAllowed] = useState(false);
   const [message, setMessage] = useState("");
 
   async function loadEmployees() {
@@ -76,6 +81,17 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
   useEffect(() => {
     void loadEmployees();
   }, []);
+
+  useEffect(() => {
+    if (role !== "ADMINISTRATOR") {
+      setForceDeleteAllowed(false);
+      return;
+    }
+
+    getEmployeeDeletionPolicy(accessToken)
+      .then((policy) => setForceDeleteAllowed(policy.forceDeleteAllowed))
+      .catch(() => setForceDeleteAllowed(false));
+  }, [accessToken, role]);
 
   useEffect(() => {
     if (!selected) {
@@ -197,6 +213,18 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
     setMessage("Punëtori u fshi me sukses.");
   }
 
+  async function forceDeleteSelectedEmployee(employeeId: string) {
+    setMessage("");
+    await forceDeleteEmployee(accessToken, employeeId);
+    setEmployees((current) => current.filter((employee) => employee.id !== employeeId));
+    setSelected(null);
+    setHistory([]);
+    if (editingId === employeeId) {
+      resetForm();
+    }
+    setMessage("Punëtori dhe e gjithë historia e tij u fshinë me sukses.");
+  }
+
   function startEdit(employee: Employee) {
     setEditingId(employee.id);
     setSelected(employee);
@@ -314,6 +342,7 @@ export function EmployeeManagementPage({ accessToken }: EmployeeManagementPagePr
               onEdit={() => startEdit(selected)}
               onDeactivate={() => void deactivate(selected.id)}
               onDelete={() => deleteSelectedEmployee(selected.id)}
+              onForceDelete={forceDeleteAllowed && role === "ADMINISTRATOR" ? () => forceDeleteSelectedEmployee(selected.id) : null}
               onResetPassword={async () => {
                 const response = await resetEmployeePassword(accessToken, selected.id);
                 return response.temporaryPassword;
@@ -353,6 +382,7 @@ function EmployeeProfile({
   onEdit,
   onDeactivate,
   onDelete,
+  onForceDelete,
   onResetPassword,
   onAttendanceChanged,
 }: {
@@ -363,6 +393,7 @@ function EmployeeProfile({
   onEdit: () => void;
   onDeactivate: () => void;
   onDelete: () => Promise<void>;
+  onForceDelete: (() => Promise<void>) | null;
   onResetPassword: () => Promise<string>;
   onAttendanceChanged: () => void;
 }) {
@@ -380,6 +411,10 @@ function EmployeeProfile({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteSaving, setDeleteSaving] = useState(false);
+  const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
+  const [forceDeleteCode, setForceDeleteCode] = useState("");
+  const [forceDeleteWord, setForceDeleteWord] = useState("");
+  const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const workedMinutes = history.reduce((total, row) => total + row.workedMinutes, 0);
 
   function updateRange(preset: ExportRangePreset) {
@@ -485,6 +520,24 @@ function EmployeeProfile({
     }
   }
 
+  async function confirmForceDelete() {
+    if (!onForceDelete || forceDeleteSaving || forceDeleteCode.trim() !== employee.employeeCode || forceDeleteWord.trim() !== "FSHI") {
+      return;
+    }
+    setForceDeleteSaving(true);
+    setExportMessage("");
+    try {
+      await onForceDelete();
+      setForceDeleteModalOpen(false);
+      setForceDeleteCode("");
+      setForceDeleteWord("");
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : "Punëtori nuk mund të fshihej me historinë.");
+    } finally {
+      setForceDeleteSaving(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -505,9 +558,26 @@ function EmployeeProfile({
             <Trash2 size={17} />
             Fshi punëtorin
           </Button>
+          {onForceDelete && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15"
+              disabled={forceDeleteSaving}
+              onClick={() => setForceDeleteModalOpen(true)}
+            >
+              <Trash2 size={17} />
+              Fshi me gjithë historinë
+            </Button>
+          )}
           <Button type="button" variant="ghost" disabled={employee.status === "INACTIVE"} onClick={onDeactivate}><UserMinus size={17} /></Button>
         </div>
       </div>
+      {onForceDelete && (
+        <p className="mt-3 max-w-2xl rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          Fshirja me gjithë historinë është vetëm për pastrim të të dhënave testuese.
+        </p>
+      )}
 
       {temporaryPassword && (
         <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-4 text-sm">
@@ -683,6 +753,63 @@ function EmployeeProfile({
                 onClick={() => void confirmDelete()}
               >
                 {deleteSaving ? "Duke fshirë..." : "Fshi përgjithmonë"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {forceDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-lg rounded-lg border border-destructive/30 bg-card p-5 shadow-xl">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="rounded-md bg-destructive/10 p-2">
+                <Trash2 size={20} />
+              </div>
+              <h3 className="text-lg font-semibold">Fshi përgjithmonë punëtorin</h3>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Ky veprim do të fshijë punëtorin dhe të gjithë historinë e tij të punës, GPS-in, raportet dhe të dhënat e lidhura.
+              Ky veprim nuk mund të zhbëhet.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <label className="block space-y-1 text-sm font-medium">
+                <span>Shkruani kodin {employee.employeeCode} për të konfirmuar.</span>
+                <Input
+                  value={forceDeleteCode}
+                  onChange={(event) => setForceDeleteCode(event.target.value)}
+                  disabled={forceDeleteSaving}
+                  autoFocus
+                />
+              </label>
+              <label className="block space-y-1 text-sm font-medium">
+                <span>Shkruani fjalën FSHI.</span>
+                <Input
+                  value={forceDeleteWord}
+                  onChange={(event) => setForceDeleteWord(event.target.value)}
+                  disabled={forceDeleteSaving}
+                />
+              </label>
+            </div>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={forceDeleteSaving}
+                onClick={() => {
+                  setForceDeleteModalOpen(false);
+                  setForceDeleteCode("");
+                  setForceDeleteWord("");
+                }}
+              >
+                Anulo
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={forceDeleteSaving || forceDeleteCode.trim() !== employee.employeeCode || forceDeleteWord.trim() !== "FSHI"}
+                onClick={() => void confirmForceDelete()}
+              >
+                {forceDeleteSaving ? "Duke fshirë..." : "Fshi përgjithmonë me gjithë historinë"}
               </Button>
             </div>
           </div>

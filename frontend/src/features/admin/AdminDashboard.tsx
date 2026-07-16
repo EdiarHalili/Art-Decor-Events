@@ -136,7 +136,7 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
           )}
           {activeView === "employees" && (
             <section className="mt-6">
-              <EmployeeManagementPage accessToken={session.accessToken} />
+              <EmployeeManagementPage accessToken={session.accessToken} role={session.role} />
             </section>
           )}
           {activeView === "reports" && (

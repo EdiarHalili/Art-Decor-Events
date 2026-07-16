@@ -10,4 +10,8 @@ public interface PushSubscriptionRepository extends JpaRepository<PushSubscripti
     boolean existsByEmployeeId(UUID employeeId);
 
     boolean existsByUserId(UUID userId);
+
+    void deleteByEmployeeId(UUID employeeId);
+
+    void deleteByUserId(UUID userId);
 }
