@@ -65,13 +65,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
   const [historyLoading, setHistoryLoading] = useState(false);
   const [forceDeleteAllowed, setForceDeleteAllowed] = useState(false);
   const [message, setMessage] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [deleteSaving, setDeleteSaving] = useState(false);
-  const [forceDeleteTarget, setForceDeleteTarget] = useState<Employee | null>(null);
-  const [forceDeleteCode, setForceDeleteCode] = useState("");
-  const [forceDeleteWord, setForceDeleteWord] = useState("");
-  const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
 
   async function loadEmployees() {
     setLoading(true);
@@ -232,46 +225,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
     setMessage("Punëtori dhe e gjithë historia e tij u fshinë me sukses.");
   }
 
-  async function confirmListDelete() {
-    if (!deleteTarget || deleteSaving || deleteConfirmation.trim() !== deleteTarget.employeeCode) {
-      return;
-    }
-    setDeleteSaving(true);
-    setMessage("");
-    try {
-      await deleteSelectedEmployee(deleteTarget.id);
-      setDeleteTarget(null);
-      setDeleteConfirmation("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Punetori nuk mund te fshihej.");
-    } finally {
-      setDeleteSaving(false);
-    }
-  }
-
-  async function confirmListForceDelete() {
-    if (
-      !forceDeleteTarget ||
-      forceDeleteSaving ||
-      forceDeleteCode.trim() !== forceDeleteTarget.employeeCode ||
-      forceDeleteWord.trim() !== "FSHI"
-    ) {
-      return;
-    }
-    setForceDeleteSaving(true);
-    setMessage("");
-    try {
-      await forceDeleteSelectedEmployee(forceDeleteTarget.id);
-      setForceDeleteTarget(null);
-      setForceDeleteCode("");
-      setForceDeleteWord("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Punetori nuk mund te fshihej me historine.");
-    } finally {
-      setForceDeleteSaving(false);
-    }
-  }
-
   function startEdit(employee: Employee) {
     setEditingId(employee.id);
     setSelected(employee);
@@ -374,39 +327,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
                     <span className={employee.status === "ACTIVE" ? "text-sm font-medium text-accent" : "text-sm text-muted-foreground"}>{employee.status}</span>
                   </div>
                 </button>
-                {role === "ADMINISTRATOR" && (
-                  <div className="mt-3 grid min-w-0 gap-2 min-[420px]:flex min-[420px]:flex-wrap">
-                    <Button
-                      type="button"
-                      variant="danger"
-                      className="min-[420px]:w-auto"
-                      disabled={deleteSaving || forceDeleteSaving}
-                      onClick={() => {
-                        setDeleteTarget(employee);
-                        setDeleteConfirmation("");
-                      }}
-                    >
-                      <Trash2 size={17} />
-                      Fshi punetorin
-                    </Button>
-                    {forceDeleteAllowed && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15 min-[420px]:w-auto"
-                        disabled={deleteSaving || forceDeleteSaving}
-                        onClick={() => {
-                          setForceDeleteTarget(employee);
-                          setForceDeleteCode("");
-                          setForceDeleteWord("");
-                        }}
-                      >
-                        <Trash2 size={17} />
-                        Fshi me gjithe historine
-                      </Button>
-                    )}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -436,101 +356,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
           )}
         </Card>
       </div>
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-4 shadow-xl sm:p-5">
-            <div className="flex items-center gap-3 text-destructive">
-              <div className="rounded-md bg-destructive/10 p-2">
-                <Trash2 size={20} />
-              </div>
-              <h3 className="text-lg font-semibold">Fshi punetorin</h3>
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              A jeni te sigurt qe deshironi ta fshini kete punetor?
-              <br />
-              Ky veprim nuk mund te zhbehet.
-            </p>
-            <label className="mt-4 block space-y-1 text-sm font-medium">
-              <span>Shkruani kodin {deleteTarget.employeeCode} per te konfirmuar.</span>
-              <Input
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                disabled={deleteSaving}
-                autoFocus
-              />
-            </label>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={deleteSaving}
-                onClick={() => {
-                  setDeleteTarget(null);
-                  setDeleteConfirmation("");
-                }}
-              >
-                Anulo
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                disabled={deleteSaving || deleteConfirmation.trim() !== deleteTarget.employeeCode}
-                onClick={() => void confirmListDelete()}
-              >
-                {deleteSaving ? "Duke fshire..." : "Fshi pergjithmone"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      {forceDeleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-destructive/30 bg-card p-4 shadow-xl sm:p-5">
-            <div className="flex items-center gap-3 text-destructive">
-              <div className="rounded-md bg-destructive/10 p-2">
-                <Trash2 size={20} />
-              </div>
-              <h3 className="text-lg font-semibold">Fshi pergjithmone punetorin</h3>
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Ky veprim do te fshije punetorin dhe te gjithe historine e tij te punes, GPS-in, raportet dhe te dhenat e lidhura.
-              Ky veprim nuk mund te zhbehet.
-            </p>
-            <div className="mt-4 grid gap-3">
-              <label className="block space-y-1 text-sm font-medium">
-                <span>Shkruani kodin {forceDeleteTarget.employeeCode} per te konfirmuar.</span>
-                <Input value={forceDeleteCode} onChange={(event) => setForceDeleteCode(event.target.value)} disabled={forceDeleteSaving} autoFocus />
-              </label>
-              <label className="block space-y-1 text-sm font-medium">
-                <span>Shkruani fjalen FSHI.</span>
-                <Input value={forceDeleteWord} onChange={(event) => setForceDeleteWord(event.target.value)} disabled={forceDeleteSaving} />
-              </label>
-            </div>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={forceDeleteSaving}
-                onClick={() => {
-                  setForceDeleteTarget(null);
-                  setForceDeleteCode("");
-                  setForceDeleteWord("");
-                }}
-              >
-                Anulo
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                disabled={forceDeleteSaving || forceDeleteCode.trim() !== forceDeleteTarget.employeeCode || forceDeleteWord.trim() !== "FSHI"}
-                onClick={() => void confirmListForceDelete()}
-              >
-                {forceDeleteSaving ? "Duke fshire..." : "Fshi pergjithmone me gjithe historine"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
