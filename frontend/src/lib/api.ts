@@ -360,7 +360,11 @@ export async function forceDeleteEmployee(accessToken: string, employeeId: strin
 }
 
 export async function getEmployeeDeletionPolicy(accessToken: string): Promise<{ forceDeleteAllowed: boolean }> {
-  return authorizedRequest<{ forceDeleteAllowed: boolean }>("/admin/employees/deletion-policy", accessToken);
+  const policy = await authorizedRequest<{ forceDeleteAllowed?: boolean; allowForceDelete?: boolean }>(
+    "/admin/employees/deletion-policy",
+    accessToken,
+  );
+  return { forceDeleteAllowed: Boolean(policy.forceDeleteAllowed ?? policy.allowForceDelete) };
 }
 
 export async function listAdminUsers(accessToken: string): Promise<AdminUser[]> {

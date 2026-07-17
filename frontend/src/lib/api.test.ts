@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { deleteEmployee, forceDeleteEmployee } from "./api";
+import { deleteEmployee, forceDeleteEmployee, getEmployeeDeletionPolicy } from "./api";
 
 describe("admin employee API", () => {
   it("sends authenticated delete requests for employees", async () => {
@@ -25,6 +25,20 @@ describe("admin employee API", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(/\/api\/v1\/admin\/employees\/employee-123\/force$/);
     expect(init.method).toBe("DELETE");
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer access-token");
+  });
+
+  it("normalizes the force-delete policy response from the backend", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ allowForceDelete: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getEmployeeDeletionPolicy("access-token")).resolves.toEqual({ forceDeleteAllowed: true });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/v1\/admin\/employees\/deletion-policy$/);
     expect(new Headers(init.headers).get("Authorization")).toBe("Bearer access-token");
   });
 });
