@@ -386,22 +386,22 @@ export function EmployeeHome({ session, settings, onLogout }: EmployeeHomeProps)
   }
 
   return (
-    <main className="brand-surface min-h-screen overflow-x-hidden px-3 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-4 sm:py-5">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3 sm:gap-5">
-        <header className="sticky top-0 z-10 -mx-3 flex min-w-0 items-center justify-between gap-2 bg-background/80 px-3 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
-          <BrandMark compact logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+    <main className="brand-surface min-h-screen w-full min-w-0 px-3 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-4 sm:py-5">
+      <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-3 sm:gap-5">
+        <header className="sticky top-0 z-10 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 bg-background/80 py-2 backdrop-blur sm:static sm:bg-transparent sm:py-0">
+          <BrandMark compact className="min-w-0 overflow-hidden" logoUrl={settings?.logoUrl} companyName={settings?.companyName} />
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 justify-self-end">
+            <div className="flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-2 text-xs leading-none text-muted-foreground sm:gap-2 sm:px-3">
               {online ? <Wifi size={15} /> : <WifiOff size={15} />}
-              {online ? "Online" : "Pa internet"}
+              <span className="min-w-0">{online ? "Online" : "Pa internet"}</span>
             </div>
             <ThemeToggle />
           </div>
         </header>
 
-        <section>
+        <section className="min-w-0">
           <p className="text-sm text-muted-foreground">Mirë se vini</p>
-          <h1 className="mt-1 text-2xl font-semibold">{employeeName}</h1>
+          <h1 className="mt-1 min-w-0 break-words text-2xl font-semibold leading-tight">{employeeName}</h1>
           {queuedCount > 0 && (
             <p className="mt-2 rounded-md bg-primary/15 px-3 py-2 text-sm text-primary">
               {queuedCount} regjistrim{queuedCount === 1 ? "" : "e"} pa internet presin sinkronizimin.

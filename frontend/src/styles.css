@@ -73,6 +73,12 @@ textarea {
   min-width: 0;
 }
 
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
 img,
 svg,
 canvas,
@@ -113,7 +119,8 @@ label {
 @media (max-width: 640px) {
   input,
   select,
-  textarea {
+  textarea,
+  button {
     font-size: 16px;
   }
 }

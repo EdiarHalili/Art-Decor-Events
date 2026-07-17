@@ -10,7 +10,7 @@ export function ThemeToggle() {
     <Button
       type="button"
       variant="secondary"
-      className="h-10 w-10 px-0"
+      className="h-11 w-11 shrink-0 px-0"
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light mode" : "Dark mode"}
@@ -19,4 +19,3 @@ export function ThemeToggle() {
     </Button>
   );
 }
-
