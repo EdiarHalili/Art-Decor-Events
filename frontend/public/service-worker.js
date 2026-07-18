@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const APP_CACHE = `art-decor-app-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `art-decor-runtime-${CACHE_VERSION}`;
 const APP_SHELL = [
@@ -88,7 +88,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (["script", "style", "image", "font"].includes(request.destination)) {
+  if (["script", "style"].includes(request.destination)) {
+    event.respondWith(networkFirst(request, request.url));
+    return;
+  }
+
+  if (["image", "font"].includes(request.destination)) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
