@@ -3,7 +3,6 @@ package com.artdecor.workforce.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -129,14 +128,4 @@ class AdminEmployeeControllerSecurityTest {
                 .andExpect(jsonPath("$.message").value("Punëtori nuk u gjet."));
     }
 
-    @Test
-    void employeeDeletionPolicyShowsForceDeleteFlagForAdministrator() throws Exception {
-        String token = tokens.issueToken(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
-        when(employees.isForceEmployeeDeleteAllowed()).thenReturn(true);
-
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/admin/employees/deletion-policy")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.forceDeleteAllowed").value(true));
-    }
 }

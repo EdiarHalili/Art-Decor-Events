@@ -42,7 +42,7 @@ class EmployeeManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = service(false);
+        service = service();
         when(employees.save(any(EmployeeEntity.class))).thenAnswer(invocation -> {
             EmployeeEntity employee = invocation.getArgument(0);
             ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());
@@ -55,7 +55,7 @@ class EmployeeManagementServiceTest {
         });
     }
 
-    private EmployeeManagementService service(boolean forceDeleteAllowed) {
+    private EmployeeManagementService service() {
         return new EmployeeManagementService(
                 employees,
                 users,
@@ -65,8 +65,7 @@ class EmployeeManagementServiceTest {
                 auditLogs,
                 pushSubscriptions,
                 payrollSummaries,
-                passwordEncoder,
-                forceDeleteAllowed
+                passwordEncoder
         );
     }
 
@@ -315,22 +314,9 @@ class EmployeeManagementServiceTest {
                 .hasMessageContaining("llogarinë tuaj");
     }
 
-    @Test
-    void forceDeleteRequiresConfigurationFlag() {
-        UUID employeeId = UUID.randomUUID();
-        EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
-        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
-
-        assertThatThrownBy(() -> service.forceDeleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
-                .isInstanceOf(ManagementConflictException.class)
-                .hasMessageContaining("nuk është e aktivizuar");
-
-        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
-    }
 
     @Test
     void forceDeleteRemovesEmployeeWithAttendanceAndLocationHistory() {
-        service = service(true);
         UUID employeeId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         EmployeeEntity employee = employee(employeeId, userId);
@@ -367,7 +353,6 @@ class EmployeeManagementServiceTest {
 
     @Test
     void forceDeleteRejectsAdminUserAccount() {
-        service = service(true);
         UUID employeeId = UUID.randomUUID();
         EmployeeEntity employee = employee(employeeId, UUID.randomUUID(), UserRole.ADMINISTRATOR);
         when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
@@ -381,7 +366,6 @@ class EmployeeManagementServiceTest {
 
     @Test
     void forceDeleteDoesNotDeleteEmployeeWhenDependencyCleanupFails() {
-        service = service(true);
         UUID employeeId = UUID.randomUUID();
         EmployeeEntity employee = employee(employeeId, UUID.randomUUID());
         when(employees.findById(employeeId)).thenReturn(Optional.of(employee));

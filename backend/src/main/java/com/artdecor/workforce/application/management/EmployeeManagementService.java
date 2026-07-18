@@ -20,7 +20,6 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +39,6 @@ public class EmployeeManagementService {
     private final PushSubscriptionRepository pushSubscriptions;
     private final PayrollEmployeeSummaryRepository payrollSummaries;
     private final PasswordEncoder passwordEncoder;
-    private final boolean forceEmployeeDeleteAllowed;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EmployeeManagementService(
@@ -52,8 +50,7 @@ public class EmployeeManagementService {
             AuditLogRepository auditLogs,
             PushSubscriptionRepository pushSubscriptions,
             PayrollEmployeeSummaryRepository payrollSummaries,
-            PasswordEncoder passwordEncoder,
-            @Value("${app.management.allow-force-employee-delete:false}") boolean forceEmployeeDeleteAllowed
+            PasswordEncoder passwordEncoder
     ) {
         this.employees = employees;
         this.users = users;
@@ -64,7 +61,6 @@ public class EmployeeManagementService {
         this.pushSubscriptions = pushSubscriptions;
         this.payrollSummaries = payrollSummaries;
         this.passwordEncoder = passwordEncoder;
-        this.forceEmployeeDeleteAllowed = forceEmployeeDeleteAllowed;
     }
 
     @Transactional(readOnly = true)
@@ -158,19 +154,10 @@ public class EmployeeManagementService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public boolean isForceEmployeeDeleteAllowed() {
-        return forceEmployeeDeleteAllowed;
-    }
-
     @Transactional
     public void forceDeleteEmployee(UUID employeeId, AuthenticatedPrincipal principal) {
         EmployeeEntity employee = employees.findById(employeeId)
                 .orElseThrow(() -> new ManagementNotFoundException("Punëtori nuk u gjet."));
-        if (!forceEmployeeDeleteAllowed) {
-            throw new ManagementConflictException("Fshirja e detyruar nuk është e aktivizuar në këtë ambient.");
-        }
-
         UserAccountEntity user = employee.getUserAccount();
         if (user != null && principal != null && user.getId().equals(principal.userId())) {
             throw new ManagementConflictException("Nuk mund ta fshini llogarinë tuaj.");

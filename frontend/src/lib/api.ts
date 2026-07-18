@@ -359,14 +359,6 @@ export async function forceDeleteEmployee(accessToken: string, employeeId: strin
   });
 }
 
-export async function getEmployeeDeletionPolicy(accessToken: string): Promise<{ forceDeleteAllowed: boolean }> {
-  const policy = await authorizedRequest<{ forceDeleteAllowed?: boolean; allowForceDelete?: boolean }>(
-    "/admin/employees/deletion-policy",
-    accessToken,
-  );
-  return { forceDeleteAllowed: Boolean(policy.forceDeleteAllowed ?? policy.allowForceDelete) };
-}
-
 export async function listAdminUsers(accessToken: string): Promise<AdminUser[]> {
   return authorizedRequest<AdminUser[]>("/admin/users", accessToken);
 }

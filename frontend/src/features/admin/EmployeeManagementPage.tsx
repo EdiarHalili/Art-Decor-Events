@@ -11,7 +11,6 @@ import {
   exportEmployeeAttendance,
   forceDeleteEmployee,
   getEmployeeHistory,
-  getEmployeeDeletionPolicy,
   listEmployees,
   mapLocationUrl,
   resetEmployeePassword,
@@ -63,7 +62,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [forceDeleteAllowed, setForceDeleteAllowed] = useState(false);
   const [message, setMessage] = useState("");
 
   async function loadEmployees() {
@@ -81,17 +79,6 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
   useEffect(() => {
     void loadEmployees();
   }, []);
-
-  useEffect(() => {
-    if (role !== "ADMINISTRATOR") {
-      setForceDeleteAllowed(false);
-      return;
-    }
-
-    getEmployeeDeletionPolicy(accessToken)
-      .then((policy) => setForceDeleteAllowed(policy.forceDeleteAllowed))
-      .catch(() => setForceDeleteAllowed(false));
-  }, [accessToken, role]);
 
   useEffect(() => {
     if (!selected) {
@@ -342,7 +329,7 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
               onEdit={() => startEdit(selected)}
               onDeactivate={() => void deactivate(selected.id)}
               onDelete={role === "ADMINISTRATOR" ? () => deleteSelectedEmployee(selected.id) : null}
-              onForceDelete={forceDeleteAllowed && role === "ADMINISTRATOR" ? () => forceDeleteSelectedEmployee(selected.id) : null}
+              onForceDelete={role === "ADMINISTRATOR" ? () => forceDeleteSelectedEmployee(selected.id) : null}
               onResetPassword={async () => {
                 const response = await resetEmployeePassword(accessToken, selected.id);
                 return response.temporaryPassword;
