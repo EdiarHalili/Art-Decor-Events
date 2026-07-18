@@ -116,6 +116,7 @@ export function App() {
   }, [session]);
 
   function handleAuthenticated(nextSession: AuthResponse) {
+    resetMobileViewportAfterFormSubmit();
     localStorage.setItem("artdecor.session", JSON.stringify(nextSession));
     setLoginNotice("");
     setSession(nextSession);
@@ -124,6 +125,7 @@ export function App() {
   }
 
   function handleLogout() {
+    resetMobileViewportAfterFormSubmit();
     localStorage.removeItem("artdecor.session");
     setSession(null);
     setLoginNotice("");
@@ -235,6 +237,15 @@ function applyBrandColors(settings: AppSettings) {
   if (accent) {
     document.documentElement.style.setProperty("--accent", accent);
   }
+}
+
+function resetMobileViewportAfterFormSubmit() {
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 }
 
 function hexToHsl(hex: string) {

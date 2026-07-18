@@ -116,12 +116,11 @@ label {
     radial-gradient(circle at top left, rgba(201, 160, 82, 0.16), transparent 28%);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   input,
   select,
-  textarea,
-  button {
-    font-size: 16px;
+  textarea {
+    font-size: 16px !important;
   }
 }
 

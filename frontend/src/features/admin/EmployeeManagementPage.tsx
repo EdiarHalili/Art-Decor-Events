@@ -720,7 +720,6 @@ function EmployeeProfile({
                 value={deleteConfirmation}
                 onChange={(event) => setDeleteConfirmation(event.target.value)}
                 disabled={deleteSaving}
-                autoFocus
               />
             </label>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -767,7 +766,6 @@ function EmployeeProfile({
                   value={forceDeleteCode}
                   onChange={(event) => setForceDeleteCode(event.target.value)}
                   disabled={forceDeleteSaving}
-                  autoFocus
                 />
               </label>
               <label className="block space-y-1 text-sm font-medium">
