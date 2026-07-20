@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.artdecor.workforce.domain.WageType;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
+import com.artdecor.workforce.infrastructure.persistence.AnnouncementRepository;
 import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeEntity;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
@@ -17,6 +18,7 @@ import com.artdecor.workforce.infrastructure.persistence.PushSubscriptionReposit
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -35,6 +37,8 @@ class EmployeeManagementServiceTest {
     private final LiveLocationUpdateRepository liveLocations = org.mockito.Mockito.mock(LiveLocationUpdateRepository.class);
     private final ScheduleAssignmentRepository assignments = org.mockito.Mockito.mock(ScheduleAssignmentRepository.class);
     private final AuditLogRepository auditLogs = org.mockito.Mockito.mock(AuditLogRepository.class);
+    private final AnnouncementRepository announcements = org.mockito.Mockito.mock(AnnouncementRepository.class);
+    private final WorkScheduleRepository schedules = org.mockito.Mockito.mock(WorkScheduleRepository.class);
     private final PushSubscriptionRepository pushSubscriptions = org.mockito.Mockito.mock(PushSubscriptionRepository.class);
     private final PayrollEmployeeSummaryRepository payrollSummaries = org.mockito.Mockito.mock(PayrollEmployeeSummaryRepository.class);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
@@ -63,6 +67,8 @@ class EmployeeManagementServiceTest {
                 liveLocations,
                 assignments,
                 auditLogs,
+                announcements,
+                schedules,
                 pushSubscriptions,
                 payrollSummaries,
                 passwordEncoder
@@ -293,6 +299,23 @@ class EmployeeManagementServiceTest {
     }
 
     @Test
+    void rejectsPermanentDeletionWhenLoginUserHasHistoricalReferences() {
+        UUID employeeId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EmployeeEntity employee = employee(employeeId, userId);
+        when(employees.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(announcements.existsByCreatedByUserId(userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteEmployee(employeeId, new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null)))
+                .isInstanceOf(ManagementConflictException.class)
+                .hasMessageContaining("histori pune");
+
+        org.mockito.Mockito.verify(employees, org.mockito.Mockito.never()).delete(any(EmployeeEntity.class));
+        org.mockito.Mockito.verify(users, org.mockito.Mockito.never()).delete(any(UserAccountEntity.class));
+    }
+
+
+    @Test
     void rejectsUnknownEmployeeDeletion() {
         UUID employeeId = UUID.randomUUID();
         when(employees.findById(employeeId)).thenReturn(Optional.empty());
@@ -332,6 +355,8 @@ class EmployeeManagementServiceTest {
                 assignments,
                 payrollSummaries,
                 pushSubscriptions,
+                schedules,
+                announcements,
                 employees,
                 users
         );
@@ -342,6 +367,10 @@ class EmployeeManagementServiceTest {
         order.verify(payrollSummaries).deleteByEmployeeId(employeeId);
         order.verify(pushSubscriptions).deleteByEmployeeId(employeeId);
         order.verify(auditLogs).deleteByActorEmployeeId(employeeId);
+        order.verify(attendanceRecords).clearApprovalByUserId(userId);
+        order.verify(schedules).clearCreatedByUserId(userId);
+        order.verify(schedules).clearSupervisorUserId(userId);
+        order.verify(announcements).deleteByCreatedByUserId(userId);
         order.verify(pushSubscriptions).deleteByUserId(userId);
         order.verify(auditLogs).deleteByActorUserId(userId);
         order.verify(employees).delete(employee);

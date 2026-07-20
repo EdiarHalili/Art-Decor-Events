@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6-production-hardening";
 const APP_CACHE = `art-decor-app-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `art-decor-runtime-${CACHE_VERSION}`;
 const APP_SHELL = [
@@ -12,7 +12,6 @@ const APP_SHELL = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(APP_CACHE).then((cache) => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -28,12 +27,6 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim()),
   );
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
 });
 
 self.addEventListener("push", (event) => {

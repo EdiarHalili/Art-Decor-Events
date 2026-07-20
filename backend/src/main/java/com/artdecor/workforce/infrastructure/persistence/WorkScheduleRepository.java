@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -78,4 +79,15 @@ public interface WorkScheduleRepository extends JpaRepository<WorkScheduleEntity
             @Param("now") Instant now,
             @Param("statuses") Collection<WorkScheduleStatus> statuses
     );
+
+    @Query(value = "select exists(select 1 from work_schedules where created_by = :userId or supervisor_id = :userId)", nativeQuery = true)
+    boolean existsByCreatedByOrSupervisorUserId(@Param("userId") UUID userId);
+
+    @Modifying
+    @Query(value = "update work_schedules set created_by = null where created_by = :userId", nativeQuery = true)
+    void clearCreatedByUserId(@Param("userId") UUID userId);
+
+    @Modifying
+    @Query(value = "update work_schedules set supervisor_id = null where supervisor_id = :userId", nativeQuery = true)
+    void clearSupervisorUserId(@Param("userId") UUID userId);
 }

@@ -2,6 +2,7 @@ package com.artdecor.workforce.infrastructure.persistence;
 
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -41,6 +42,13 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
     void deleteByScheduleId(UUID scheduleId);
 
     void deleteByEmployeeId(UUID employeeId);
+
+    @Query(value = "select exists(select 1 from attendance_records where approved_by = :userId)", nativeQuery = true)
+    boolean existsByApprovedByUserId(@Param("userId") UUID userId);
+
+    @Modifying
+    @Query(value = "update attendance_records set approved_by = null, approved_at = null where approved_by = :userId", nativeQuery = true)
+    void clearApprovalByUserId(@Param("userId") UUID userId);
 
     @Query("""
             select record

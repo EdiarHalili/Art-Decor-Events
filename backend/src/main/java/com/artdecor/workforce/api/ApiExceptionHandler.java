@@ -75,7 +75,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(AttendanceException.class)
     public ResponseEntity<ApiError> handleAttendance(AttendanceException exception) {
-        return ResponseEntity.badRequest()
+        HttpStatus status = isAttendanceConflict(exception.code()) ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status)
                 .body(new ApiError(exception.code(), exception.getMessage(), Map.of()));
     }
 
@@ -115,7 +116,13 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException exception) {
         log.warn("Data integrity violation", exception);
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiError("DATA_CONFLICT", "This record conflicts with existing data.", Map.of()));
+                .body(new ApiError("DATA_CONFLICT", "Ky regjistrim bie ndesh me të dhënat ekzistuese.", Map.of()));
+    }
+
+    private boolean isAttendanceConflict(String code) {
+        return "DUPLICATE_ACTIVE_CHECK_IN".equals(code)
+                || "DUPLICATE_CHECK_IN".equals(code)
+                || "DUPLICATE_CHECK_OUT".equals(code);
     }
 
     @ExceptionHandler(RuntimeException.class)

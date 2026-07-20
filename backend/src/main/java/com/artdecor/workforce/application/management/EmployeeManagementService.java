@@ -8,12 +8,14 @@ import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.AuditLogEntity;
 import com.artdecor.workforce.infrastructure.persistence.AuditLogRepository;
+import com.artdecor.workforce.infrastructure.persistence.AnnouncementRepository;
 import com.artdecor.workforce.infrastructure.persistence.LiveLocationUpdateRepository;
 import com.artdecor.workforce.infrastructure.persistence.PayrollEmployeeSummaryRepository;
 import com.artdecor.workforce.infrastructure.persistence.PushSubscriptionRepository;
 import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepository;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
@@ -36,6 +38,8 @@ public class EmployeeManagementService {
     private final LiveLocationUpdateRepository liveLocations;
     private final ScheduleAssignmentRepository assignments;
     private final AuditLogRepository auditLogs;
+    private final AnnouncementRepository announcements;
+    private final WorkScheduleRepository schedules;
     private final PushSubscriptionRepository pushSubscriptions;
     private final PayrollEmployeeSummaryRepository payrollSummaries;
     private final PasswordEncoder passwordEncoder;
@@ -48,6 +52,8 @@ public class EmployeeManagementService {
             LiveLocationUpdateRepository liveLocations,
             ScheduleAssignmentRepository assignments,
             AuditLogRepository auditLogs,
+            AnnouncementRepository announcements,
+            WorkScheduleRepository schedules,
             PushSubscriptionRepository pushSubscriptions,
             PayrollEmployeeSummaryRepository payrollSummaries,
             PasswordEncoder passwordEncoder
@@ -58,6 +64,8 @@ public class EmployeeManagementService {
         this.liveLocations = liveLocations;
         this.assignments = assignments;
         this.auditLogs = auditLogs;
+        this.announcements = announcements;
+        this.schedules = schedules;
         this.pushSubscriptions = pushSubscriptions;
         this.payrollSummaries = payrollSummaries;
         this.passwordEncoder = passwordEncoder;
@@ -179,6 +187,10 @@ public class EmployeeManagementService {
         pushSubscriptions.deleteByEmployeeId(employeeIdValue);
         auditLogs.deleteByActorEmployeeId(employeeIdValue);
         if (user != null) {
+            attendanceRecords.clearApprovalByUserId(user.getId());
+            schedules.clearCreatedByUserId(user.getId());
+            schedules.clearSupervisorUserId(user.getId());
+            announcements.deleteByCreatedByUserId(user.getId());
             pushSubscriptions.deleteByUserId(user.getId());
             auditLogs.deleteByActorUserId(user.getId());
         }
@@ -201,7 +213,11 @@ public class EmployeeManagementService {
                 || payrollSummaries.existsByEmployeeId(employeeId)) {
             return true;
         }
-        return user != null && (auditLogs.existsByActorUserId(user.getId()) || pushSubscriptions.existsByUserId(user.getId()));
+        return user != null && (auditLogs.existsByActorUserId(user.getId())
+                || pushSubscriptions.existsByUserId(user.getId())
+                || attendanceRecords.existsByApprovedByUserId(user.getId())
+                || schedules.existsByCreatedByOrSupervisorUserId(user.getId())
+                || announcements.existsByCreatedByUserId(user.getId()));
     }
 
     private void logForceDelete(AuthenticatedPrincipal principal, EmployeeEntity employee) {

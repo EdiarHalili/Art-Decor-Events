@@ -25,9 +25,14 @@ $env:CORS_ALLOWED_ORIGIN_PATTERNS=""
 $env:APP_BOOTSTRAP_ENABLED="false"
 $env:APP_BUSINESS_ZONE="Europe/Berlin"
 $env:ARTDECOR_GPS_DEBUG="false"
+$env:TRUSTED_PROXY_IPS="10.0.0.10"
+$env:RATE_LIMIT_DEFAULT_PER_MINUTE="180"
+$env:RATE_LIMIT_AUTH_PER_MINUTE="20"
 ```
 
 With `SPRING_PROFILES_ACTIVE=prod`, the backend intentionally refuses to start when required production values are missing or when local-development defaults are used. Production must not use `ChangeMe123!`, `artdecor_dev_password`, the development JWT secret, localhost/private-network CORS origins, broad CORS origin patterns, or GPS debug logging.
+
+Set `TRUSTED_PROXY_IPS` only to the exact reverse proxy IPs or CIDR ranges that are allowed to supply `X-Forwarded-For`. If it is empty, the backend ignores `X-Forwarded-For` and rate-limits by the direct remote address.
 
 If you need bootstrap to create the first administrator in a fresh production database, set these values only for the first startup, then disable bootstrap after confirming the account:
 
@@ -74,6 +79,7 @@ Configure the reverse proxy to:
 
 - Redirect HTTP to HTTPS.
 - Forward `X-Forwarded-For` and `X-Forwarded-Proto`.
+- Ensure only the trusted reverse proxy can reach the backend directly when `TRUSTED_PROXY_IPS` is configured.
 - Limit request body size to expected upload needs.
 - Serve security headers at the edge in addition to the backend defaults.
 

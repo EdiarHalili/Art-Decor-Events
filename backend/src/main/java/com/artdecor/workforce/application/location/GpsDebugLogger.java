@@ -22,7 +22,6 @@ public final class GpsDebugLogger {
         if (explicit != null) {
             return Boolean.parseBoolean(explicit);
         }
-        String activeProfiles = System.getProperty("spring.profiles.active", System.getenv("SPRING_PROFILES_ACTIVE"));
-        return activeProfiles == null || !activeProfiles.toLowerCase().contains("prod");
+        return false;
     }
 }
