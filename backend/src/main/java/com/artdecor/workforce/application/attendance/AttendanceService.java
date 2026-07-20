@@ -141,6 +141,10 @@ public class AttendanceService {
         }
 
         Instant actionTime = actionTime(command);
+        if (actionTime.isBefore(record.getCheckedInAt())) {
+            throw new AttendanceException("INVALID_CHECKOUT_TIME", "Koha e daljes nuk mund të jetë para kohës së hyrjes.");
+        }
+
         boolean gpsEnabled = settings.current().gpsEnabled();
         GpsDebugLogger.log(
                 "check-out request",

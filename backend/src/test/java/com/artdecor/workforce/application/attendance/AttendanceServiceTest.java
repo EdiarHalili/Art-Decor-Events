@@ -229,6 +229,50 @@ class AttendanceServiceTest {
     }
 
     @Test
+    void allowsCheckoutAtSameInstantAsCheckInWithoutNegativeWorkedMinutes() {
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", UUID.randomUUID());
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:55:00Z"));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+
+        AttendanceResponse response = service.checkOut(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.0,
+                21.0,
+                Map.of("platform", "test"),
+                Instant.parse("2026-07-03T06:55:00Z")
+        ));
+
+        assertThat(response.checkedOutAt()).isEqualTo(Instant.parse("2026-07-03T06:55:00Z"));
+        assertThat(response.workedMinutes()).isZero();
+    }
+
+    @Test
+    void rejectsCheckoutBeforeCheckInAndDoesNotStoreNegativeWorkedMinutes() {
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", UUID.randomUUID());
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:55:00Z"));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.checkOut(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.0,
+                21.0,
+                Map.of("platform", "test"),
+                Instant.parse("2026-07-03T06:54:59Z")
+        )))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessage("Koha e daljes nuk mund të jetë para kohës së hyrjes.");
+
+        assertThat(existing.getCheckedOutAt()).isNull();
+        assertThat(existing.getWorkedMinutes()).isZero();
+    }
+
+    @Test
     void queuedCheckInUsesOriginalCapturedTimeAndGps() {
         AttendanceActionCommand offlineCommand = new AttendanceActionCommand(
                 scheduleId,
@@ -284,6 +328,49 @@ class AttendanceServiceTest {
         assertThat(response.checkedOutAt()).isEqualTo(Instant.parse("2026-07-03T15:10:00Z"));
         assertThat(response.workedMinutes()).isEqualTo(498);
         assertThat(response.overtimeMinutes()).isEqualTo(10);
+    }
+
+    @Test
+    void queuedCheckOutRejectsOfflineReplayCapturedBeforeCheckIn() {
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", UUID.randomUUID());
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T06:52:00Z"));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.checkOut(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.30413,
+                21.64894,
+                Map.of("platform", "phone", "offlineActionId", "offline-replay"),
+                Instant.parse("2026-07-03T06:51:00Z")
+        )))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessage("Koha e daljes nuk mund të jetë para kohës së hyrjes.");
+
+        assertThat(existing.getCheckedOutAt()).isNull();
+        assertThat(existing.getWorkedMinutes()).isZero();
+    }
+
+    @Test
+    void rejectsManipulatedDeviceCheckoutTimestampBeforeCheckIn() {
+        AttendanceRecordEntity existing = new AttendanceRecordEntity();
+        ReflectionTestUtils.setField(existing, "id", UUID.randomUUID());
+        existing.setSchedule(schedule);
+        existing.setEmployee(employee);
+        existing.setCheckedInAt(Instant.parse("2026-07-03T10:00:00Z"));
+        when(attendanceRecords.findActiveRecordByScheduleIdAndEmployeeId(scheduleId, employeeId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.checkOut(principal, new AttendanceActionCommand(
+                scheduleId,
+                null,
+                null,
+                Map.of("platform", "ios", "clock", "manual"),
+                Instant.parse("2026-07-03T09:59:00Z")
+        )))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessage("Koha e daljes nuk mund të jetë para kohës së hyrjes.");
     }
 
     @Test

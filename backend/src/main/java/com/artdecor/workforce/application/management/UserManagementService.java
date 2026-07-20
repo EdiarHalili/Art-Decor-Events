@@ -4,6 +4,7 @@ import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -48,9 +49,16 @@ public class UserManagementService {
     }
 
     @Transactional
-    public UserResponse deactivateUser(UUID userId) {
+    public UserResponse deactivateUser(AuthenticatedPrincipal principal, UUID userId) {
         UserAccountEntity user = users.findById(userId)
                 .orElseThrow(() -> new ManagementException("User not found."));
+        if (principal.userId().equals(user.getId())) {
+            throw new ManagementException("Nuk mund ta çaktivizoni llogarinë tuaj.");
+        }
+        if (user.getRole() == UserRole.ADMINISTRATOR
+                && users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE) <= 1) {
+            throw new ManagementException("Nuk mund të çaktivizohet administratori i fundit aktiv.");
+        }
         user.setStatus(UserStatus.INACTIVE);
         user.incrementTokenVersion();
         return toResponse(user);
