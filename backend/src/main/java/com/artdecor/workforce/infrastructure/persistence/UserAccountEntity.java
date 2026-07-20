@@ -33,6 +33,9 @@ public class UserAccountEntity {
     private boolean passwordMustChange;
 
     @Column(nullable = false)
+    private int tokenVersion;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
@@ -79,6 +82,18 @@ public class UserAccountEntity {
 
     public void setPasswordMustChange(boolean passwordMustChange) {
         this.passwordMustChange = passwordMustChange;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void setTokenVersion(int tokenVersion) {
+        this.tokenVersion = tokenVersion;
+    }
+
+    public void incrementTokenVersion() {
+        tokenVersion += 1;
     }
 
     public UserRole getRole() {

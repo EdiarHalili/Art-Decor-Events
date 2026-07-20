@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.artdecor.workforce.infrastructure.config.ProductionEnvironmentPostProcessor

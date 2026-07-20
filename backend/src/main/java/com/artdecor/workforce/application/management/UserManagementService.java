@@ -52,6 +52,7 @@ public class UserManagementService {
         UserAccountEntity user = users.findById(userId)
                 .orElseThrow(() -> new ManagementException("User not found."));
         user.setStatus(UserStatus.INACTIVE);
+        user.incrementTokenVersion();
         return toResponse(user);
     }
 

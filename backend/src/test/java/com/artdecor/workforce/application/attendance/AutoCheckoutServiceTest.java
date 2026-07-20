@@ -81,6 +81,23 @@ class AutoCheckoutServiceTest {
     }
 
     @Test
+    void neverAutoChecksOutBeforeCheckInWhenExistingCutoffIsStale() {
+        AttendanceRecordEntity record = checkedInRecord();
+        record.setCheckedInAt(Instant.parse("2026-07-03T21:02:00Z"));
+        record.getSchedule().setCheckInClosesAt(Instant.parse("2026-07-03T21:00:00Z"));
+        when(attendanceRecords.findRecordsDueForAutoCheckout(Instant.parse("2026-07-03T21:05:00Z"), WorkScheduleStatus.CANCELLED))
+                .thenReturn(List.of(record));
+        when(schedules.findWindowsDueForCompletion(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(record.getSchedule()));
+
+        service.autoCheckoutDueRecords(Instant.parse("2026-07-03T21:05:00Z"));
+
+        assertThat(record.getCheckedOutAt()).isEqualTo(Instant.parse("2026-07-03T21:05:00Z"));
+        assertThat(record.getWorkedMinutes()).isEqualTo(3);
+    }
+
+
+    @Test
     void completesDueWindowEvenWhenNoEmployeesCheckedIn() {
         WorkScheduleEntity schedule = dueSchedule();
         when(attendanceRecords.findRecordsDueForAutoCheckout(Instant.parse("2026-07-03T21:05:00Z"), WorkScheduleStatus.CANCELLED))

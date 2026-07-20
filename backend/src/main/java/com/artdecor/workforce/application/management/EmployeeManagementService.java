@@ -105,6 +105,7 @@ public class EmployeeManagementService {
         if (command.password() != null && !command.password().isBlank()) {
             validatePassword(command.password());
             UserAccountEntity user = ensureEmployeeUser(employee, command.password(), true);
+            user.incrementTokenVersion();
             employee.setUserAccount(user);
         }
 
@@ -118,6 +119,7 @@ public class EmployeeManagementService {
         employee.setStatus(UserStatus.INACTIVE);
         if (employee.getUserAccount() != null) {
             employee.getUserAccount().setStatus(UserStatus.INACTIVE);
+            employee.getUserAccount().incrementTokenVersion();
         }
         return toResponse(employee);
     }
@@ -130,6 +132,7 @@ public class EmployeeManagementService {
         UserAccountEntity user = ensureEmployeeUser(employee, temporaryPassword, true);
         user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
         user.setPasswordMustChange(true);
+        user.incrementTokenVersion();
         employee.setUserAccount(user);
         return new PasswordResetResponse(temporaryPassword, true);
     }

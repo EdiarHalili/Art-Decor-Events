@@ -45,6 +45,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> createEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @Valid @RequestBody CreateEmployeeRequest request
@@ -55,6 +56,7 @@ public class AdminEmployeeController {
     }
 
     @PatchMapping("/{employeeId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId,
@@ -66,6 +68,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/{employeeId}/deactivate")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> deactivateEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId
@@ -76,6 +79,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/{employeeId}/reset-password")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<PasswordResetResponse> resetPassword(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId

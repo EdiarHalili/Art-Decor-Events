@@ -63,14 +63,17 @@ public class LocalDataBootstrap implements ApplicationRunner {
         boolean changed = false;
         if (!passwordEncoder.matches(properties.adminPassword(), admin.getPasswordHash())) {
             admin.setPasswordHash(passwordEncoder.encode(properties.adminPassword()));
+            admin.incrementTokenVersion();
             changed = true;
         }
         if (admin.getRole() != UserRole.ADMINISTRATOR) {
             admin.setRole(UserRole.ADMINISTRATOR);
+            admin.incrementTokenVersion();
             changed = true;
         }
         if (admin.getStatus() != UserStatus.ACTIVE) {
             admin.setStatus(UserStatus.ACTIVE);
+            admin.incrementTokenVersion();
             changed = true;
         }
         if (!properties.adminName().equals(admin.getFullName())) {
@@ -112,6 +115,7 @@ public class LocalDataBootstrap implements ApplicationRunner {
             String employeePassword = defaultEmployeePassword();
             if (!passwordEncoder.matches(employeePassword, user.getPasswordHash())) {
                 user.setPasswordHash(passwordEncoder.encode(employeePassword));
+                user.incrementTokenVersion();
                 changed = true;
             }
             if (user.isPasswordMustChange()) {
@@ -120,10 +124,12 @@ public class LocalDataBootstrap implements ApplicationRunner {
             }
             if (user.getRole() != UserRole.EMPLOYEE) {
                 user.setRole(UserRole.EMPLOYEE);
+                user.incrementTokenVersion();
                 changed = true;
             }
             if (user.getStatus() != UserStatus.ACTIVE) {
                 user.setStatus(UserStatus.ACTIVE);
+                user.incrementTokenVersion();
                 changed = true;
             }
         }

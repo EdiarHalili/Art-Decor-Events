@@ -9,8 +9,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.artdecor.workforce.application.reports.AttendanceReportService;
 import com.artdecor.workforce.application.reports.ExportFile;
 import com.artdecor.workforce.domain.UserRole;
+import com.artdecor.workforce.domain.UserStatus;
+import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import com.artdecor.workforce.infrastructure.security.JwtTokenService;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @SpringBootTest(properties = {
         "spring.flyway.enabled=false",
@@ -38,6 +44,12 @@ class EmployeeAttendanceControllerSecurityTest {
     @MockBean
     private AttendanceReportService reports;
 
+    @MockBean
+    private UserAccountRepository users;
+
+    @MockBean
+    private EmployeeRepository employees;
+
     @Test
     void employeeExportRequiresAuthentication() throws Exception {
         mvc.perform(get("/api/v1/employee/attendance/export")
@@ -52,7 +64,10 @@ class EmployeeAttendanceControllerSecurityTest {
         UUID employeeId = UUID.randomUUID();
         LocalDate from = LocalDate.of(2026, 7, 1);
         LocalDate to = LocalDate.of(2026, 7, 31);
-        String token = tokens.issueToken(UUID.randomUUID(), UserRole.EMPLOYEE, employeeId);
+        UUID userId = UUID.randomUUID();
+        String token = tokens.issueToken(userId, UserRole.EMPLOYEE, employeeId);
+        when(users.findById(userId)).thenReturn(Optional.of(user(userId)));
+        when(employees.existsByIdAndStatusAndUserAccountId(employeeId, UserStatus.ACTIVE, userId)).thenReturn(true);
 
         when(reports.exportEmployee(eq(employeeId), eq(from), eq(to), eq("pdf")))
                 .thenReturn(new ExportFile("Historia_Punes_EMP001_2026-07.pdf", "application/pdf", "%PDF".getBytes()));
@@ -65,5 +80,16 @@ class EmployeeAttendanceControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/pdf"))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Historia_Punes_EMP001_2026-07.pdf\""));
+    }
+
+    private UserAccountEntity user(UUID userId) {
+        UserAccountEntity user = new UserAccountEntity();
+        ReflectionTestUtils.setField(user, "id", userId);
+        user.setFullName("Employee");
+        user.setEmail("emp001");
+        user.setPasswordHash("hash");
+        user.setRole(UserRole.EMPLOYEE);
+        user.setStatus(UserStatus.ACTIVE);
+        return user;
     }
 }

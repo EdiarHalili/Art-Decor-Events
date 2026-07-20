@@ -22,6 +22,10 @@ public class JwtTokenService {
     }
 
     public String issueToken(UUID subject, UserRole role, UUID employeeId) {
+        return issueToken(subject, role, employeeId, 0);
+    }
+
+    public String issueToken(UUID subject, UserRole role, UUID employeeId, int tokenVersion) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(properties.accessTokenMinutes() * 60);
 
@@ -31,6 +35,7 @@ public class JwtTokenService {
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .claim("role", role.name())
+                .claim("tokenVersion", tokenVersion)
                 .signWith(key);
 
         if (employeeId != null) {

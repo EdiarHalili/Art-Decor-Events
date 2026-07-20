@@ -24,7 +24,7 @@ class JwtTokenServiceTest {
         assertThat(claims.getSubject()).isEqualTo(userId.toString());
         assertThat(claims.get("role", String.class)).isEqualTo("EMPLOYEE");
         assertThat(claims.get("employeeId", String.class)).isEqualTo(employeeId.toString());
+        assertThat(claims.get("tokenVersion", Integer.class)).isZero();
         assertThat(service.accessTokenSeconds()).isEqualTo(1800);
     }
 }
-

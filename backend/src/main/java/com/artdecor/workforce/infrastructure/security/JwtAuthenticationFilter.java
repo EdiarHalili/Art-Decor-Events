@@ -1,7 +1,10 @@
 package com.artdecor.workforce.infrastructure.security;
 
-import io.jsonwebtoken.Claims;
 import com.artdecor.workforce.domain.UserRole;
+import com.artdecor.workforce.domain.UserStatus;
+import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
+import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,9 +21,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService tokenService;
+    private final UserAccountRepository users;
+    private final EmployeeRepository employees;
 
-    public JwtAuthenticationFilter(JwtTokenService tokenService) {
+    public JwtAuthenticationFilter(
+            JwtTokenService tokenService,
+            UserAccountRepository users,
+            EmployeeRepository employees
+    ) {
         this.tokenService = tokenService;
+        this.users = users;
+        this.employees = employees;
     }
 
     @Override
@@ -42,11 +53,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = tokenService.parseClaims(token);
             UserRole role = UserRole.valueOf(claims.get("role", String.class));
+            Integer tokenVersion = claims.get("tokenVersion", Integer.class);
+            if (tokenVersion == null) {
+                throw new IllegalArgumentException("Token version is missing.");
+            }
             UUID employeeId = claims.get("employeeId", String.class) == null
                     ? null
                     : UUID.fromString(claims.get("employeeId", String.class));
+            UUID userId = UUID.fromString(claims.getSubject());
+            var user = users.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Authenticated user no longer exists."));
+            if (user.getStatus() != UserStatus.ACTIVE
+                    || user.getRole() != role
+                    || user.getTokenVersion() != tokenVersion) {
+                throw new IllegalArgumentException("Token is no longer valid.");
+            }
+            if (role == UserRole.EMPLOYEE) {
+                if (employeeId == null) {
+                    throw new IllegalArgumentException("Employee token is missing employee id.");
+                }
+                if (!employees.existsByIdAndStatusAndUserAccountId(employeeId, UserStatus.ACTIVE, userId)) {
+                    throw new IllegalArgumentException("Employee token is no longer valid.");
+                }
+            }
             AuthenticatedPrincipal principal = new AuthenticatedPrincipal(
-                    UUID.fromString(claims.getSubject()),
+                    userId,
                     role,
                     employeeId
             );

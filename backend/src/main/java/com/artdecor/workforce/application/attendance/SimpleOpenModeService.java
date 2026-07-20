@@ -9,6 +9,7 @@ import com.artdecor.workforce.infrastructure.persistence.ScheduleAssignmentRepos
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -82,13 +83,19 @@ public class SimpleOpenModeService {
         AppSettingsResponse currentSettings = settings.current();
         ZoneId zone = ZoneId.of(currentSettings.timezone());
         LocalTime cutoffTime = currentSettings.defaultCheckInCloseTime();
-        LocalDate cutoffDate = cutoffTime.isAfter(LocalTime.MIDNIGHT) ? workDate : workDate.plusDays(1);
+        Instant now = Instant.now(clock);
+        LocalDate cutoffDate = workDate;
+        Instant cutoff = cutoffDate.atTime(cutoffTime).atZone(zone).toInstant();
+        while (!cutoff.isAfter(now)) {
+            cutoffDate = cutoffDate.plusDays(1);
+            cutoff = cutoffDate.atTime(cutoffTime).atZone(zone).toInstant();
+        }
         WorkScheduleEntity schedule = new WorkScheduleEntity();
         schedule.setTitle(SIMPLE_OPEN_TITLE);
         schedule.setDescription("Automatically created because no daily check-in window was scheduled.");
         schedule.setWorkDate(workDate);
         schedule.setCheckInOpensAt(workDate.atStartOfDay(zone).toInstant());
-        schedule.setCheckInClosesAt(cutoffDate.atTime(cutoffTime).atZone(zone).toInstant());
+        schedule.setCheckInClosesAt(cutoff);
         schedule.setPlannedStartAt(null);
         schedule.setPlannedEndAt(schedule.getCheckInClosesAt());
         schedule.setAutoCheckoutEnabled(true);

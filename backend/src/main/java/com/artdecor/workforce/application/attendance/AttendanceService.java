@@ -17,6 +17,9 @@ import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,6 +92,8 @@ public class AttendanceService {
             throw new AttendanceException("DUPLICATE_CHECK_IN", "Ju tashmë keni bërë hyrje për këtë orar. Hyrja e dytë nuk lejohet.");
         }
 
+        ensureSimpleOpenCutoffAfterAction(schedule, actionTime);
+
         AttendanceRecordEntity record = new AttendanceRecordEntity();
         boolean gpsEnabled = settings.current().gpsEnabled();
         GpsDebugLogger.log(
@@ -107,7 +112,12 @@ public class AttendanceService {
         record.setCheckInDevice(command.device());
         record.setStatus(AttendanceStatus.PRESENT);
 
-        AttendanceRecordEntity saved = attendanceRecords.save(record);
+        AttendanceRecordEntity saved;
+        try {
+            saved = attendanceRecords.saveAndFlush(record);
+        } catch (DataIntegrityViolationException exception) {
+            throw new AttendanceException("DUPLICATE_ACTIVE_CHECK_IN", "Ju tashmë keni filluar orarin e punës.");
+        }
         GpsDebugLogger.log(
                 "check-in stored",
                 "attendanceRecordId", saved.getId(),
@@ -216,6 +226,28 @@ public class AttendanceService {
 
     private Instant actionTime(AttendanceActionCommand command) {
         return command.capturedAt() == null ? Instant.now(clock) : command.capturedAt();
+    }
+
+    private void ensureSimpleOpenCutoffAfterAction(WorkScheduleEntity schedule, Instant actionTime) {
+        if (!schedule.isSimpleOpenMode()
+                || !schedule.isAutoCheckoutEnabled()
+                || schedule.getCheckInClosesAt().isAfter(actionTime)) {
+            return;
+        }
+        var currentSettings = settings.current();
+        if (currentSettings.openModeUnlimitedCheckout()) {
+            return;
+        }
+
+        ZoneId zone = ZoneId.of(currentSettings.timezone());
+        LocalDate cutoffDate = actionTime.atZone(zone).toLocalDate();
+        Instant cutoff = cutoffDate.atTime(currentSettings.defaultCheckInCloseTime()).atZone(zone).toInstant();
+        while (!cutoff.isAfter(actionTime)) {
+            cutoffDate = cutoffDate.plusDays(1);
+            cutoff = cutoffDate.atTime(currentSettings.defaultCheckInCloseTime()).atZone(zone).toInstant();
+        }
+        schedule.setCheckInClosesAt(cutoff);
+        schedule.setPlannedEndAt(cutoff);
     }
 
     private AttendanceResponse toResponse(AttendanceRecordEntity record) {

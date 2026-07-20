@@ -62,7 +62,7 @@ public class AutoCheckoutService {
             if (record.getSchedule().isSimpleOpenMode() && settings.current().openModeUnlimitedCheckout()) {
                 continue;
             }
-            autoCheckout(record);
+            autoCheckout(record, now);
             updated++;
         }
         completeDueWindows(now);
@@ -77,10 +77,13 @@ public class AutoCheckoutService {
         }
     }
 
-    private void autoCheckout(AttendanceRecordEntity record) {
+    private void autoCheckout(AttendanceRecordEntity record, Instant now) {
         Instant checkoutAt = record.getExtendedCheckoutUntil() == null
                 ? record.getSchedule().getCheckInClosesAt()
                 : record.getExtendedCheckoutUntil();
+        if (checkoutAt.isBefore(record.getCheckedInAt())) {
+            checkoutAt = now;
+        }
         record.setCheckedOutAt(checkoutAt);
         record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkoutAt).toMinutes()));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkoutAt));

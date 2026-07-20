@@ -35,6 +35,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class AttendanceServiceTest {
@@ -86,7 +87,7 @@ class AttendanceServiceTest {
                 false,
                 Instant.parse("2026-07-03T00:00:00Z")
         ));
-        when(attendanceRecords.save(any(AttendanceRecordEntity.class))).thenAnswer(invocation -> {
+        when(attendanceRecords.saveAndFlush(any(AttendanceRecordEntity.class))).thenAnswer(invocation -> {
             AttendanceRecordEntity record = invocation.getArgument(0);
             ReflectionTestUtils.setField(record, "id", UUID.randomUUID());
             return record;
@@ -114,7 +115,7 @@ class AttendanceServiceTest {
         service.checkIn(principal, gpsCommand);
 
         ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
-        verify(attendanceRecords).save(captor.capture());
+        verify(attendanceRecords).saveAndFlush(captor.capture());
         AttendanceRecordEntity saved = captor.getValue();
         assertThat(saved.getCheckInLatitude()).isEqualTo(42.30413);
         assertThat(saved.getCheckInLongitude()).isEqualTo(21.64894);
@@ -170,7 +171,7 @@ class AttendanceServiceTest {
 
         assertThat(response.status()).isEqualTo(AttendanceStatus.PRESENT.name());
         ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
-        verify(attendanceRecords).save(captor.capture());
+        verify(attendanceRecords).saveAndFlush(captor.capture());
         assertThat(captor.getValue()).isNotSameAs(completed);
         assertThat(captor.getValue().getCheckedInAt()).isEqualTo(Instant.parse("2026-07-03T09:00:00Z"));
     }
@@ -241,7 +242,7 @@ class AttendanceServiceTest {
 
         assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T06:52:00Z"));
         ArgumentCaptor<AttendanceRecordEntity> captor = ArgumentCaptor.forClass(AttendanceRecordEntity.class);
-        verify(attendanceRecords).save(captor.capture());
+        verify(attendanceRecords).saveAndFlush(captor.capture());
         AttendanceRecordEntity saved = captor.getValue();
         assertThat(saved.getCheckInLatitude()).isEqualTo(42.30413);
         assertThat(saved.getCheckInLongitude()).isEqualTo(21.64894);
@@ -283,6 +284,37 @@ class AttendanceServiceTest {
         assertThat(response.checkedOutAt()).isEqualTo(Instant.parse("2026-07-03T15:10:00Z"));
         assertThat(response.workedMinutes()).isEqualTo(498);
         assertThat(response.overtimeMinutes()).isEqualTo(10);
+    }
+
+    @Test
+    void convertsDatabaseActiveSessionRaceConflictToFriendlyMessage() {
+        when(attendanceRecords.saveAndFlush(any(AttendanceRecordEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("uq_attendance_one_active_per_employee"));
+
+        assertThatThrownBy(() -> service.checkIn(principal, command()))
+                .isInstanceOf(AttendanceException.class)
+                .hasMessage("Ju tashmë keni filluar orarin e punës.");
+    }
+
+    @Test
+    void extendsStaleSimpleOpenCutoffPastActualCheckInTime() {
+        schedule.setSimpleOpenMode(true);
+        schedule.setAutoCheckoutEnabled(true);
+        schedule.setCheckInClosesAt(Instant.parse("2026-07-03T07:10:00Z"));
+        schedule.setPlannedEndAt(Instant.parse("2026-07-03T07:10:00Z"));
+
+        AttendanceResponse response = service.checkIn(principal, new AttendanceActionCommand(
+                scheduleId,
+                42.0,
+                21.0,
+                Map.of("platform", "test"),
+                Instant.parse("2026-07-03T14:00:00Z")
+        ));
+
+        assertThat(response.checkedInAt()).isEqualTo(Instant.parse("2026-07-03T14:00:00Z"));
+        assertThat(schedule.getCheckInClosesAt()).isAfter(response.checkedInAt());
+        assertThat(schedule.getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T05:10:00Z"));
+        assertThat(schedule.getPlannedEndAt()).isEqualTo(schedule.getCheckInClosesAt());
     }
 
     @Test

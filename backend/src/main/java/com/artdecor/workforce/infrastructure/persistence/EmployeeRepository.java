@@ -10,5 +10,7 @@ public interface EmployeeRepository extends JpaRepository<EmployeeEntity, UUID> 
 
     boolean existsByEmployeeCodeIgnoreCase(String employeeCode);
 
+    boolean existsByIdAndStatusAndUserAccountId(UUID id, UserStatus status, UUID userAccountId);
+
     long countByStatus(UserStatus status);
 }

@@ -77,6 +77,26 @@ class SimpleOpenModeServiceTest {
         assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T00:00:00Z"));
     }
 
+    @Test
+    void movesAlreadyPassedCutoffToNextDay() {
+        EmployeeEntity employee = employee();
+        when(settings.current()).thenReturn(settingsResponse(LocalTime.of(6, 0)));
+        when(schedules.existsByWorkDateAndSimpleOpenModeFalseAndStatusIn(any(), any())).thenReturn(false);
+        when(schedules.findFirstByWorkDateAndSimpleOpenModeTrueOrderByCreatedAtAsc(LocalDate.of(2026, 7, 3)))
+                .thenReturn(Optional.empty());
+        when(schedules.save(any(WorkScheduleEntity.class))).thenAnswer(invocation -> {
+            WorkScheduleEntity schedule = invocation.getArgument(0);
+            ReflectionTestUtils.setField(schedule, "id", UUID.randomUUID());
+            return schedule;
+        });
+        when(assignments.findByScheduleIdAndEmployeeId(any(), any())).thenReturn(Optional.empty());
+        when(assignments.save(any(ScheduleAssignmentEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ScheduleAssignmentEntity assignment = service.getOrCreateTodayAssignment(employee);
+
+        assertThat(assignment.getSchedule().getCheckInClosesAt()).isEqualTo(Instant.parse("2026-07-04T06:00:00Z"));
+    }
+
     private EmployeeEntity employee() {
         EmployeeEntity employee = new EmployeeEntity();
         ReflectionTestUtils.setField(employee, "id", UUID.randomUUID());

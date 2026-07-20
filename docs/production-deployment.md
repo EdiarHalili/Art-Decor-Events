@@ -16,15 +16,25 @@ Set these values in the production environment:
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE="prod"
-$env:DB_HOST="your-postgres-host"
-$env:DB_PORT="5432"
-$env:DB_NAME="artdecor_workforce"
+$env:DB_URL="jdbc:postgresql://your-postgres-host:5432/artdecor_workforce"
 $env:DB_USERNAME="artdecor_app"
 $env:DB_PASSWORD="replace-with-strong-password"
-$env:JWT_SECRET="replace-with-at-least-32-random-characters"
+$env:JWT_SECRET="replace-with-at-least-48-random-characters"
 $env:CORS_ALLOWED_ORIGINS="https://your-domain.com"
 $env:CORS_ALLOWED_ORIGIN_PATTERNS=""
+$env:APP_BOOTSTRAP_ENABLED="false"
 $env:APP_BUSINESS_ZONE="Europe/Berlin"
+$env:ARTDECOR_GPS_DEBUG="false"
+```
+
+With `SPRING_PROFILES_ACTIVE=prod`, the backend intentionally refuses to start when required production values are missing or when local-development defaults are used. Production must not use `ChangeMe123!`, `artdecor_dev_password`, the development JWT secret, localhost/private-network CORS origins, broad CORS origin patterns, or GPS debug logging.
+
+If you need bootstrap to create the first administrator in a fresh production database, set these values only for the first startup, then disable bootstrap after confirming the account:
+
+```powershell
+$env:APP_BOOTSTRAP_ENABLED="true"
+$env:APP_BOOTSTRAP_ADMIN_EMAIL="owner@your-domain.com"
+$env:APP_BOOTSTRAP_ADMIN_PASSWORD="replace-with-a-strong-temporary-admin-password"
 ```
 
 Use a different database user for migrations if the hosting platform supports it. The runtime user should not own the database.

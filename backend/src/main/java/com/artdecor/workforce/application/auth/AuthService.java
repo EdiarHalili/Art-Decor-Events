@@ -53,7 +53,7 @@ public class AuthService {
 
         audit.system("ADMIN_LOGIN", "USER", user.getId());
         return new AuthResponse(
-                tokens.issueToken(user.getId(), user.getRole(), null),
+                tokens.issueToken(user.getId(), user.getRole(), null, user.getTokenVersion()),
                 "Bearer",
                 tokens.accessTokenSeconds(),
                 user.getRole().name(),
@@ -85,7 +85,7 @@ public class AuthService {
 
         audit.system("EMPLOYEE_LOGIN", "EMPLOYEE", employee.getId());
         return new AuthResponse(
-                tokens.issueToken(user.getId(), UserRole.EMPLOYEE, employee.getId()),
+                tokens.issueToken(user.getId(), UserRole.EMPLOYEE, employee.getId(), user.getTokenVersion()),
                 "Bearer",
                 tokens.accessTokenSeconds(),
                 UserRole.EMPLOYEE.name(),
@@ -108,6 +108,7 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setPasswordMustChange(false);
+        user.incrementTokenVersion();
         audit.log(principal, "PASSWORD_CHANGED", "USER", user.getId());
 
         String fullName = user.getFullName();
@@ -122,7 +123,7 @@ public class AuthService {
         }
 
         return new AuthResponse(
-                tokens.issueToken(user.getId(), user.getRole(), principal.employeeId()),
+                tokens.issueToken(user.getId(), user.getRole(), principal.employeeId(), user.getTokenVersion()),
                 "Bearer",
                 tokens.accessTokenSeconds(),
                 user.getRole().name(),
