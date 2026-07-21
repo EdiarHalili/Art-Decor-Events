@@ -54,6 +54,11 @@ class AttendanceDurationCalculatorTest {
     }
 
     @Test
+    void roundsFiftyNineMinutesAndThirtyOneSecondsToOneHour() {
+        assertThat(roundedAfterSeconds(3_571)).isEqualTo(60);
+    }
+
+    @Test
     void roundsDurationsUnderThirtySecondsToZeroMinutes() {
         assertThat(roundedAfterSeconds(0)).isZero();
         assertThat(roundedAfterSeconds(29)).isZero();
