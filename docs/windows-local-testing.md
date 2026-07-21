@@ -37,7 +37,7 @@ $env:APP_BOOTSTRAP_ENABLED="true"
 $env:APP_BOOTSTRAP_ADMIN_EMAIL="admin@artdecor.local"
 $env:APP_BOOTSTRAP_ADMIN_PASSWORD="ChangeMe123!"
 $env:APP_BOOTSTRAP_EMPLOYEE_CODE="EMP001"
-$env:APP_BOOTSTRAP_EMPLOYEE_PIN="1234"
+$env:APP_BOOTSTRAP_EMPLOYEE_PASSWORD="Employee123!"
 $env:JWT_SECRET="replace-this-with-a-long-local-development-secret-value-123456"
 mvn spring-boot:run
 ```
@@ -100,7 +100,7 @@ Verify:
 
 - Dashboard loads.
 - Employees page lists the bootstrap employee.
-- You can create an additional employee with a 4-digit PIN.
+- You can create an additional employee with a temporary password.
 
 ## 5. Test Daily Check-in Windows
 
@@ -131,7 +131,7 @@ Use:
 
 ```text
 Employee ID: EMP001
-PIN: 1234
+Password: Employee123!
 ```
 
 Verify:

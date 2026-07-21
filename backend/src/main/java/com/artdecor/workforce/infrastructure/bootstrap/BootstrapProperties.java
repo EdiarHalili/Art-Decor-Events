@@ -10,7 +10,7 @@ public record BootstrapProperties(
         String adminPassword,
         String employeeName,
         String employeeCode,
-        String employeePin
+        String employeePin,
+        String employeePassword
 ) {
 }
-

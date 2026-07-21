@@ -27,7 +27,8 @@ class LocalDataBootstrapTest {
             "ChangeMe123!",
             "Demo Employee",
             "EMP001",
-            "1234"
+            "1234",
+            "Employee123!"
     );
 
     @Test
@@ -63,7 +64,7 @@ class LocalDataBootstrapTest {
                 })
                 .anySatisfy(saved -> {
                     assertThat(saved.getEmail()).isEqualTo("emp001");
-                    assertThat(passwordEncoder.matches("ChangeMe123!", saved.getPasswordHash())).isTrue();
+                    assertThat(passwordEncoder.matches("Employee123!", saved.getPasswordHash())).isTrue();
                     assertThat(saved.getRole()).isEqualTo(UserRole.EMPLOYEE);
                     assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
                 });

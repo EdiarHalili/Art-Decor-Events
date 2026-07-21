@@ -10,16 +10,15 @@
 
 ## Employee
 
-1. Employee enters employee ID and 4-digit PIN.
-2. Backend validates the hashed PIN.
+1. Employee enters employee ID and password.
+2. Backend validates the employee user account password using BCrypt.
 3. Employee receives a limited JWT scoped to employee portal actions only.
 4. Employee UI shows only today's assignment, announcements, current status, check in, and check out.
 
 ## Security Notes
 
-- PIN and password hashes use BCrypt.
+- Password hashes use BCrypt.
 - JWT includes subject, role, and employee ID when applicable.
 - Role-based permissions are enforced in Spring Security.
 - Every login, check-in, check-out, and admin change writes an audit log entry.
 - The backend is the source of truth for schedule windows and duplicate prevention.
-

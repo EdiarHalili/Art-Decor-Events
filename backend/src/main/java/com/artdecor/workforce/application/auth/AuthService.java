@@ -65,7 +65,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginEmployee(String employeeCode, String pin) {
+    public AuthResponse loginEmployee(String employeeCode, String password) {
         var employee = employees.findByEmployeeCodeIgnoreCase(employeeCode)
                 .orElseThrow(() -> new AuthException(INVALID_CREDENTIALS));
         UserAccountEntity user = employee.getUserAccount();
@@ -77,9 +77,7 @@ public class AuthService {
             throw new AuthException(INVALID_CREDENTIALS);
         }
 
-        boolean pinMatches = passwordEncoder.matches(pin, employee.getPinHash());
-        boolean passwordMatches = passwordEncoder.matches(pin, user.getPasswordHash());
-        if (!pinMatches && !passwordMatches) {
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new AuthException(INVALID_CREDENTIALS);
         }
 

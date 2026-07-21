@@ -36,6 +36,7 @@ app:
     employee-name: ${APP_BOOTSTRAP_EMPLOYEE_NAME:Demo Employee}
     employee-code: ${APP_BOOTSTRAP_EMPLOYEE_CODE:EMP001}
     employee-pin: ${APP_BOOTSTRAP_EMPLOYEE_PIN:1234}
+    employee-password: ${APP_BOOTSTRAP_EMPLOYEE_PASSWORD:Employee123!}
   security:
     jwt-secret: ${JWT_SECRET:change-this-development-secret-to-a-very-long-production-value}
     jwt-issuer: art-decor-events

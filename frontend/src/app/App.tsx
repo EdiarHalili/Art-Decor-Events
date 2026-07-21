@@ -219,6 +219,10 @@ function ChangePasswordScreen({
           <Input
             type="password"
             autoComplete="current-password"
+            inputMode="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="Fjalëkalimi i përkohshëm aktual"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
@@ -227,6 +231,10 @@ function ChangePasswordScreen({
           <Input
             type="password"
             autoComplete="new-password"
+            inputMode="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="Fjalëkalimi i ri"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
@@ -237,6 +245,10 @@ function ChangePasswordScreen({
           <Input
             type="password"
             autoComplete="new-password"
+            inputMode="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="Konfirmo fjalëkalimin e ri"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}

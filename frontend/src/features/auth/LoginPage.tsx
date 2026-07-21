@@ -18,7 +18,7 @@ type LoginPageProps = {
 export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<"employee" | "admin">("employee");
   const [employeeCode, setEmployeeCode] = useState("");
-  const [employeePin, setEmployeePin] = useState("");
+  const [employeePassword, setEmployeePassword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,8 +34,8 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
         setError("ID e punëtorit është e detyrueshme.");
         return;
       }
-      if (mode === "employee" && !employeePin.trim()) {
-        setError("PIN është i detyrueshëm.");
+      if (mode === "employee" && !employeePassword) {
+        setError("Fjalëkalimi është i detyrueshëm.");
         return;
       }
       if (mode === "admin" && !email.trim()) {
@@ -47,7 +47,9 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
         return;
       }
       const session =
-        mode === "employee" ? await loginEmployee(employeeCode.trim(), employeePin.trim()) : await loginAdmin(email.trim(), password);
+        mode === "employee"
+          ? await loginEmployee(employeeCode.trim(), employeePassword)
+          : await loginAdmin(email.trim(), password);
       onAuthenticated(session);
     } catch (error) {
       setError(loginErrorMessage(error));
@@ -106,15 +108,19 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
                   <Input value={employeeCode} onChange={(event) => setEmployeeCode(event.target.value)} required />
                 </label>
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium">PIN</span>
+                  <span className="text-sm font-medium">Fjalëkalimi</span>
                   <div className="relative">
                     <LockKeyhole className="absolute left-3 top-3 text-muted-foreground" size={18} />
                     <Input
-                      value={employeePin}
-                      onChange={(event) => setEmployeePin(event.target.value)}
+                      value={employeePassword}
+                      onChange={(event) => setEmployeePassword(event.target.value)}
                       className="pl-10"
                       type="password"
-                      inputMode="numeric"
+                      autoComplete="current-password"
+                      inputMode="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       required
                     />
                   </div>

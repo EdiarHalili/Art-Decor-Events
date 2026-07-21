@@ -17,7 +17,7 @@ All responses include `X-Request-Id`. Clients may send their own `X-Request-Id`;
   "code": "VALIDATION_FAILED",
   "message": "Please check the submitted fields.",
   "details": {
-    "pin": "PIN must be 4 digits."
+    "password": "Fjalëkalimi është i detyrueshëm."
   }
 }
 ```

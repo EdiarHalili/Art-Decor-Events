@@ -148,6 +148,9 @@ public class LocalDataBootstrap implements ApplicationRunner {
     }
 
     private String defaultEmployeePassword() {
-        return properties.employeePin().length() >= 8 ? properties.employeePin() : properties.adminPassword();
+        if (properties.employeePassword() != null && !properties.employeePassword().isBlank()) {
+            return properties.employeePassword();
+        }
+        return properties.adminPassword();
     }
 }

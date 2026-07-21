@@ -33,7 +33,7 @@ public class AuthController {
 
     @PostMapping("/employee/login")
     public ResponseEntity<AuthResponse> employeeLogin(@Valid @RequestBody EmployeeLoginRequest request) {
-        return ResponseEntity.ok(authService.loginEmployee(request.employeeCode(), request.pin()));
+        return ResponseEntity.ok(authService.loginEmployee(request.employeeCode(), request.password()));
     }
 
     @PostMapping("/change-password")
@@ -59,9 +59,8 @@ public class AuthController {
             @JsonAlias("username")
             @NotBlank(message = "ID e punëtorit është e detyrueshme.")
             String employeeCode,
-            @JsonAlias("password")
-            @NotBlank(message = "PIN është i detyrueshëm.")
-            String pin
+            @NotBlank(message = "Fjalëkalimi është i detyrueshëm.")
+            String password
     ) {
     }
 

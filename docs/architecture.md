@@ -35,7 +35,7 @@ Phase 1 builds the foundation:
 - Project structure and docs
 - Database schema with payroll-ready attendance data
 - JWT authentication design
-- PIN/password hashing strategy
+- Password hashing strategy
 - Branded React shell
 - Employee login/check-in screen foundation
 - Admin dashboard foundation
@@ -55,7 +55,7 @@ No event title, venue, location, or complex event assignment page is required in
 
 ## Production Principles
 
-- PINs and passwords are never stored in plain text.
+- Passwords are never stored in plain text.
 - Every important action is auditable.
 - Attendance writes are idempotent where possible to prevent duplicate check-ins and check-outs.
 - Daily check-in windows are enforced by the backend, not the client.

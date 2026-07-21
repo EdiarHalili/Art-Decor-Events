@@ -261,10 +261,10 @@ type DailyCheckInWindowPayload = {
 
 export type CheckoutType = "MANUAL_EMPLOYEE" | "AUTO_CHECKED_OUT" | "ADMIN_CHECKED_OUT";
 
-export async function loginEmployee(employeeCode: string, pin: string): Promise<AuthResponse> {
+export async function loginEmployee(employeeCode: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/employee/login", {
     method: "POST",
-    body: JSON.stringify({ employeeCode, pin }),
+    body: JSON.stringify({ employeeCode, password }),
   });
 }
 
@@ -829,7 +829,6 @@ function readableFieldMessage(field: string, message: unknown) {
 function fieldLabel(field: string) {
   const labels: Record<string, string> = {
     employeeCode: "ID e punëtorit",
-    pin: "PIN",
     username: "ID e punëtorit",
     password: "Fjalëkalimi",
     email: "Email",

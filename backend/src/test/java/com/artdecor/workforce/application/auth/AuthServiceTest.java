@@ -63,13 +63,13 @@ class AuthServiceTest {
     }
 
     @Test
-    void logsInEmployeeWithValidPin() {
+    void logsInEmployeeWithValidPassword() {
         UserAccountEntity employeeUser = user("Season Worker", "emp001", "secret123", UserRole.EMPLOYEE);
         EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
         employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        AuthResponse response = authService.loginEmployee("EMP001", "1234");
+        AuthResponse response = authService.loginEmployee("EMP001", "secret123");
 
         assertThat(response.accessToken()).isNotBlank();
         assertThat(response.role()).isEqualTo("EMPLOYEE");
@@ -77,13 +77,24 @@ class AuthServiceTest {
     }
 
     @Test
-    void rejectsInvalidEmployeePin() {
+    void rejectsInvalidEmployeePassword() {
         UserAccountEntity employeeUser = user("Season Worker", "emp001", "secret123", UserRole.EMPLOYEE);
         EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
         employee.setUserAccount(employeeUser);
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
-        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "wrongpin"))
+        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "wrongPassword"))
+                .isInstanceOf(AuthException.class);
+    }
+
+    @Test
+    void rejectsLegacyEmployeePinEvenWhenPinHashMatches() {
+        UserAccountEntity employeeUser = user("Season Worker", "emp001", "secret123", UserRole.EMPLOYEE);
+        EmployeeEntity employee = employee("EMP001", "Season Worker", "1234");
+        employee.setUserAccount(employeeUser);
+        when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> authService.loginEmployee("EMP001", "1234"))
                 .isInstanceOf(AuthException.class);
     }
 
@@ -101,7 +112,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void logsInEmployeeWithLongPasswordAndKeepsPinCompatibility() {
+    void logsInEmployeeWithLongPassword() {
         String longPassword = "LongPasswordForSeasonalWorker1234567890";
         UserAccountEntity employeeUser = user("Season Worker", "emp001", longPassword, UserRole.EMPLOYEE);
         EmployeeEntity employee = employee("EMP001", "Season Worker", "123456789");
@@ -109,11 +120,9 @@ class AuthServiceTest {
         when(employees.findByEmployeeCodeIgnoreCase("EMP001")).thenReturn(Optional.of(employee));
 
         AuthResponse passwordResponse = authService.loginEmployee("EMP001", longPassword);
-        AuthResponse pinResponse = authService.loginEmployee("EMP001", "123456789");
 
         assertThat(passwordResponse.accessToken()).isNotBlank();
         assertThat(passwordResponse.employeeCode()).isEqualTo("EMP001");
-        assertThat(pinResponse.accessToken()).isNotBlank();
     }
 
     @Test

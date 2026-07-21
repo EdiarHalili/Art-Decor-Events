@@ -6,7 +6,7 @@ Use this checklist during the final QA and bug-fix phase before deployment.
 
 - Admin can log in with a valid account.
 - Admin cannot log in with a wrong password.
-- Employee can log in with employee ID and 4-digit PIN.
+- Employee can log in with employee ID and password.
 - Inactive employee cannot log in.
 - Session expires according to configured policy.
 - Unauthorized API calls return clear errors.
