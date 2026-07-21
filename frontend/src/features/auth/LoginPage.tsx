@@ -144,6 +144,7 @@ export function LoginPage({ settings, notice, onAuthenticated }: LoginPageProps)
                       onChange={(event) => setPassword(event.target.value)}
                       className="pl-10"
                       type="password"
+                      autoComplete="current-password"
                       required
                     />
                   </div>

@@ -216,6 +216,7 @@ export function UserManagementPage({ accessToken, role: currentRole }: UserManag
           <Input
             placeholder="Fjalëkalim i përkohshëm"
             type="password"
+            autoComplete="new-password"
             minLength={8}
             maxLength={128}
             value={password}
@@ -335,6 +336,7 @@ export function UserManagementPage({ accessToken, role: currentRole }: UserManag
                   onChange={(event) => setResetPassword(event.target.value)}
                   placeholder="Fjalëkalim i ri i përkohshëm"
                   type="password"
+                  autoComplete="new-password"
                   minLength={8}
                   maxLength={128}
                 />

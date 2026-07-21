@@ -263,6 +263,7 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
             minLength={8}
             maxLength={128}
             type="password"
+            autoComplete="new-password"
             required={!editingId}
           />
           <Input placeholder="Telefoni" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
