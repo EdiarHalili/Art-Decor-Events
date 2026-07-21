@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/payroll")
-@PreAuthorize("hasRole('ADMINISTRATOR')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
 public class AdminPayrollController {
     private final PayrollPreparationService payroll;
 

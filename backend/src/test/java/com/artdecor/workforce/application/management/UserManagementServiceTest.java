@@ -10,10 +10,12 @@ import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountEntity;
 import com.artdecor.workforce.infrastructure.persistence.UserAccountRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -35,7 +37,7 @@ class UserManagementServiceTest {
 
     @Test
     void createsSupervisorAccount() {
-        UserResponse response = service.createUser(new CreateUserCommand(
+        UserResponse response = service.createUser(superAdminPrincipal(), new CreateUserCommand(
                 "Supervisor",
                 "supervisor@artdecor.test",
                 "ChangeMe123!",
@@ -54,8 +56,22 @@ class UserManagementServiceTest {
     }
 
     @Test
+    void superAdminCanCreateAdministratorAccount() {
+        UserResponse response = service.createUser(superAdminPrincipal(), new CreateUserCommand(
+                "Administrator",
+                "administrator@artdecor.test",
+                "ChangeMe123!",
+                UserRole.ADMINISTRATOR
+        ));
+
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.email()).isEqualTo("administrator@artdecor.test");
+        assertThat(response.role()).isEqualTo(UserRole.ADMINISTRATOR.name());
+    }
+
+    @Test
     void rejectsEmployeeRoleForAdminUsers() {
-        assertThatThrownBy(() -> service.createUser(new CreateUserCommand(
+        assertThatThrownBy(() -> service.createUser(superAdminPrincipal(), new CreateUserCommand(
                 "Employee",
                 "employee@artdecor.test",
                 "ChangeMe123!",
@@ -86,9 +102,10 @@ class UserManagementServiceTest {
         UserAccountEntity targetAdmin = user(targetAdminId, UserRole.ADMINISTRATOR);
         when(users.findById(targetAdminId)).thenReturn(java.util.Optional.of(targetAdmin));
         when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(1L);
+        when(users.countByRoleAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE)).thenReturn(0L);
 
         assertThatThrownBy(() -> service.deactivateUser(
-                new AuthenticatedPrincipal(currentAdminId, UserRole.ADMINISTRATOR, null),
+                new AuthenticatedPrincipal(currentAdminId, UserRole.SUPER_ADMIN, null),
                 targetAdminId
         ))
                 .isInstanceOf(ManagementException.class)
@@ -98,21 +115,93 @@ class UserManagementServiceTest {
     }
 
     @Test
-    void allowsDeactivatingAnotherAdministratorWhenMultipleAdministratorsRemain() {
-        UUID currentAdminId = UUID.randomUUID();
+    void allowsSuperAdminToDeactivateAnotherAdministratorWhenMultipleAdministratorsRemain() {
         UUID targetAdminId = UUID.randomUUID();
         UserAccountEntity targetAdmin = user(targetAdminId, UserRole.ADMINISTRATOR);
-        when(users.findById(targetAdminId)).thenReturn(java.util.Optional.of(targetAdmin));
+        when(users.findById(targetAdminId)).thenReturn(Optional.of(targetAdmin));
         when(users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)).thenReturn(2L);
 
         UserResponse response = service.deactivateUser(
-                new AuthenticatedPrincipal(currentAdminId, UserRole.ADMINISTRATOR, null),
+                superAdminPrincipal(),
                 targetAdminId
         );
 
         assertThat(response.status()).isEqualTo(UserStatus.INACTIVE.name());
         assertThat(targetAdmin.getStatus()).isEqualTo(UserStatus.INACTIVE);
         assertThat(targetAdmin.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void administratorCanCreateSupervisorButNotAdministrator() {
+        UserResponse response = service.createUser(adminPrincipal(), new CreateUserCommand(
+                "Supervisor",
+                "ops@artdecor.test",
+                "ChangeMe123!",
+                UserRole.SUPERVISOR
+        ));
+
+        assertThat(response.role()).isEqualTo(UserRole.SUPERVISOR.name());
+
+        assertThatThrownBy(() -> service.createUser(adminPrincipal(), new CreateUserCommand(
+                "Admin",
+                "admin2@artdecor.test",
+                "ChangeMe123!",
+                UserRole.ADMINISTRATOR
+        ))).isInstanceOf(AuthorizationDeniedException.class);
+    }
+
+    @Test
+    void supervisorCannotCreateAdminUsers() {
+        assertThatThrownBy(() -> service.createUser(
+                new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.SUPERVISOR, null),
+                new CreateUserCommand("Supervisor", "s@artdecor.test", "ChangeMe123!", UserRole.SUPERVISOR)
+        )).isInstanceOf(AuthorizationDeniedException.class);
+    }
+
+    @Test
+    void resetsPasswordAndRevokesExistingTokens() {
+        UUID supervisorId = UUID.randomUUID();
+        UserAccountEntity supervisor = user(supervisorId, UserRole.SUPERVISOR);
+        when(users.findById(supervisorId)).thenReturn(Optional.of(supervisor));
+
+        PasswordResetResponse response = service.resetPassword(adminPrincipal(), supervisorId, "NewPass123");
+
+        assertThat(response.passwordMustChange()).isTrue();
+        assertThat(response.temporaryPassword()).isNull();
+        assertThat(passwordEncoder.matches("NewPass123", supervisor.getPasswordHash())).isTrue();
+        assertThat(supervisor.isPasswordMustChange()).isTrue();
+        assertThat(supervisor.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void superAdminCanChangeSupervisorRoleToAdministrator() {
+        UUID userId = UUID.randomUUID();
+        UserAccountEntity supervisor = user(userId, UserRole.SUPERVISOR);
+        when(users.findById(userId)).thenReturn(Optional.of(supervisor));
+
+        UserResponse response = service.changeRole(superAdminPrincipal(), userId, UserRole.ADMINISTRATOR);
+
+        assertThat(response.role()).isEqualTo(UserRole.ADMINISTRATOR.name());
+        assertThat(supervisor.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsWeakAdminPassword() {
+        assertThatThrownBy(() -> service.createUser(superAdminPrincipal(), new CreateUserCommand(
+                "Weak",
+                "weak@artdecor.test",
+                "password",
+                UserRole.SUPERVISOR
+        ))).isInstanceOf(ManagementException.class)
+                .hasMessageContaining("shkronjë të madhe");
+    }
+
+    private AuthenticatedPrincipal superAdminPrincipal() {
+        return new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.SUPER_ADMIN, null);
+    }
+
+    private AuthenticatedPrincipal adminPrincipal() {
+        return new AuthenticatedPrincipal(UUID.randomUUID(), UserRole.ADMINISTRATOR, null);
     }
 
     private UserAccountEntity user(UUID id, UserRole role) {

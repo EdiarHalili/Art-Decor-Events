@@ -4,7 +4,7 @@ export type AuthResponse = {
   accessToken: string;
   tokenType: "Bearer";
   expiresInSeconds: number;
-  role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
+  role: UserRole;
   fullName: string;
   employeeId: string | null;
   employeeCode: string | null;
@@ -13,7 +13,7 @@ export type AuthResponse = {
 
 export type CurrentUserResponse = {
   userId: string;
-  role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
+  role: UserRole;
   fullName: string;
   employeeId: string | null;
   employeeCode: string | null;
@@ -42,11 +42,13 @@ export type AdminUser = {
   id: string;
   fullName: string;
   email: string;
-  role: "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
+  role: UserRole;
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
   updatedAt: string | null;
 };
+
+export type UserRole = "SUPER_ADMIN" | "ADMINISTRATOR" | "SUPERVISOR" | "EMPLOYEE";
 
 export type AdminDashboardSnapshot = {
   date: string;
@@ -369,13 +371,56 @@ export async function createAdminUser(
     fullName: string;
     email: string;
     password: string;
-    role: "ADMINISTRATOR" | "SUPERVISOR";
+    role: "SUPER_ADMIN" | "ADMINISTRATOR" | "SUPERVISOR";
   },
 ): Promise<AdminUser> {
   return authorizedRequest<AdminUser>("/admin/users", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function updateAdminUser(
+  accessToken: string,
+  userId: string,
+  payload: { fullName: string; email: string },
+): Promise<AdminUser> {
+  return authorizedRequest<AdminUser>(`/admin/users/${userId}`, accessToken, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminUserRole(
+  accessToken: string,
+  userId: string,
+  role: "SUPER_ADMIN" | "ADMINISTRATOR" | "SUPERVISOR",
+): Promise<AdminUser> {
+  return authorizedRequest<AdminUser>(`/admin/users/${userId}/role`, accessToken, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function activateAdminUser(accessToken: string, userId: string): Promise<AdminUser> {
+  return authorizedRequest<AdminUser>(`/admin/users/${userId}/activate`, accessToken, {
+    method: "POST",
+  });
+}
+
+export async function resetAdminUserPassword(
+  accessToken: string,
+  userId: string,
+  temporaryPassword: string,
+): Promise<{ temporaryPassword: string | null; passwordMustChange: boolean }> {
+  return authorizedRequest<{ temporaryPassword: string | null; passwordMustChange: boolean }>(
+    `/admin/users/${userId}/reset-password`,
+    accessToken,
+    {
+      method: "POST",
+      body: JSON.stringify({ temporaryPassword }),
+    },
+  );
 }
 
 export async function resetEmployeePassword(

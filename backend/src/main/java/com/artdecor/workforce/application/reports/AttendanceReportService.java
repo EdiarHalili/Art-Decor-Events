@@ -2,6 +2,7 @@ package com.artdecor.workforce.application.reports;
 
 import com.artdecor.workforce.domain.AttendanceStatus;
 import com.artdecor.workforce.domain.WorkScheduleStatus;
+import com.artdecor.workforce.application.attendance.AttendanceDurationCalculator;
 import com.artdecor.workforce.application.location.GpsDebugLogger;
 import com.artdecor.workforce.infrastructure.persistence.AppSettingsRepository;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
@@ -226,8 +227,8 @@ public class AttendanceReportService {
                 record.getCheckOutLongitude(),
                 distanceMeters(record.getCheckInLatitude(), record.getCheckInLongitude(), workplace),
                 distanceMeters(record.getCheckOutLatitude(), record.getCheckOutLongitude(), workplace),
-                record.getWorkedMinutes(),
-                record.getOvertimeMinutes(),
+                AttendanceDurationCalculator.workedMinutes(record),
+                AttendanceDurationCalculator.overtimeMinutes(record),
                 record.isAutoCheckout(),
                 record.getCheckoutType().name(),
                 record.getStatus() == AttendanceStatus.LATE,

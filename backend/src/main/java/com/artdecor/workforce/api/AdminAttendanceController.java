@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/attendance")
-@PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
 public class AdminAttendanceController {
     private final AttendanceService attendance;
 

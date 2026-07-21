@@ -123,7 +123,7 @@ class AttendanceReportServiceTest {
         EmployeeEntity employee = employee("EMP001", "Present Worker");
         WorkScheduleEntity schedule = schedule(date);
         AttendanceRecordEntity record = record(schedule, employee);
-        record.setWorkedMinutes(545);
+        record.setCheckedOutAt(Instant.parse("2026-07-03T14:00:00Z"));
         record.setCheckInLatitude(42.30413);
         record.setCheckInLongitude(21.64894);
         record.setAutoCheckout(true);

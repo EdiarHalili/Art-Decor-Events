@@ -42,13 +42,13 @@ public class AnnouncementController {
     }
 
     @GetMapping("/admin/announcements")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
     public List<AnnouncementResponse> listAnnouncements() {
         return notifications.listAnnouncements();
     }
 
     @PostMapping("/admin/announcements")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
     public ResponseEntity<AnnouncementResponse> publish(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @Valid @RequestBody AnnouncementRequest request
@@ -59,7 +59,7 @@ public class AnnouncementController {
     }
 
     @PutMapping("/admin/announcements/{announcementId}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
     public ResponseEntity<AnnouncementResponse> update(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID announcementId,
@@ -71,7 +71,7 @@ public class AnnouncementController {
     }
 
     @DeleteMapping("/admin/announcements/{announcementId}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID announcementId

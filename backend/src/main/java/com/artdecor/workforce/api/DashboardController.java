@@ -23,7 +23,7 @@ public class DashboardController {
     }
 
     @GetMapping("/admin/dashboard")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
     public AdminDashboardResponse adminDashboard() {
         return adminDashboardService.snapshot();
     }

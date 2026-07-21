@@ -1,5 +1,6 @@
 package com.artdecor.workforce.application.dashboard;
 
+import com.artdecor.workforce.application.attendance.AttendanceDurationCalculator;
 import com.artdecor.workforce.domain.UserRole;
 import com.artdecor.workforce.domain.UserStatus;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
@@ -62,7 +63,8 @@ public class AdminDashboardService {
                 currentlyWorking,
                 employees.countByStatus(UserStatus.ACTIVE),
                 employees.countByStatus(UserStatus.INACTIVE),
-                users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE),
+                users.countByRoleAndStatus(UserRole.ADMINISTRATOR, UserStatus.ACTIVE)
+                        + users.countByRoleAndStatus(UserRole.SUPER_ADMIN, UserStatus.ACTIVE),
                 users.countByRoleAndStatus(UserRole.SUPERVISOR, UserStatus.ACTIVE),
                 liveAttendance(latestRecordByEmployee.values().stream().toList()),
                 liveLocations(latestRecordByEmployee.values().stream()
@@ -84,8 +86,8 @@ public class AdminDashboardService {
                         record.getStatus().name(),
                         record.getCheckedInAt(),
                         record.getCheckedOutAt(),
-                        record.getWorkedMinutes(),
-                        record.getOvertimeMinutes(),
+                        AttendanceDurationCalculator.workedMinutes(record),
+                        AttendanceDurationCalculator.overtimeMinutes(record),
                         record.isAutoCheckout(),
                         record.getCheckoutType().name(),
                         false

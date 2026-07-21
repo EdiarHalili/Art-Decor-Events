@@ -54,7 +54,7 @@ public class LocalDataBootstrap implements ApplicationRunner {
         admin.setEmail(properties.adminEmail());
         admin.setPasswordHash(passwordEncoder.encode(properties.adminPassword()));
         admin.setPasswordMustChange(false);
-        admin.setRole(UserRole.ADMINISTRATOR);
+        admin.setRole(UserRole.SUPER_ADMIN);
         admin.setStatus(UserStatus.ACTIVE);
         return users.save(admin);
     }
@@ -66,8 +66,8 @@ public class LocalDataBootstrap implements ApplicationRunner {
             admin.incrementTokenVersion();
             changed = true;
         }
-        if (admin.getRole() != UserRole.ADMINISTRATOR) {
-            admin.setRole(UserRole.ADMINISTRATOR);
+        if (admin.getRole() != UserRole.SUPER_ADMIN) {
+            admin.setRole(UserRole.SUPER_ADMIN);
             admin.incrementTokenVersion();
             changed = true;
         }

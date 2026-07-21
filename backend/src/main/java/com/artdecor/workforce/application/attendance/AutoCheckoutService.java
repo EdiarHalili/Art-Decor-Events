@@ -8,7 +8,6 @@ import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordEntity;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -85,7 +84,7 @@ public class AutoCheckoutService {
             checkoutAt = now;
         }
         record.setCheckedOutAt(checkoutAt);
-        record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkoutAt).toMinutes()));
+        record.setWorkedMinutes(AttendanceDurationCalculator.roundedMinutesBetween(record.getCheckedInAt(), checkoutAt));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkoutAt));
         record.setAutoCheckout(true);
         record.setCheckoutType(CheckoutType.AUTO_CHECKED_OUT);
@@ -97,6 +96,6 @@ public class AutoCheckoutService {
         if (plannedEndAt == null || !checkedOutAt.isAfter(plannedEndAt)) {
             return 0;
         }
-        return (int) Duration.between(plannedEndAt, checkedOutAt).toMinutes();
+        return AttendanceDurationCalculator.roundedMinutesBetween(plannedEndAt, checkedOutAt);
     }
 }

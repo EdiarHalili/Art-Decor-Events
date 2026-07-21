@@ -53,6 +53,7 @@ const initialForm: EmployeeForm = {
 };
 
 export function EmployeeManagementPage({ accessToken, role }: EmployeeManagementPageProps) {
+  const canManageEmployees = role === "SUPER_ADMIN" || role === "ADMINISTRATOR";
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [form, setForm] = useState<EmployeeForm>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -328,8 +329,8 @@ export function EmployeeManagementPage({ accessToken, role }: EmployeeManagement
               historyLoading={historyLoading}
               onEdit={() => startEdit(selected)}
               onDeactivate={() => void deactivate(selected.id)}
-              onDelete={role === "ADMINISTRATOR" ? () => deleteSelectedEmployee(selected.id) : null}
-              onForceDelete={role === "ADMINISTRATOR" ? () => forceDeleteSelectedEmployee(selected.id) : null}
+              onDelete={canManageEmployees ? () => deleteSelectedEmployee(selected.id) : null}
+              onForceDelete={canManageEmployees ? () => forceDeleteSelectedEmployee(selected.id) : null}
               onResetPassword={async () => {
                 const response = await resetEmployeePassword(accessToken, selected.id);
                 return response.temporaryPassword;

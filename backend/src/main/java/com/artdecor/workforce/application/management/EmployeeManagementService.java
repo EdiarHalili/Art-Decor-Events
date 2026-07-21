@@ -173,7 +173,7 @@ public class EmployeeManagementService {
         if (user != null && principal != null && user.getId().equals(principal.userId())) {
             throw new ManagementConflictException("Nuk mund ta fshini llogarinë tuaj.");
         }
-        if (user != null && user.getRole() == UserRole.ADMINISTRATOR) {
+        if (user != null && (user.getRole() == UserRole.ADMINISTRATOR || user.getRole() == UserRole.SUPER_ADMIN)) {
             throw new ManagementConflictException("Llogaria e administratorit nuk mund të fshihet me këtë veprim.");
         }
 

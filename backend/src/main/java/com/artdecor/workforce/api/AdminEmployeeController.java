@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/employees")
-@PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
 public class AdminEmployeeController {
     private final EmployeeManagementService employees;
     private final AuditService audit;
@@ -45,7 +45,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> createEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @Valid @RequestBody CreateEmployeeRequest request
@@ -56,7 +56,7 @@ public class AdminEmployeeController {
     }
 
     @PatchMapping("/{employeeId}")
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId,
@@ -68,7 +68,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/{employeeId}/deactivate")
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<EmployeeResponse> deactivateEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId
@@ -79,7 +79,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/{employeeId}/reset-password")
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<PasswordResetResponse> resetPassword(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId
@@ -90,7 +90,7 @@ public class AdminEmployeeController {
     }
 
     @DeleteMapping("/{employeeId}")
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<Void> deleteEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId
@@ -101,7 +101,7 @@ public class AdminEmployeeController {
     }
 
     @DeleteMapping("/{employeeId}/force")
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
     public ResponseEntity<Void> forceDeleteEmployee(
             @AuthenticationPrincipal AuthenticatedPrincipal principal,
             @PathVariable UUID employeeId

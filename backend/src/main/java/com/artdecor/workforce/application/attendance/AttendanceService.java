@@ -15,7 +15,6 @@ import com.artdecor.workforce.infrastructure.persistence.WorkScheduleEntity;
 import com.artdecor.workforce.infrastructure.persistence.WorkScheduleRepository;
 import com.artdecor.workforce.infrastructure.security.AuthenticatedPrincipal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -158,7 +157,7 @@ public class AttendanceService {
         record.setCheckOutLatitude(gpsEnabled ? command.latitude() : null);
         record.setCheckOutLongitude(gpsEnabled ? command.longitude() : null);
         record.setCheckOutDevice(command.device());
-        record.setWorkedMinutes((int) Duration.between(record.getCheckedInAt(), actionTime).toMinutes());
+        record.setWorkedMinutes(AttendanceDurationCalculator.roundedMinutesBetween(record.getCheckedInAt(), actionTime));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, actionTime));
         record.setAutoCheckout(false);
         record.setCheckoutType(CheckoutType.MANUAL_EMPLOYEE);
@@ -192,7 +191,7 @@ public class AttendanceService {
         }
 
         record.setCheckedOutAt(checkedOutAt);
-        record.setWorkedMinutes(Math.max(0, (int) Duration.between(record.getCheckedInAt(), checkedOutAt).toMinutes()));
+        record.setWorkedMinutes(AttendanceDurationCalculator.roundedMinutesBetween(record.getCheckedInAt(), checkedOutAt));
         record.setOvertimeMinutes(calculateOvertimeMinutes(record, checkedOutAt));
         record.setAutoCheckout(false);
         record.setCheckoutType(CheckoutType.ADMIN_CHECKED_OUT);
@@ -225,7 +224,7 @@ public class AttendanceService {
             return 0;
         }
 
-        return (int) Duration.between(plannedEndAt, checkedOutAt).toMinutes();
+        return AttendanceDurationCalculator.roundedMinutesBetween(plannedEndAt, checkedOutAt);
     }
 
     private Instant actionTime(AttendanceActionCommand command) {
@@ -262,8 +261,8 @@ public class AttendanceService {
                 record.getStatus().name(),
                 record.getCheckedInAt(),
                 record.getCheckedOutAt(),
-                record.getWorkedMinutes(),
-                record.getOvertimeMinutes(),
+                AttendanceDurationCalculator.workedMinutes(record),
+                AttendanceDurationCalculator.overtimeMinutes(record),
                 record.isAutoCheckout(),
                 record.getCheckoutType().name(),
                 record.isRequiresApproval(),

@@ -1,5 +1,6 @@
 package com.artdecor.workforce.application.payroll;
 
+import com.artdecor.workforce.application.attendance.AttendanceDurationCalculator;
 import com.artdecor.workforce.infrastructure.persistence.AttendanceRecordRepository;
 import com.artdecor.workforce.infrastructure.persistence.EmployeeRepository;
 import java.time.YearMonth;
@@ -24,7 +25,10 @@ public class PayrollPreparationService {
         var records = attendanceRecords.findReportRecords(month.atDay(1), month.atEndOfMonth());
         Map<UUID, Totals> totalsByEmployee = records.stream().collect(Collectors.toMap(
                 record -> record.getEmployee().getId(),
-                record -> new Totals(record.getWorkedMinutes(), record.getOvertimeMinutes()),
+                record -> new Totals(
+                        AttendanceDurationCalculator.workedMinutes(record),
+                        AttendanceDurationCalculator.overtimeMinutes(record)
+                ),
                 Totals::plus
         ));
 

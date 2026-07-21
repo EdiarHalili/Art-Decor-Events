@@ -9,6 +9,7 @@ import {
   Menu,
   RefreshCw,
   Settings,
+  ShieldCheck,
   UserCheck,
   UsersRound,
   X,
@@ -32,6 +33,7 @@ import { DailyCheckInWindowPage } from "./DailyCheckInWindowPage";
 import { EmployeeManagementPage } from "./EmployeeManagementPage";
 import { ReportsPage } from "./ReportsPage";
 import { SettingsPage } from "./SettingsPage";
+import { UserManagementPage } from "./UserManagementPage";
 
 type AdminDashboardProps = {
   session: AuthResponse;
@@ -40,7 +42,7 @@ type AdminDashboardProps = {
   onLogout: () => void;
 };
 
-type AdminView = "dashboard" | "attendance" | "reports" | "employees" | "announcements" | "settings";
+type AdminView = "dashboard" | "attendance" | "reports" | "employees" | "users" | "announcements" | "settings";
 
 export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout }: AdminDashboardProps) {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
@@ -49,6 +51,9 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
   const navItems = [
     { id: "dashboard" as const, label: "Përmbledhje", icon: LayoutDashboard },
     { id: "employees" as const, label: "Punëtorët", icon: UsersRound },
+    ...(session.role === "SUPER_ADMIN" || session.role === "ADMINISTRATOR"
+      ? [{ id: "users" as const, label: "Administrimi i përdoruesve", icon: ShieldCheck }]
+      : []),
     { id: "attendance" as const, label: "Attendance", icon: CalendarClock },
     { id: "reports" as const, label: "Raportet", icon: BarChart3 },
     { id: "announcements" as const, label: "Njoftimet", icon: Bell },
@@ -137,6 +142,11 @@ export function AdminDashboard({ session, settings, onSettingsUpdated, onLogout 
           {activeView === "employees" && (
             <section className="mt-6">
               <EmployeeManagementPage accessToken={session.accessToken} role={session.role} />
+            </section>
+          )}
+          {activeView === "users" && (
+            <section className="mt-6">
+              <UserManagementPage accessToken={session.accessToken} role={session.role} />
             </section>
           )}
           {activeView === "reports" && (
@@ -393,6 +403,7 @@ function viewTitle(view: AdminView) {
   const titles: Record<AdminView, string> = {
     dashboard: "Përmbledhje",
     employees: "Punëtorët",
+    users: "Administrimi i përdoruesve",
     attendance: "Attendance",
     reports: "Raportet",
     announcements: "Njoftimet",
@@ -438,3 +449,4 @@ function formatMinutes(minutes: number) {
 function attendanceStatusLabel(row: { checkedOutAt: string | null }) {
   return row.checkedOutAt ? "Dalë" : "Në punë";
 }
+

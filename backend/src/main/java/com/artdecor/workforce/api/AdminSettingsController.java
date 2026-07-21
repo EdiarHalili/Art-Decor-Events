@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/settings")
-@PreAuthorize("hasRole('ADMINISTRATOR')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR')")
 public class AdminSettingsController {
     private final AppSettingsService settings;
     private final AuditService audit;

@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/check-in-windows")
-@PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SUPERVISOR')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMINISTRATOR', 'SUPERVISOR')")
 public class AdminDailyCheckInWindowController {
     private final DailyCheckInWindowService service;
     private final AuditService audit;

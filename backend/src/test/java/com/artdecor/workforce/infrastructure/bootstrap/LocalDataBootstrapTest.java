@@ -58,7 +58,7 @@ class LocalDataBootstrapTest {
                 .anySatisfy(saved -> {
                     assertThat(saved.getEmail()).isEqualTo("admin@artdecor.local");
                     assertThat(passwordEncoder.matches("ChangeMe123!", saved.getPasswordHash())).isTrue();
-                    assertThat(saved.getRole()).isEqualTo(UserRole.ADMINISTRATOR);
+                    assertThat(saved.getRole()).isEqualTo(UserRole.SUPER_ADMIN);
                     assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
                 })
                 .anySatisfy(saved -> {
