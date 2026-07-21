@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: art-decor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: artdecor_workforce
+      POSTGRES_USER: artdecor
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artdecor -d artdecor_workforce"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - artdecor_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: art-decor-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/artdecor_workforce
+      DB_USERNAME: artdecor
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+
+      CORS_ALLOWED_ORIGINS: https://artdecorevents.com,https://www.artdecorevents.com
+      CORS_ALLOWED_ORIGIN_PATTERNS: ""
+
+      APP_BUSINESS_ZONE: Europe/Belgrade
+      APP_BOOTSTRAP_ENABLED: ${APP_BOOTSTRAP_ENABLED}
+      APP_BOOTSTRAP_ADMIN_NAME: Art Decor Administrator
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD}
+
+      ARTDECOR_GPS_DEBUG: "false"
+      TRUSTED_PROXY_IPS: ""
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - artdecor_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    container_name: art-decor-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - artdecor_network
+
+volumes:
+  postgres_data:
+
+networks:
+  artdecor_network:
+    driver: bridge
