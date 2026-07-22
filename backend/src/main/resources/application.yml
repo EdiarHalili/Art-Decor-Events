@@ -40,7 +40,7 @@ app:
   security:
     jwt-secret: ${JWT_SECRET:change-this-development-secret-to-a-very-long-production-value}
     jwt-issuer: art-decor-events
-    access-token-minutes: 60
+    access-token-minutes: 43200
     rate-limit:
       default-limit-per-minute: ${RATE_LIMIT_DEFAULT_PER_MINUTE:180}
       auth-limit-per-minute: ${RATE_LIMIT_AUTH_PER_MINUTE:20}
